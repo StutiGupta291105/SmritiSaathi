@@ -1,8 +1,6 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../core/reminder_schedule.dart';
@@ -24,9 +22,6 @@ class ReminderNotifier {
   static const _maxPending = 60; // iOS keeps at most 64 pending local notifications
 
   Future<void> init() async {
-    tzdata.initializeTimeZones();
-    tz.setLocalLocation(
-        tz.getLocation(await FlutterTimezone.getLocalTimezone()));
     await _plugin.initialize(const InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       iOS: DarwinInitializationSettings(),
@@ -58,7 +53,9 @@ class ReminderNotifier {
         id++,
         tr(lang, 'appName'),
         tr(lang, 'notif_${r.kind.name}'),
-        tz.TZDateTime.from(at, tz.local),
+        // Each notification is a one-off absolute instant computed from local
+        // wall-clock time (DST-correct), so no timezone database is needed.
+        tz.TZDateTime.from(at, tz.UTC),
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'reminders',
