@@ -1,4 +1,5 @@
 import 'adaptive_engine.dart';
+import 'adherence.dart';
 
 /// One finished game session, as the dashboard and alerts see it.
 class SessionRecord {
@@ -21,6 +22,8 @@ enum AlertKind {
   inactive,
   fewerSessions,
   accuracyDip,
+  medicineNotDone,
+  lowAdherence,
   suggestRaiseBaseline,
   suggestLowerBaseline,
 }
@@ -49,12 +52,18 @@ DateTime _day(DateTime t) => DateTime(t.year, t.month, t.day);
 ///    before, and that earlier week had at least 4.
 ///  * accuracyDip: average accuracy over the last 3 sessions is at least 20
 ///    points below the average of the 5 before them (needs 8 sessions).
+///  * medicineNotDone: medicine reminders from today, due 2 or more hours ago,
+///    not marked done (worded as "not marked", never "missed").
+///  * lowAdherence: fewer than half of the last 7 days' reminders marked done
+///    (needs at least 6 that were due).
 ///  * baseline suggestions come from [suggestBaseline] (3 sessions at the edge
 ///    of the band).
 List<EngagementAlert> computeAlerts({
   required List<SessionRecord> sessions,
   required DateTime now,
   required int baseline,
+  int overdueMedicines = 0,
+  AdherenceSummary? weekAdherence,
 }) {
   final all = [...sessions]..sort((x, y) => x.endedAt.compareTo(y.endedAt));
   final out = <EngagementAlert>[];
@@ -89,6 +98,17 @@ List<EngagementAlert> computeAlerts({
       out.add(EngagementAlert(AlertKind.accuracyDip, AlertSeverity.attention,
           a: dip));
     }
+  }
+
+  if (overdueMedicines > 0) {
+    out.add(EngagementAlert(AlertKind.medicineNotDone, AlertSeverity.attention,
+        a: overdueMedicines));
+  }
+  if (weekAdherence != null &&
+      weekAdherence.expected >= 6 &&
+      weekAdherence.rate < 0.5) {
+    out.add(EngagementAlert(AlertKind.lowAdherence, AlertSeverity.attention,
+        a: (weekAdherence.rate * 100).round()));
   }
 
   final suggestion = suggestBaseline(

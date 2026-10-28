@@ -10,6 +10,7 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/ability_model.dart';
+import '../core/adherence.dart';
 import '../core/adaptive_engine.dart';
 import '../core/engagement_alerts.dart';
 import '../core/reminder_schedule.dart';
@@ -70,7 +71,7 @@ class AppDatabase {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 3;
+  static const schemaVersion = 4;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -91,6 +92,7 @@ class AppDatabase {
         created_at TEXT NOT NULL
       )''');
     await _createAccountTables(db);
+    await _createReminderLog(db);
     await db.execute('''
       CREATE TABLE consents(
         id TEXT PRIMARY KEY,
@@ -172,12 +174,28 @@ class AppDatabase {
         await db.execute(stmt);
       }
     }
+    if (oldVersion < 4) {
+      await _createReminderLog(db);
+    }
   }
 
   /// For tests: wraps an already-open database (for example in-memory SQLite).
   @visibleForTesting
   AppDatabase.forTesting(this._db, {DateTime Function()? clock})
       : _clock = clock ?? DateTime.now;
+
+  static Future<void> _createReminderLog(Database db) async {
+    // One row per reminder per day that was marked done. Holds no reminder text.
+    await db.execute('''
+      CREATE TABLE reminder_log(
+        id TEXT PRIMARY KEY,
+        patient_id TEXT NOT NULL,
+        reminder_id TEXT NOT NULL,
+        day TEXT NOT NULL,
+        marked_at TEXT NOT NULL,
+        UNIQUE(reminder_id, day)
+      )''');
+  }
 
   static Future<void> _createAccountTables(Database db) async {
     await db.execute('''
@@ -583,6 +601,7 @@ class AppDatabase {
             ? null
             : DateTime.parse(r['on_date'] as String),
         active: r['active'] == 1,
+        createdAt: DateTime.tryParse(r['created_at'] as String? ?? '')?.toLocal(),
       );
 
   Future<String> addReminder({
@@ -699,6 +718,52 @@ class AppDatabase {
     return rows.map((r) => r['end_level'] as int).toList().reversed.toList();
   }
 
+  // ---- reminder completion -----------------------------------------------
+
+  /// Marks a reminder done (or undoes it) for [day]. Covered by the 'reminders'
+  /// purpose. The log stores the reminder id and the day only.
+  Future<void> setReminderDone({
+    required String patientId,
+    required String reminderId,
+    required DateTime day,
+    required bool done,
+    required String by,
+  }) async {
+    await requireConsent(patientId, 'reminders');
+    final key = doneKey(reminderId, day).split('|').last;
+    if (done) {
+      await _db.insert(
+          'reminder_log',
+          {
+            'id': _uuid.v4(),
+            'patient_id': patientId,
+            'reminder_id': reminderId,
+            'day': key,
+            'marked_at': _now(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore);
+    } else {
+      await _db.delete('reminder_log',
+          where: 'reminder_id = ? AND day = ?', whereArgs: [reminderId, key]);
+    }
+    await audit(by, done ? 'reminder_marked_done' : 'reminder_unmarked',
+        'patient=$patientId reminder=$reminderId');
+  }
+
+  /// Keys (see [doneKey]) of everything marked done in the last [days] days.
+  Future<Set<String>> doneKeys(String patientId, {int days = 100}) async {
+    final since = DateTime.now().subtract(Duration(days: days));
+    final rows = await _db.query('reminder_log',
+        where: 'patient_id = ? AND day >= ?',
+        whereArgs: [
+          patientId,
+          doneKey('x', since).split('|').last,
+        ]);
+    return {
+      for (final r in rows) '${r['reminder_id']}|${r['day']}',
+    };
+  }
+
   // ---- caregiver dashboard data ------------------------------------------
 
   Future<List<SessionRecord>> sessionRecords(String patientId) async {
@@ -752,6 +817,24 @@ class AppDatabase {
       String patientId, String game, int baseline) async {
     final model = await abilityModel(patientId, game, baseline);
     return model.recommend(DifficultyBand(baseline));
+  }
+
+  /// Alerts for the patient right now, or none when sharing with the caregiver
+  /// is not consented. Used for the badge on the Caregiver area entry.
+  Future<List<EngagementAlert>> currentAlerts(String patientId) async {
+    if (!await hasConsent(patientId, 'caregiver_share')) return const [];
+    final patient = await patientById(patientId);
+    if (patient == null) return const [];
+    final reminders = await listReminders(patientId);
+    final done = await doneKeys(patientId);
+    final now = DateTime.now();
+    return computeAlerts(
+      sessions: await sessionRecords(patientId),
+      now: now,
+      baseline: patient['baseline_level'] as int,
+      overdueMedicines: overdueMedicines(reminders, done, now).length,
+      weekAdherence: adherence(reminders, done, now),
+    );
   }
 
   // ---- caregiver PIN -------------------------------------------------------
@@ -866,6 +949,7 @@ class AppDatabase {
       'reminders': await rows('reminders', 'patient_id = ?'),
       'family_members': await rows('family_members', 'patient_id = ?'),
       'care_links': await rows('care_links', 'patient_id = ?'),
+      'reminder_log': await rows('reminder_log', 'patient_id = ?'),
     };
     await audit(requestedBy, 'patient_exported', 'patient=$patientId');
     return out;
@@ -891,7 +975,8 @@ class AppDatabase {
       'reminders',
       'consents',
       'family_members',
-      'care_links'
+      'care_links',
+      'reminder_log'
     ]) {
       await _db.delete(t, where: 'patient_id = ?', whereArgs: [patientId]);
     }

@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smriti_assist/core/adherence.dart';
+import 'package:smriti_assist/core/engagement_alerts.dart';
 import 'package:smriti_assist/core/reminder_schedule.dart';
 import 'package:smriti_assist/data/app_database.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -490,6 +492,161 @@ void main() {
       final row = (await v1.query('patients')).single;
       expect(row['setup_stage'], 0);
       await v1.close();
+    });
+  });
+
+
+  group('reminder completion', () {
+    Future<(String, String)> withReminder({Set<String>? consent}) async {
+      final id = await _patient(db, consent ?? {'gameplay', 'reminders'});
+      final rid = await db.addReminder(
+          patientId: id,
+          kind: ReminderKind.medicine,
+          label: 'Secret tablet name',
+          hour: 9,
+          minute: 0,
+          createdBy: 'Asha');
+      return (id, rid);
+    }
+
+    test('marking done needs the reminders purpose', () async {
+      final (id, rid) = await withReminder();
+      await db.withdrawConsent(
+          patientId: id,
+          purpose: 'reminders',
+          byName: 'Asha',
+          byRelation: 'self',
+          noticeVersion: 'v2');
+      expect(
+          () => db.setReminderDone(
+              patientId: id,
+              reminderId: rid,
+              day: DateTime(2026, 3, 10),
+              done: true,
+              by: 'Asha'),
+          throwsA(isA<ConsentRequired>()));
+    });
+
+    test('marking twice keeps one row; undo removes it', () async {
+      final (id, rid) = await withReminder();
+      final day = DateTime(2026, 3, 10);
+      for (var i = 0; i < 2; i++) {
+        await db.setReminderDone(
+            patientId: id, reminderId: rid, day: day, done: true, by: 'Asha');
+      }
+      expect(await raw.query('reminder_log'), hasLength(1));
+      expect(await db.doneKeys(id, days: 3650), {doneKey(rid, day)});
+      await db.setReminderDone(
+          patientId: id, reminderId: rid, day: day, done: false, by: 'Asha');
+      expect(await db.doneKeys(id, days: 3650), isEmpty);
+    });
+
+    test('the log and its audit entries hold no reminder text', () async {
+      final (id, rid) = await withReminder();
+      await db.setReminderDone(
+          patientId: id,
+          reminderId: rid,
+          day: DateTime(2026, 3, 10),
+          done: true,
+          by: 'Asha');
+      final log = await raw.query('reminder_log');
+      expect('$log', isNot(contains('Secret')));
+      for (final r in await raw.query('audit_log')) {
+        expect('${r['detail']}', isNot(contains('Secret')));
+      }
+    });
+
+    test('listReminders carries the creation time', () async {
+      final (id, _) = await withReminder();
+      final r = (await db.listReminders(id)).single;
+      expect(r.createdAt, isNotNull);
+      expect(DateTime.now().difference(r.createdAt!).inMinutes, lessThan(2));
+    });
+
+    test('export includes the log and erasure removes it', () async {
+      final (id, rid) = await withReminder();
+      await db.setReminderDone(
+          patientId: id,
+          reminderId: rid,
+          day: DateTime(2026, 3, 10),
+          done: true,
+          by: 'Asha');
+      final out = await db.exportPatient(id, 'Asha');
+      expect(out['reminder_log'] as List, hasLength(1));
+      await db.erasePatient(id, 'Asha');
+      expect(await raw.query('reminder_log'), isEmpty);
+    });
+  });
+
+
+  group('current alerts for the badge', () {
+    Future<String> patientWithOldReminder(Set<String> consent) async {
+      final id = await _patient(db, consent);
+      await raw.insert('reminders', {
+        'id': 'r1',
+        'patient_id': id,
+        'kind': 'medicine',
+        'label': '',
+        'hour': 0,
+        'minute': 0,
+        'days_mask': 127,
+        'active': 1,
+        'created_by': 'x',
+        'created_at':
+            DateTime.now().toUtc().subtract(const Duration(days: 10)).toIso8601String(),
+      });
+      return id;
+    }
+
+    test('nothing is reported without caregiver_share consent', () async {
+      final id = await patientWithOldReminder({'gameplay', 'reminders'});
+      expect(await db.currentAlerts(id), isEmpty);
+    });
+
+    test('unmarked reminders raise the low-adherence alert; marks clear it',
+        () async {
+      final id = await patientWithOldReminder(
+          {'gameplay', 'reminders', 'caregiver_share'});
+      final kinds = (await db.currentAlerts(id)).map((a) => a.kind).toList();
+      expect(kinds, contains(AlertKind.lowAdherence));
+
+      final now = DateTime.now();
+      for (var i = 0; i < 7; i++) {
+        await db.setReminderDone(
+            patientId: id,
+            reminderId: 'r1',
+            day: DateTime(now.year, now.month, now.day - i),
+            done: true,
+            by: 'x');
+      }
+      final after = (await db.currentAlerts(id)).map((a) => a.kind).toList();
+      expect(after, isNot(contains(AlertKind.lowAdherence)));
+      expect(after, isNot(contains(AlertKind.medicineNotDone)));
+    });
+  });
+
+  group('upgrade from v3', () {
+    test('creates the completion log and keeps existing rows', () async {
+      final v3 = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
+          options: OpenDatabaseOptions(
+            singleInstance: false,
+            version: 3,
+            onCreate: (d, _) async {
+              await d.execute('CREATE TABLE patients(id TEXT PRIMARY KEY, name TEXT)');
+              await d.insert('patients', {'id': 'p', 'name': 'Keep'});
+            },
+          ));
+      await AppDatabase.upgradeSchema(v3, 3);
+      expect((await v3.query('patients')).single['name'], 'Keep');
+      await v3.insert('reminder_log', {
+        'id': '1',
+        'patient_id': 'p',
+        'reminder_id': 'r',
+        'day': '2026-03-10',
+        'marked_at': 'x'
+      });
+      expect(await v3.query('reminder_log'), hasLength(1));
+      await v3.close();
     });
   });
 

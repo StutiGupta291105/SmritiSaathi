@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/adherence.dart';
 import '../../core/reminder_schedule.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
@@ -10,9 +11,10 @@ import '../profile/photo_picker.dart' show Avatar;
 import '../reminders/reminder_style.dart';
 
 class _HomeData {
-  _HomeData(this.playedToday, this.tasks);
+  _HomeData(this.playedToday, this.tasks, this.done);
   final bool playedToday;
   final List<(DateTime, Reminder)> tasks;
+  final Set<String> done; // reminder ids marked done today
 }
 
 /// Home: greeting, Today's Goal, four shortcut tiles and today's tasks.
@@ -58,7 +60,12 @@ class HomeTab extends StatelessWidget {
       }
     }
     tasks.sort((a, b) => a.$1.compareTo(b.$1));
-    return _HomeData(played, tasks);
+    final keys = await db.doneKeys(patientId, days: 2);
+    final done = {
+      for (final (_, r) in tasks)
+        if (keys.contains(doneKey(r.id, startOfDay))) r.id
+    };
+    return _HomeData(played, tasks, done);
   }
 
   @override
@@ -172,35 +179,18 @@ class HomeTab extends StatelessWidget {
                   style: const TextStyle(fontSize: 16, color: Palette.muted))
             else
               for (final (at, r) in data.tasks)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: AppCard(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(children: [
-                      IconBadge(
-                          icon: kindStyle(r.kind).icon,
-                          fg: kindStyle(r.kind).fg,
-                          bg: kindStyle(r.kind).bg,
-                          size: 46,
-                          circle: true),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                                r.label.isEmpty
-                                    ? t('kind_${r.kind.name}')
-                                    : r.label,
-                                style: const TextStyle(
-                                    fontSize: 17, fontWeight: FontWeight.w600)),
-                            Text(TimeOfDay.fromDateTime(at).format(context),
-                                style: const TextStyle(
-                                    fontSize: 14, color: Palette.muted)),
-                          ],
-                        ),
-                      ),
-                    ]),
+                _TaskRow(
+                  key: ValueKey(r.id),
+                  reminder: r,
+                  at: at,
+                  lang: lang,
+                  initiallyDone: data.done.contains(r.id),
+                  onToggle: (v) => db.setReminderDone(
+                    patientId: patientId,
+                    reminderId: r.id,
+                    day: DateTime.now(),
+                    done: v,
+                    by: 'patient',
                   ),
                 ),
           ],
@@ -283,6 +273,85 @@ class HomeTab extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// One of today's tasks with a big tick to mark it done.
+class _TaskRow extends StatefulWidget {
+  const _TaskRow({
+    super.key,
+    required this.reminder,
+    required this.at,
+    required this.lang,
+    required this.initiallyDone,
+    required this.onToggle,
+  });
+  final Reminder reminder;
+  final DateTime at;
+  final String lang;
+  final bool initiallyDone;
+  final Future<void> Function(bool done) onToggle;
+
+  @override
+  State<_TaskRow> createState() => _TaskRowState();
+}
+
+class _TaskRowState extends State<_TaskRow> {
+  late bool _done = widget.initiallyDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = widget.reminder;
+    final style = kindStyle(r.kind);
+    final label = r.label.isEmpty ? tr(widget.lang, 'kind_${r.kind.name}') : r.label;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        color: _done ? Palette.tileGreen : Colors.white,
+        padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+        child: Row(children: [
+          IconBadge(
+              icon: style.icon,
+              fg: style.fg,
+              bg: style.bg,
+              size: 46,
+              circle: true),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        decoration: _done ? TextDecoration.lineThrough : null)),
+                Text(TimeOfDay.fromDateTime(widget.at).format(context),
+                    style: const TextStyle(fontSize: 14, color: Palette.muted)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: tr(widget.lang, 'markDone'),
+            iconSize: 38,
+            icon: Icon(
+                _done
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: _done ? Palette.action : Palette.muted),
+            onPressed: () async {
+              final next = !_done;
+              setState(() => _done = next);
+              try {
+                await widget.onToggle(next);
+              } catch (_) {
+                if (mounted) setState(() => _done = !next);
+              }
+            },
+          ),
+        ]),
       ),
     );
   }

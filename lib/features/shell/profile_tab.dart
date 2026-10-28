@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/engagement_alerts.dart';
 import '../../core/profile.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
@@ -135,6 +136,31 @@ class ProfileTab extends StatelessWidget {
             )),
         row(Icons.supervisor_account_rounded, Palette.green, Palette.tileGreen,
             t('caregiverArea'),
+            trailing: FutureBuilder<List<EngagementAlert>>(
+              future: db.currentAlerts(_id),
+              builder: (context, snap) {
+                final n = (snap.data ?? const <EngagementAlert>[])
+                    .where((a) => a.severity == AlertSeverity.attention)
+                    .length;
+                return Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (n > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: Palette.red,
+                          borderRadius: BorderRadius.circular(14)),
+                      child: Text('$n',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14)),
+                    ),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 28, color: Palette.muted),
+                ]);
+              },
+            ),
             onTap: () => openCaregiverArea(
                   context,
                   db: db,

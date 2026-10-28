@@ -3,11 +3,14 @@ import 'package:flutter/services.dart';
 
 import '../../core/ability_model.dart';
 import '../../core/adaptive_engine.dart';
+import '../../core/adherence.dart';
 import '../../core/engagement_alerts.dart';
 import '../../core/profile.dart';
 import '../../core/progress.dart';
+import '../../core/reporting.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
 import '../profile/consent_gate.dart';
@@ -190,19 +193,22 @@ class _PinScreenState extends State<_PinScreen> {
 
 class _DashData {
   _DashData(this.patient, this.sessions, this.alerts, this.models, this.family,
-      this.links);
+      this.links, this.week);
   final Map<String, Object?> patient;
   final List<SessionRecord> sessions;
   final List<EngagementAlert> alerts;
   final Map<String, AbilityModel> models;
   final List<Map<String, Object?>> family;
   final List<Map<String, Object?>> links;
+  final AdherenceSummary week; // reminders marked done, last 7 days
 }
 
-/// What a caregiver sees: engagement trends, alerts, difficulty control, and
-/// shortcuts to reminders. Shown only while 'caregiver_share' is consented.
-/// Everything is computed from the session history on this phone; nothing is
-/// sent anywhere. The wording is deliberately about play, not health.
+/// What a caregiver sees: engagement trends over 7 days, 30 days or 3 months,
+/// alerts, how many reminders were marked done, difficulty control, a summary
+/// to share, and shortcuts to reminders. Shown only while 'caregiver_share'
+/// is consented. Everything is computed from the history on this phone;
+/// nothing is sent anywhere. The wording is deliberately about use of the app,
+/// not health.
 class CaregiverDashboard extends StatefulWidget {
   const CaregiverDashboard({
     super.key,
@@ -223,6 +229,7 @@ class CaregiverDashboard extends StatefulWidget {
 
 class _CaregiverDashboardState extends State<CaregiverDashboard> {
   late Future<_DashData> _data = _load();
+  ReportRange _range = ReportRange.days7;
 
   String t(String k) => tr(widget.lang, k);
 
@@ -230,35 +237,66 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
     final patient = (await widget.db.patientById(widget.patientId))!;
     final baseline = patient['baseline_level'] as int;
     final sessions = await widget.db.sessionRecords(widget.patientId);
+    final reminders = await widget.db.listReminders(widget.patientId);
+    final done = await widget.db.doneKeys(widget.patientId);
+    final now = DateTime.now();
+    final week = adherence(reminders, done, now);
     return _DashData(
       patient,
       sessions,
-      computeAlerts(sessions: sessions, now: DateTime.now(), baseline: baseline),
+      computeAlerts(
+        sessions: sessions,
+        now: now,
+        baseline: baseline,
+        overdueMedicines: overdueMedicines(reminders, done, now).length,
+        weekAdherence: week,
+      ),
       {
         for (final g in _games.keys)
           g: await widget.db.abilityModel(widget.patientId, g, baseline)
       },
       await widget.db.listFamily(widget.patientId),
       await widget.db.listCareLinks(widget.patientId),
+      week,
     );
   }
 
   void _reload() => setState(() => _data = _load());
 
-  Future<void> _changeLevel(int current) async {
+  /// [suggested] pre-selects the level an alert recommended; accepting it is
+  /// recorded as such, anything else as the caregiver's own judgement.
+  Future<void> _changeLevel(int current, {int? suggested}) async {
     final result = await showDialog<(int, String)>(
       context: context,
-      builder: (_) => _LevelDialog(lang: widget.lang, current: current),
+      builder: (_) => _LevelDialog(
+          lang: widget.lang, current: current, initial: suggested ?? current),
     );
     if (result == null) return;
     await widget.db.setBaseline(
       patientId: widget.patientId,
       newLevel: result.$1,
       caregiverName: result.$2,
-      reason: 'caregiver_judgement',
+      reason: result.$1 == suggested ? 'accepted_suggestion' : 'caregiver_judgement',
     );
     widget.onChanged();
     _reload();
+  }
+
+  Future<void> _copySummary(_DashData d, List<SessionRecord> inRange) async {
+    final text = buildSummary(
+      lang: widget.lang,
+      name: '${d.patient['display_name']}',
+      range: _range,
+      sessionsInRange: inRange,
+      adherence: d.week,
+      alerts: d.alerts,
+      gameNames: {for (final e in _games.entries) e.key: t(e.value)},
+    );
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(t('summaryCopied'))));
+    }
   }
 
   @override
@@ -299,14 +337,16 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
   Widget _body(_DashData d) {
     final theme = Theme.of(context);
     final now = DateTime.now();
-    final times = d.sessions.map((s) => s.endedAt).toList();
-    final week = sessionsLast7Days(times, now);
-    final maxCount = week.fold<int>(1, (m, c) => c > m ? c : m);
+    final allTimes = d.sessions.map((s) => s.endedAt).toList();
+    final inRange = sessionsInRange(d.sessions, now, _range);
+    final buckets = sessionBuckets(allTimes, now, _range);
+    final maxCount = buckets.fold<int>(1, (m, c) => c > m ? c : m);
     final baseline = d.patient['baseline_level'] as int;
     final dob = d.patient['dob'] == null
         ? null
         : DateTime.parse(d.patient['dob'] as String);
-    final summaries = summarizeByGame(d.sessions);
+    final summaries = summarizeByGame(inRange);
+    final dayLetters = _range == ReportRange.days7;
 
     Widget section(String key) => Padding(
           padding: const EdgeInsets.only(top: 24, bottom: 8),
@@ -357,16 +397,32 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
                 title: Text(
                     trf(widget.lang, 'alert_${a.kind.name}', a: a.a, b: a.b),
                     style: const TextStyle(fontSize: 18)),
+                trailing: switch (a.kind) {
+                  AlertKind.suggestRaiseBaseline => TextButton(
+                      onPressed: () => _changeLevel(baseline,
+                          suggested: (baseline + 1).clamp(1, 5)),
+                      child: Text(t('reviewLevel'))),
+                  AlertKind.suggestLowerBaseline => TextButton(
+                      onPressed: () => _changeLevel(baseline,
+                          suggested: (baseline - 1).clamp(1, 5)),
+                      child: Text(t('reviewLevel'))),
+                  _ => null,
+                },
               ),
             ),
           Text(t('alertHelp'), style: const TextStyle(fontSize: 15)),
         ],
 
         section('overviewTitle'),
+        PillTabs(
+          labels: [t('range7'), t('range30'), t('range90')],
+          selected: _range.index,
+          onSelected: (i) => setState(() => _range = ReportRange.values[i]),
+        ),
+        const SizedBox(height: 12),
         Row(children: [
-          _stat(t('last7'), '${week.fold<int>(0, (a, b) => a + b)}',
-              Palette.tileBlue),
-          _stat(t('dayStreak'), '${currentStreak(times, now)}',
+          _stat(t('gamesPlayed'), '${inRange.length}', Palette.tileBlue),
+          _stat(t('dayStreak'), '${currentStreak(allTimes, now)}',
               Palette.tileOrange),
         ]),
         Padding(
@@ -381,23 +437,28 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              for (var i = 0; i < 7; i++)
+              for (var i = 0; i < buckets.length; i++)
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: buckets.length > 14 ? 1 : 4),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Container(
-                          height: 6 + 70.0 * week[i] / maxCount,
+                          height: 6 + 70.0 * buckets[i] / maxCount,
                           decoration: BoxDecoration(
-                            color: week[i] == 0 ? Colors.black12 : Palette.brand,
+                            color: buckets[i] == 0
+                                ? Colors.black12
+                                : Palette.brand,
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text('MTWTFSS'[
-                            now.subtract(Duration(days: 6 - i)).weekday - 1]),
+                        if (dayLetters) ...[
+                          const SizedBox(height: 4),
+                          Text('MTWTFSS'[
+                              now.subtract(Duration(days: 6 - i)).weekday - 1]),
+                        ],
                       ],
                     ),
                   ),
@@ -428,6 +489,34 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
             ),
         ],
 
+        section('adherenceTitle'),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (d.week.expected == 0)
+                  Text(t('noneAdded'), style: const TextStyle(fontSize: 18))
+                else ...[
+                  Text(
+                      trf(widget.lang, 'adherenceLine',
+                          a: d.week.done, b: d.week.expected),
+                      style: const TextStyle(fontSize: 18)),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                        value: d.week.rate, minHeight: 12),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Text(t('adherenceNote'), style: const TextStyle(fontSize: 14)),
+              ],
+            ),
+          ),
+        ),
+
         section('difficultyTitle'),
         Card(
           child: Padding(
@@ -449,7 +538,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
                 for (final e in _games.entries)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Text(_modelLine(e.key, e.value, d.models[e.key]!, baseline),
+                    child: Text(_modelLine(e.value, d.models[e.key]!, baseline),
                         style: const TextStyle(fontSize: 17)),
                   ),
                 const SizedBox(height: 6),
@@ -471,6 +560,12 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
               language: widget.lang,
             ),
           )),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.copy_rounded),
+          label: Text(t('copySummary')),
+          onPressed: () => _copySummary(d, inRange),
         ),
 
         section('familyAndTeam'),
@@ -501,7 +596,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
   String _statusKey(String status) =>
       'status${status[0].toUpperCase()}${status.substring(1)}';
 
-  String _modelLine(String game, String nameKey, AbilityModel m, int baseline) {
+  String _modelLine(String nameKey, AbilityModel m, int baseline) {
     final level = m.recommend(DifficultyBand(baseline));
     final basis = m.trials == 0
         ? t('modelNoData')
@@ -530,16 +625,17 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
 }
 
 class _LevelDialog extends StatefulWidget {
-  const _LevelDialog({required this.lang, required this.current});
+  const _LevelDialog(
+      {required this.lang, required this.current, required this.initial});
   final String lang;
-  final int current;
+  final int current, initial;
 
   @override
   State<_LevelDialog> createState() => _LevelDialogState();
 }
 
 class _LevelDialogState extends State<_LevelDialog> {
-  late int _level = widget.current;
+  late int _level = widget.initial;
   final _name = TextEditingController();
 
   String t(String k) => tr(widget.lang, k);

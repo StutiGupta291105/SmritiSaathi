@@ -12,6 +12,7 @@ class Reminder {
     this.daysMask = 127,
     this.onDate,
     this.active = true,
+    this.createdAt,
   });
 
   final String id;
@@ -25,6 +26,9 @@ class Reminder {
   final int daysMask;
   final DateTime? onDate;
   final bool active;
+
+  /// When the reminder was created, so history never counts days before it existed.
+  final DateTime? createdAt;
 
   bool runsOn(DateTime day) => (daysMask >> (day.weekday - 1)) & 1 == 1;
 }

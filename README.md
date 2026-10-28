@@ -66,7 +66,7 @@ The caregiver, healthcare-worker and admin apps and the "Talk to AI" screen
 are not started; they need the backend (auth, roles) first.
 
 Verification so far (Flutter 3.35.7, the version the APK workflow pins):
-`flutter analyze` is clean and 80 unit tests pass, including `AppDatabase`
+`flutter analyze` is clean and 102 unit tests pass, including `AppDatabase`
 tests that run the real database code on desktop SQLite (consent gating, audit
 hash chain, export, erasure, v1 to v2 upgrade). Not yet done: running the app
 on a device or emulator, and widget tests of the screens.
@@ -120,19 +120,43 @@ dashboard shows the level each game will start at and how many answers it is
 based on. Sessions saved before this version have no per-level tallies and are
 ignored by the model.
 
-**Alerts** (`lib/core/engagement_alerts.dart`), all about play, never health:
+**Alerts** (`lib/core/engagement_alerts.dart`), worded about use of the app,
+never health. Shown in the dashboard, and as a red count on the Caregiver area
+entry in Profile (without opening the PIN screen):
 
 | Alert | Rule |
 |---|---|
 | Not played | at least 5 sessions so far and none for 3 or more days |
 | Fewer sessions | last 7 days have half or fewer than the 7 days before (which had at least 4) |
 | Fewer correct answers | last 3 sessions average 20 or more points below the 5 before (needs 8 sessions) |
-| Raise / lower baseline | last 3 sessions all ended at the top / bottom of the band |
+| Medicine not marked done | a medicine reminder from today, due 2 or more hours ago, has no done mark |
+| Few reminders marked done | under half of the last 7 days' reminders marked done (needs at least 6 due) |
+| Raise / lower baseline | last 3 sessions all ended at the top / bottom of the band; "Review" opens the level dialog pre-set to the suggestion |
 
-Alerts are computed on the fly and shown in the dashboard. Notifications to a
-caregiver's own phone, and healthcare-worker dashboards, need the backend.
-Not tracked yet: whether a medicine was actually taken (a "mark as done" on
-reminders would add that, with its own consent decision).
+**Reminder completion:** the patient ticks today's tasks on Home (`reminder_log`:
+reminder id and day only, covered by the `reminders` purpose, included in export
+and erase). "Not marked done" is all this can say, since someone may have taken
+their medicine without tapping.
+
+**Reports:** 7 Days / 30 Days / 3 Months (`lib/core/reporting.dart`) for games,
+chart (daily bars, weekly for 3 months) and correct answers by game, plus a
+"Copy summary to share" button that puts a plain-text summary (no phone numbers)
+on the clipboard for the caregiver to paste to a doctor or family.
+
+### Phase 2 status
+
+| Planned | Status |
+|---|---|
+| Caregiver dashboard (engagement, per-game results, reminders, family and care team) | done |
+| Alerts when engagement changes | done, also surfaced as a badge |
+| Reminder / medicine completion tracking and alerts | done |
+| Reports over 7 / 30 / 90 days and a shareable summary | done |
+| Baseline suggestion banner with one-tap review | done |
+| On-device adaptive model | done, lighter than first planned: a per-game logistic ability model rather than a contextual bandit; it uses level history only, not time of day or other context |
+| Caregiver on their own phone: push alerts and live dashboard | not possible yet, needs the backend (Phase 3) |
+| Healthcare-worker dashboard, patient list, visit management | not possible yet, needs the backend and accounts (Phase 3) |
+| Doctor prescribing and updating a condition | out of scope for now: needs the backend, clinical review and regulatory decisions |
+
 
 ## Look and feel
 

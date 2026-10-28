@@ -75,6 +75,25 @@ const Map<String, Map<String, String>> kStrings = {
         'Your daily companion for a sharper mind and a healthier you.',
     'loadingCompanion': 'Loading your companion...',
     'saathHai': 'Saath hai... har kadam par!',
+    'alert_medicineNotDone':
+        'Medicine reminders from today not marked as done: {a}.',
+    'alert_lowAdherence':
+        'Only {a}% of the reminders in the last 7 days were marked as done.',
+    'adherenceTitle': 'Reminders marked as done',
+    'adherenceLine': 'Reminders marked as done: {a} of {b}',
+    'adherenceNote':
+        'Someone may have done a task without marking it, so treat this as a reason to check in, not as proof.',
+    'markDone': 'Mark as done',
+    'range7': '7 Days',
+    'range30': '30 Days',
+    'range90': '3 Months',
+    'summaryTitle': 'Smriti Sathi summary',
+    'summaryPeriod': 'Last {a} days',
+    'summaryNote':
+        'This describes use of the app only. It is not a medical assessment.',
+    'copySummary': 'Copy summary to share',
+    'summaryCopied': 'Summary copied. You can paste it into a message.',
+    'reviewLevel': 'Review',
     'login': 'Log in',
     'getStarted': 'Get Started',
     'chooseLanguage': 'Choose your language',
@@ -179,7 +198,7 @@ const Map<String, Map<String, String>> kStrings = {
     'alertsTitle': 'Things to know',
     'noAlerts': 'Nothing unusual in how the app is being used.',
     'alertHelp':
-        'Alerts describe play only. Tiredness or a bad day can change how someone plays. Consider checking in with them, and with their doctor if you are worried.',
+        'Alerts describe how the app is used. Tiredness or a bad day can change how someone plays, and someone may do a task without marking it. Consider checking in with them, and with their doctor if you are worried.',
     'alert_inactive': 'Has not played for {a} days.',
     'alert_fewerSessions':
         'Played {a} times in the last 7 days, compared with {b} the week before.',
@@ -340,6 +359,25 @@ const Map<String, Map<String, String>> kStrings = {
         'आपका रोज़ का साथी, तेज़ दिमाग़ और बेहतर सेहत के लिए।',
     'loadingCompanion': 'आपका साथी लोड हो रहा है...',
     'saathHai': 'साथ है... हर क़दम पर!',
+    'alert_medicineNotDone':
+        'आज की दवा के रिमाइंडर जिन पर "हो गया" नहीं लगा: {a}।',
+    'alert_lowAdherence':
+        'पिछले 7 दिनों के केवल {a}% रिमाइंडर पर "हो गया" लगा।',
+    'adherenceTitle': '"हो गया" लगे रिमाइंडर',
+    'adherenceLine': '"हो गया" लगे रिमाइंडर: {b} में से {a}',
+    'adherenceNote':
+        'हो सकता है किसी ने काम किया हो पर निशान न लगाया हो। इसे सबूत नहीं, हाल-चाल पूछने की वजह समझें।',
+    'markDone': '"हो गया" लगाएँ',
+    'range7': '7 दिन',
+    'range30': '30 दिन',
+    'range90': '3 महीने',
+    'summaryTitle': 'स्मृति साथी सारांश',
+    'summaryPeriod': 'पिछले {a} दिन',
+    'summaryNote':
+        'यह केवल ऐप के इस्तेमाल के बारे में है। यह कोई चिकित्सा जाँच नहीं है।',
+    'copySummary': 'साझा करने के लिए सारांश कॉपी करें',
+    'summaryCopied': 'सारांश कॉपी हो गया। इसे संदेश में चिपका सकते हैं।',
+    'reviewLevel': 'देखें',
     'login': 'लॉग इन',
     'getStarted': 'शुरू करें',
     'chooseLanguage': 'अपनी भाषा चुनें',
@@ -444,7 +482,7 @@ const Map<String, Map<String, String>> kStrings = {
     'alertsTitle': 'जानने योग्य बातें',
     'noAlerts': 'ऐप के इस्तेमाल में कुछ असामान्य नहीं है।',
     'alertHelp':
-        'ये सूचनाएँ केवल खेलने के तरीक़े के बारे में हैं। थकान या ख़राब दिन से भी खेल बदल सकता है। उनसे बात करें, और चिंता हो तो उनके डॉक्टर से भी।',
+        'ये सूचनाएँ केवल ऐप के इस्तेमाल के बारे में हैं। थकान या ख़राब दिन से भी खेल बदल सकता है, और कोई काम करके निशान लगाना भूल भी सकता है। उनसे बात करें, और चिंता हो तो उनके डॉक्टर से भी।',
     'alert_inactive': '{a} दिन से नहीं खेला।',
     'alert_fewerSessions':
         'पिछले 7 दिनों में {a} बार खेला, जबकि उससे पहले के हफ़्ते में {b} बार।',
