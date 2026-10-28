@@ -38,6 +38,14 @@ const kConsentPurposes = [
 
 enum PinResult { ok, wrong, locked }
 
+/// What is waiting to be uploaded.
+class SyncBatch {
+  SyncBatch(this.sessions, this.schedules, this.marks);
+  final List<Map<String, Object?>> sessions, schedules, marks;
+
+  bool get isEmpty => sessions.isEmpty && schedules.isEmpty && marks.isEmpty;
+}
+
 /// CERT-In directions: keep logs for a rolling 180 days (we never purge
 /// younger than this, whatever the caller passes).
 const int kMinLogRetentionDays = 180;
@@ -71,7 +79,7 @@ class AppDatabase {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 4;
+  static const schemaVersion = 5;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -89,6 +97,7 @@ class AppDatabase {
         setup_stage INTEGER NOT NULL DEFAULT 0,
         caregiver_pin_hash TEXT,
         caregiver_pin_salt TEXT,
+        server_patient_id TEXT,
         created_at TEXT NOT NULL
       )''');
     await _createAccountTables(db);
@@ -102,6 +111,7 @@ class AppDatabase {
         given_by_name TEXT NOT NULL,
         given_by_relation TEXT NOT NULL,   -- 'self' or guardian relationship
         notice_version TEXT NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL
       )''');
     await db.execute('''
@@ -177,6 +187,23 @@ class AppDatabase {
     if (oldVersion < 4) {
       await _createReminderLog(db);
     }
+    if (oldVersion < 5) {
+      // Links the app to the server account. Idempotent, because tables made
+      // earlier in this same upgrade already have some of these columns.
+      await _addColumn(db, 'accounts', 'server_user_id TEXT');
+      await _addColumn(db, 'patients', 'server_patient_id TEXT');
+      await _addColumn(db, 'consents', 'synced INTEGER NOT NULL DEFAULT 0');
+      await _addColumn(db, 'care_links', 'phone TEXT');
+      await _addColumn(db, 'care_links', 'server_link_id TEXT');
+    }
+  }
+
+  static Future<void> _addColumn(Database db, String table, String def) async {
+    final name = def.split(' ').first;
+    final cols = await db.rawQuery('PRAGMA table_info($table)');
+    if (cols.isEmpty) return; // table not present in this upgrade path
+    if (cols.any((c) => c['name'] == name)) return;
+    await db.execute('ALTER TABLE $table ADD COLUMN $def');
   }
 
   /// For tests: wraps an already-open database (for example in-memory SQLite).
@@ -204,6 +231,7 @@ class AppDatabase {
         phone TEXT NOT NULL,
         role TEXT NOT NULL,
         name TEXT NOT NULL,
+        server_user_id TEXT,
         created_at TEXT NOT NULL,
         UNIQUE(phone, role)
       )''');
@@ -226,6 +254,8 @@ class AppDatabase {
         kind TEXT NOT NULL,
         name TEXT NOT NULL,
         professional_id TEXT NOT NULL,
+        phone TEXT,
+        server_link_id TEXT,
         status TEXT NOT NULL DEFAULT 'pending',
         created_at TEXT NOT NULL
       )''');
@@ -464,6 +494,7 @@ class AppDatabase {
     required String kind, // 'doctor' or 'caregiver'
     required String name,
     required String professionalId,
+    String? phone,
     required String by,
   }) async {
     assert(kind == 'doctor' || kind == 'caregiver');
@@ -476,6 +507,7 @@ class AppDatabase {
       'kind': kind,
       'name': name,
       'professional_id': professionalId,
+      'phone': phone,
       'status': 'pending',
       'created_at': _now(),
     });
@@ -716,6 +748,121 @@ class AppDatabase {
         orderBy: 'ended_at DESC',
         limit: limit);
     return rows.map((r) => r['end_level'] as int).toList().reversed.toList();
+  }
+
+  // ---- link to the server ------------------------------------------------
+  // The app is offline-first: everything is saved here first. These methods
+  // track what the server already has, so nothing is sent twice and nothing is
+  // sent without the matching consent.
+
+  Future<void> linkServerAccount(String accountId, String serverUserId) =>
+      _db.update('accounts', {'server_user_id': serverUserId},
+          where: 'id = ?', whereArgs: [accountId]);
+
+  Future<Map<String, Object?>?> accountByServerId(String serverUserId) async {
+    final rows = await _db.query('accounts',
+        where: 'server_user_id = ?', whereArgs: [serverUserId], limit: 1);
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  Future<void> setServerPatientId(String patientId, String serverId) =>
+      _db.update('patients', {'server_patient_id': serverId},
+          where: 'id = ?', whereArgs: [patientId]);
+
+  /// Consent decisions the server has not seen yet, oldest first. Consent
+  /// records must reach the server even after withdrawal, so that sharing
+  /// stops there too.
+  Future<List<Map<String, Object?>>> unsyncedConsents(String patientId) =>
+      _db.query('consents',
+          where: 'patient_id = ? AND synced = 0',
+          whereArgs: [patientId],
+          orderBy: 'rowid');
+
+  Future<void> markConsentsSynced(List<String> ids) async {
+    final batch = _db.batch();
+    for (final id in ids) {
+      batch.update('consents', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Game results not yet uploaded (only with 'sync' and 'gameplay'), and the
+  /// timing of reminders and their done marks (only with 'sync' and
+  /// 'reminders'). Reminder text such as medicine names is never included.
+  Future<SyncBatch> syncBatch(String patientId, {int markDays = 120}) async {
+    final empty = SyncBatch(const [], const [], const []);
+    if (!await hasConsent(patientId, 'sync')) return empty;
+
+    var sessions = <Map<String, Object?>>[];
+    if (await hasConsent(patientId, 'gameplay')) {
+      for (final r in await _db.query('sessions',
+          where: 'synced = 0 AND patient_id = ?', whereArgs: [patientId])) {
+        sessions.add({
+          'id': r['id'],
+          'game': r['game'],
+          'started_at': r['started_at'],
+          'ended_at': r['ended_at'],
+          'start_level': r['start_level'],
+          'end_level': r['end_level'],
+          'trials': r['trials'],
+          'correct': r['correct'],
+          'level_stats': r['level_stats'],
+        });
+      }
+    }
+
+    final schedules = <Map<String, Object?>>[];
+    final marks = <Map<String, Object?>>[];
+    if (await hasConsent(patientId, 'reminders')) {
+      for (final r in await _db.query('reminders',
+          where: 'patient_id = ?', whereArgs: [patientId])) {
+        final onDate = r['on_date'] as String?;
+        schedules.add({
+          'id': r['id'],
+          'kind': r['kind'],
+          'hour': r['hour'],
+          'minute': r['minute'],
+          'days_mask': r['days_mask'],
+          'on_date': onDate?.substring(0, 10),
+          'active': r['active'] == 1,
+          'created_at': r['created_at'],
+        });
+      }
+      final since = doneKey('x', DateTime.now().subtract(Duration(days: markDays)))
+          .split('|')
+          .last;
+      for (final r in await _db.query('reminder_log',
+          where: 'patient_id = ? AND day >= ?', whereArgs: [patientId, since])) {
+        marks.add({
+          'reminder_id': r['reminder_id'],
+          'day': r['day'],
+          'marked_at': r['marked_at'],
+        });
+      }
+    }
+    return SyncBatch(sessions, schedules, marks);
+  }
+
+  /// Invites that were saved offline and still need sending.
+  Future<List<Map<String, Object?>>> unsentInvites(String patientId) =>
+      _db.query('care_links',
+          where:
+              "patient_id = ? AND server_link_id IS NULL AND phone IS NOT NULL AND status = 'pending'",
+          whereArgs: [patientId],
+          orderBy: 'rowid');
+
+  Future<void> setCareLinkServerId(String linkId, String serverLinkId) =>
+      _db.update('care_links', {'server_link_id': serverLinkId},
+          where: 'id = ?', whereArgs: [linkId]);
+
+  /// Applies the server's view of each invite (accepted, declined, revoked).
+  Future<void> applyServerLinkStatuses(
+      String patientId, List<Map<String, dynamic>> serverLinks) async {
+    for (final l in serverLinks) {
+      await _db.update('care_links', {'status': l['status']},
+          where: 'server_link_id = ? AND patient_id = ?',
+          whereArgs: [l['id'], patientId]);
+    }
   }
 
   // ---- reminder completion -----------------------------------------------

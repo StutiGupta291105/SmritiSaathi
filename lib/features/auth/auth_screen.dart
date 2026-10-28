@@ -68,7 +68,8 @@ class _AuthScreenState extends State<AuthScreen> {
       _busy = true;
       _errorKey = null;
     });
-    await widget.otp.send(e164);
+    final sent = await widget.otp.send(e164, role: _role, signUp: _signUp);
+    if (sent != OtpResult.ok) return _fail(_otpErrorKey(sent));
     setState(() {
       _e164 = e164;
       _busy = false;
@@ -81,26 +82,54 @@ class _AuthScreenState extends State<AuthScreen> {
       _busy = true;
       _errorKey = null;
     });
-    final result = await widget.otp.verify(e164, _code.text);
-    if (result == OtpResult.wrong) return _fail('errOtpWrong');
-    if (result == OtpResult.locked) return _fail('errOtpLocked');
+    final result = await widget.otp.verify(e164, _code.text,
+        role: _role, signUp: _signUp, name: _name.text.trim());
+    if (result != OtpResult.ok) return _fail(_otpErrorKey(result));
+    final serverUser = widget.otp.serverUser;
 
+    // The server decides who this is; the phone keeps its own encrypted copy.
+    var account = serverUser == null
+        ? null
+        : await widget.db.accountByServerId(serverUser.id);
+    account ??= await widget.db.accountByPhoneRole(e164, _role);
     String accountId;
-    if (_signUp) {
+    if (account != null) {
+      accountId = account['id'] as String;
+    } else if (_signUp || serverUser != null) {
       try {
-        accountId = await widget.db
-            .createAccount(phone: e164, role: _role, name: _name.text.trim());
+        accountId = await widget.db.createAccount(
+            phone: e164,
+            role: _role,
+            name: serverUser?.name ?? _name.text.trim());
       } on StateError {
         return _fail('errAccountExists');
       }
     } else {
-      final account = await widget.db.accountByPhoneRole(e164, _role);
-      if (account == null) return _fail('errNoAccount');
-      accountId = account['id'] as String;
+      return _fail('errNoAccount');
+    }
+    if (serverUser != null) {
+      await widget.db.linkServerAccount(accountId, serverUser.id);
     }
     await widget.session.write(accountId);
     await widget.db.recordLogin(accountId);
     widget.onLoggedIn();
+  }
+
+  String _otpErrorKey(OtpResult r) {
+    switch (r) {
+      case OtpResult.wrong:
+        return 'errOtpWrong';
+      case OtpResult.locked:
+        return 'errOtpLocked';
+      case OtpResult.offline:
+        return 'errOffline';
+      case OtpResult.noAccount:
+        return 'errNoAccount';
+      case OtpResult.accountExists:
+        return 'errAccountExists';
+      default:
+        return 'errOtpFailed';
+    }
   }
 
   void _switchMode() => setState(() {

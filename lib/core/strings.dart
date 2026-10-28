@@ -119,6 +119,8 @@ const Map<String, Map<String, String>> kStrings = {
     'errName': 'Please enter your name.',
     'errOtpWrong': 'That code is not correct. Try again.',
     'errOtpLocked': 'Too many wrong tries. Please wait 15 minutes.',
+    'errOffline': 'No internet connection. Please connect and try again.',
+    'errOtpFailed': 'Something went wrong. Please try again.',
     'errNoAccount':
         'No account found for this number and role. Please create an account first.',
     'errAccountExists':
@@ -403,6 +405,8 @@ const Map<String, Map<String, String>> kStrings = {
     'errName': 'कृपया अपना नाम डालें।',
     'errOtpWrong': 'यह कोड सही नहीं है। फिर कोशिश करें।',
     'errOtpLocked': 'बहुत ग़लत कोशिशें हुईं। कृपया 15 मिनट रुकें।',
+    'errOffline': 'इंटरनेट नहीं है। कृपया जुड़कर फिर कोशिश करें।',
+    'errOtpFailed': 'कुछ गड़बड़ हो गई। कृपया फिर कोशिश करें।',
     'errNoAccount':
         'इस नंबर और भूमिका का कोई खाता नहीं मिला। पहले खाता बनाएँ।',
     'errAccountExists':

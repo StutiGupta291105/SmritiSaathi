@@ -682,4 +682,128 @@ void main() {
       await v2.close();
     });
   });
+
+  group('server link bookkeeping', () {
+    test('nothing is uploaded without the sync purpose', () async {
+      final id = await _patient(db, {'gameplay', 'reminders'});
+      await db.insertSession(
+          patientId: id,
+          game: 'memory_match',
+          startedAt: DateTime.now(),
+          startLevel: 2,
+          endLevel: 2,
+          trials: 3,
+          correct: 3);
+      expect((await db.syncBatch(id)).isEmpty, isTrue);
+    });
+
+    test('sessions need gameplay and schedules need reminders; no labels leave',
+        () async {
+      final id = await _patient(db, {'sync', 'gameplay', 'reminders'});
+      await db.insertSession(
+          patientId: id,
+          game: 'memory_match',
+          startedAt: DateTime.now(),
+          startLevel: 2,
+          endLevel: 3,
+          trials: 4,
+          correct: 3);
+      await db.addReminder(
+          patientId: id,
+          kind: ReminderKind.medicine,
+          label: 'Secret tablet name',
+          hour: 9,
+          minute: 30,
+          onDate: DateTime(2026, 3, 10, 9, 30),
+          createdBy: 'Asha');
+      final b = await db.syncBatch(id);
+      expect(b.sessions.single['game'], 'memory_match');
+      expect(b.schedules.single['hour'], 9);
+      expect(b.schedules.single['on_date'], '2026-03-10');
+      expect(b.schedules.single['active'], isTrue);
+      expect(b.schedules.single.values.join(), isNot(contains('Secret')));
+
+      await db.withdrawConsent(
+          patientId: id,
+          purpose: 'gameplay',
+          byName: 'Asha',
+          byRelation: 'self',
+          noticeVersion: 'v2');
+      final after = await db.syncBatch(id);
+      expect(after.sessions, isEmpty);
+      expect(after.schedules, hasLength(1));
+    });
+
+    test('consents are reported until marked synced', () async {
+      final id = await _patient(db, {'sync'});
+      final pending = await db.unsyncedConsents(id);
+      expect(pending, isNotEmpty);
+      await db.markConsentsSynced([for (final c in pending) c['id'] as String]);
+      expect(await db.unsyncedConsents(id), isEmpty);
+      await db.withdrawConsent(
+          patientId: id,
+          purpose: 'sync',
+          byName: 'Asha',
+          byRelation: 'self',
+          noticeVersion: 'v2');
+      expect(await db.unsyncedConsents(id), isNotEmpty); // withdrawal must go too
+    });
+
+    test('invites saved offline are listed, then take the server status',
+        () async {
+      final id = await _patient(db, {'caregiver_share'});
+      final link = await db.addCareInvite(
+          patientId: id,
+          kind: 'caregiver',
+          name: 'Ravi',
+          professionalId: '',
+          phone: '+919811111111',
+          by: 'Asha');
+      expect((await db.unsentInvites(id)).single['id'], link);
+      await db.setCareLinkServerId(link, 'srv1');
+      expect(await db.unsentInvites(id), isEmpty);
+      await db.applyServerLinkStatuses(id, [
+        {'id': 'srv1', 'status': 'accepted'}
+      ]);
+      final rows = await raw.query('care_links', where: 'id = ?', whereArgs: [link]);
+      expect(rows.single['status'], 'accepted');
+    });
+
+    test('server ids can be linked to the local account and patient', () async {
+      final id = await _patient(db, {});
+      final acc = (await raw.query('accounts')).single['id'] as String;
+      await db.linkServerAccount(acc, 'u-123');
+      expect((await db.accountByServerId('u-123'))!['id'], acc);
+      await db.setServerPatientId(id, 'sp-1');
+      expect((await raw.query('patients')).single['server_patient_id'], 'sp-1');
+    });
+  });
+
+  group('upgrade from v4', () {
+    test('adds the server columns and keeps rows', () async {
+      final v4 = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
+          options: OpenDatabaseOptions(
+            singleInstance: false,
+            version: 4,
+            onCreate: (d, _) async {
+              await d.execute('CREATE TABLE accounts(id TEXT PRIMARY KEY)');
+              await d.execute('CREATE TABLE patients(id TEXT PRIMARY KEY)');
+              await d.execute(
+                  'CREATE TABLE consents(id TEXT PRIMARY KEY, patient_id TEXT)');
+              await d.execute(
+                  'CREATE TABLE care_links(id TEXT PRIMARY KEY, patient_id TEXT)');
+              await d.insert('consents', {'id': 'c', 'patient_id': 'p'});
+            },
+          ));
+      await AppDatabase.upgradeSchema(v4, 4);
+      await AppDatabase.upgradeSchema(v4, 4); // safe to repeat
+      final c = (await v4.query('consents')).single;
+      expect(c['synced'], 0); // old consents still have to be sent
+      expect((await v4.query('care_links')).isEmpty, isTrue);
+      await v4.query('care_links', columns: ['phone', 'server_link_id']);
+      await v4.query('accounts', columns: ['server_user_id']);
+      await v4.query('patients', columns: ['server_patient_id']);
+      await v4.close();
+    });
+  });
 }

@@ -10,6 +10,8 @@ import 'features/onboarding/onboarding_screen.dart';
 import 'features/profile/profile_flow.dart';
 import 'features/shell/patient_shell.dart';
 import 'features/splash/splash_screen.dart';
+import 'core/config.dart';
+import 'services/api_client.dart';
 import 'services/otp_service.dart';
 import 'services/reminder_notifier.dart';
 import 'services/voice.dart';
@@ -38,8 +40,10 @@ class _Services {
   final AppDatabase db;
   final ReminderNotifier notifier;
   final Voice voice = Voice();
-  // TEST MODE: replace with a real SMS OTP service before real use.
-  final OtpService otp = DevOtpService();
+  /// Null when this build has no API address (offline test build).
+  final ApiClient? api = kOnlineConfigured ? ApiClient(baseUrl: kApiBaseUrl) : null;
+  // Without an API address the offline TEST MODE code is used.
+  late final OtpService otp = defaultOtpService(api);
   final SessionStore session = const SessionStore();
 }
 
