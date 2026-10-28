@@ -1,0 +1,71 @@
+"""Settings come from environment variables (prefix SMRITI_). In production
+(SMRITI_ENV=prod) the secrets must be set explicitly; the app refuses to start
+with development defaults."""
+import os
+from dataclasses import dataclass
+
+_DEV_SECRET = "dev-only-secret-change-me-dev-only-secret"
+_DEV_PHONE_KEY = "dev-only-phone-key-change-me-dev-only"
+
+
+@dataclass(frozen=True)
+class Settings:
+    env: str = "dev"
+    database_url: str = "sqlite:///./smriti_dev.db"
+    secret_key: str = _DEV_SECRET          # signs access tokens
+    phone_hmac_key: str = _DEV_PHONE_KEY   # keyed hash for phone lookups
+    otp_ttl_seconds: int = 300
+    otp_max_attempts: int = 5
+    otp_requests_per_hour_phone: int = 5
+    otp_requests_per_hour_ip: int = 20
+    access_ttl_minutes: int = 15
+    refresh_ttl_days: int = 30
+    requests_per_minute_ip: int = 120
+    max_body_bytes: int = 1_000_000
+    sms_provider: str = "dev"
+    trust_proxy: bool = False  # true only behind a proxy you control (X-Forwarded-For)
+
+    @property
+    def is_prod(self) -> bool:
+        return self.env == "prod"
+
+
+def load_settings() -> Settings:
+    def g(name: str, default):
+        raw = os.environ.get(f"SMRITI_{name}")
+        if raw is None:
+            return default
+        if isinstance(default, bool):
+            return raw.strip().lower() in ("1", "true", "yes")
+        return type(default)(raw)
+
+    d = Settings()
+    s = Settings(
+        env=g("ENV", d.env),
+        database_url=g("DATABASE_URL", d.database_url),
+        secret_key=g("SECRET_KEY", d.secret_key),
+        phone_hmac_key=g("PHONE_HMAC_KEY", d.phone_hmac_key),
+        otp_ttl_seconds=g("OTP_TTL_SECONDS", d.otp_ttl_seconds),
+        otp_max_attempts=g("OTP_MAX_ATTEMPTS", d.otp_max_attempts),
+        otp_requests_per_hour_phone=g("OTP_PER_HOUR_PHONE", d.otp_requests_per_hour_phone),
+        otp_requests_per_hour_ip=g("OTP_PER_HOUR_IP", d.otp_requests_per_hour_ip),
+        access_ttl_minutes=g("ACCESS_TTL_MINUTES", d.access_ttl_minutes),
+        refresh_ttl_days=g("REFRESH_TTL_DAYS", d.refresh_ttl_days),
+        requests_per_minute_ip=g("REQUESTS_PER_MINUTE_IP", d.requests_per_minute_ip),
+        max_body_bytes=g("MAX_BODY_BYTES", d.max_body_bytes),
+        sms_provider=g("SMS_PROVIDER", d.sms_provider),
+        trust_proxy=g("TRUST_PROXY", d.trust_proxy),
+    )
+    if s.is_prod:
+        problems = []
+        if s.secret_key == _DEV_SECRET or len(s.secret_key) < 32:
+            problems.append("SMRITI_SECRET_KEY must be set (32+ characters)")
+        if s.phone_hmac_key == _DEV_PHONE_KEY or len(s.phone_hmac_key) < 32:
+            problems.append("SMRITI_PHONE_HMAC_KEY must be set (32+ characters)")
+        if s.sms_provider == "dev":
+            problems.append("SMRITI_SMS_PROVIDER must be a real provider in prod")
+        if s.database_url.startswith("sqlite"):
+            problems.append("SMRITI_DATABASE_URL must be PostgreSQL in prod")
+        if problems:
+            raise RuntimeError("Unsafe production configuration: " + "; ".join(problems))
+    return s

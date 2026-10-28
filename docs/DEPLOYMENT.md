@@ -1,0 +1,79 @@
+# Deployment guide (reference: AWS Mumbai, ap-south-1)
+
+Nothing is deployed yet. This is a reference layout; any Indian region of any
+major cloud, or an Indian provider, works the same way. Keep personal data and
+logs in India.
+
+## What runs
+
+One container (`backend/Dockerfile`), stateless, plus PostgreSQL.
+
+```
+Phone app --HTTPS--> Load balancer (TLS, WAF) --> container(s) --> PostgreSQL
+                                                    |
+                                                    +--> SMS provider (OTP)
+```
+
+## Decisions only you can make
+
+| Decision | Options | Notes |
+|---|---|---|
+| Hosting account and region | AWS ap-south-1 (Mumbai), Azure Central India, GCP asia-south1 | Keep database, backups and logs in India |
+| SMS provider for OTP | MSG91, Twilio, AWS SNS | Needs Indian DLT sender and template registration; add an adapter behind `SmsProvider` |
+| Domain name | for example `api.<your-domain>` | The app is built with `--dart-define=API_BASE_URL=https://...` |
+| Who runs it | named incident lead and backup | see `docs/INCIDENT_RESPONSE.md` |
+| Who may call themselves a doctor | self-declared now | registry check is future work |
+
+## Reference setup on AWS
+
+1. **Database**: RDS PostgreSQL, encrypted with KMS, multi-AZ, automated backups,
+   no public access, security group open only to the service.
+2. **Service**: ECS Fargate (or any container host) running the image, 2 or more
+   tasks, in private subnets.
+3. **Edge**: Application Load Balancer with an ACM certificate (TLS 1.2+), AWS WAF
+   with the managed rule sets and a rate-based rule. Set `SMRITI_TRUST_PROXY=true`
+   only because the load balancer supplies the real client address.
+4. **Secrets**: Secrets Manager for `SMRITI_SECRET_KEY`, `SMRITI_PHONE_HMAC_KEY`,
+   the database URL and the SMS credentials.
+5. **Logs**: CloudWatch Logs in ap-south-1 with retention of at least 180 days;
+   S3 object lock (write-once) for the daily audit head.
+6. **Time**: use the cloud's time service, which should sync to NIC/NPL sources
+   (check the current CERT-In requirement for clock sync).
+7. **Monitoring**: alarms for 5xx rate, database CPU and connections, WAF blocks,
+   and a daily job that runs `python -m app.cli verify-audit`.
+
+## Environment variables
+
+| Variable | Meaning |
+|---|---|
+| `SMRITI_ENV` | `prod` turns on the safety checks |
+| `SMRITI_SECRET_KEY` | 32+ random characters; signs tokens, hashes codes, signs the audit head |
+| `SMRITI_PHONE_HMAC_KEY` | 32+ random characters, different from the above; keyed hash for phone lookups. **Never change it** once users exist: they could no longer log in |
+| `SMRITI_DATABASE_URL` | `postgresql+psycopg://user:pass@host/db` |
+| `SMRITI_SMS_PROVIDER` | name of the real provider |
+| `SMRITI_TRUST_PROXY` | `true` only behind your own proxy |
+| `SMRITI_OTP_TTL_SECONDS`, `SMRITI_OTP_MAX_ATTEMPTS`, `SMRITI_OTP_PER_HOUR_PHONE`, `SMRITI_OTP_PER_HOUR_IP`, `SMRITI_ACCESS_TTL_MINUTES`, `SMRITI_REFRESH_TTL_DAYS`, `SMRITI_REQUESTS_PER_MINUTE_IP`, `SMRITI_MAX_BODY_BYTES` | tuning, defaults in `backend/app/config.py` |
+
+## Build and run
+
+```
+docker build -t smriti-api backend
+docker run -p 8000:8000 --env-file prod.env smriti-api
+```
+
+Locally, without Docker:
+
+```
+cd backend
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt
+python -m pytest -q
+uvicorn app.main:create_app --factory --reload   # docs at /docs in dev
+```
+
+## Pointing the app at the server
+
+Build the app with `--dart-define=API_BASE_URL=https://api.example.com`. Without
+it the app stays in its offline test mode (fixed OTP `123456`, nothing leaves the
+phone). The GitHub APK workflow reads the variable `API_BASE_URL` from the
+repository's Actions variables if you set it.
