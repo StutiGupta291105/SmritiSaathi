@@ -10,6 +10,7 @@ import '../../core/theme.dart';
 import '../../data/app_database.dart';
 import '../../services/voice.dart';
 import 'game_common.dart';
+import 'game_ui.dart';
 
 /// Attention and concentration: tap the one that is different. Eight trials per
 /// session; the first tap decides the trial. A wrong tap is never punished: the
@@ -123,17 +124,13 @@ class _AttentionGameState extends State<AttentionGame> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_t('gameAttention')),
-        actions: [
-          TextButton(
-            onPressed: _finish,
-            child: Text(_t('finish'), style: const TextStyle(fontSize: 20)),
-          ),
-        ],
-      ),
-      body: SafeArea(
+    return GameFrame(
+      title: _t('gameAttention'),
+      subtitle: _t('gameAttentionDesc'),
+      lang: widget.language,
+      score: _engine.correctTrials * 10,
+      onFinish: _finish,
+      child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

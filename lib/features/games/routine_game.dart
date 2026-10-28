@@ -11,6 +11,7 @@ import '../../core/theme.dart';
 import '../../data/app_database.dart';
 import '../../services/voice.dart';
 import 'game_common.dart';
+import 'game_ui.dart';
 
 /// Daily-routine recall: tap the steps in the order they usually happen. Each
 /// tap is one trial (right next step or not). A wrong tap only shakes the card
@@ -150,17 +151,13 @@ class _RoutineGameState extends State<RoutineGame> {
     final theme = Theme.of(context);
     final lang = widget.language;
     final title = lang == 'hi' ? _round.routine.hi : _round.routine.en;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_t('gameRoutine')),
-        actions: [
-          TextButton(
-            onPressed: _finish,
-            child: Text(_t('finish'), style: const TextStyle(fontSize: 20)),
-          ),
-        ],
-      ),
-      body: SafeArea(
+    return GameFrame(
+      title: _t('gameRoutine'),
+      subtitle: _t('gameRoutineDesc'),
+      lang: widget.language,
+      score: _engine.correctTrials * 10,
+      onFinish: _finish,
+      child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [

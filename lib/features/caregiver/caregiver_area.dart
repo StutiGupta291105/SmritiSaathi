@@ -311,8 +311,8 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
     Widget section(String key) => Padding(
           padding: const EdgeInsets.only(top: 24, bottom: 8),
           child: Text(t(key),
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+              style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700, color: Palette.brandDeep)),
         );
 
     return Column(

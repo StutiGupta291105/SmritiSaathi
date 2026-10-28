@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../core/reminder_schedule.dart';
 import '../../core/strings.dart';
+import '../../core/theme.dart';
+import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
+import 'reminder_style.dart';
 
 /// Caregiver-managed reminders for medicine, water, activities, appointments.
 class RemindersScreen extends StatefulWidget {
@@ -74,68 +77,147 @@ class _RemindersScreenState extends State<RemindersScreen> {
     await _changed();
   }
 
+  int _tab = 0; // 0 today, 1 upcoming, 2 all
+
+  bool _runsToday(Reminder r) {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final next = nextOccurrences(r, start.subtract(const Duration(seconds: 1)));
+    return next.isNotEmpty &&
+        next.first.year == now.year &&
+        next.first.month == now.month &&
+        next.first.day == now.day;
+  }
+
+  bool _upcoming(Reminder r) {
+    if (!r.active || _runsToday(r)) return false;
+    return nextOccurrences(r, DateTime.now()).isNotEmpty;
+  }
+
+  String _when(Reminder r) {
+    final time = TimeOfDay(hour: r.hour, minute: r.minute).format(context);
+    if (r.onDate != null) {
+      return '${MaterialLocalizations.of(context).formatMediumDate(r.onDate!)} · $time';
+    }
+    return '$time · ${t('everyDay')}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final shown = switch (_tab) {
+      0 => _items.where(_runsToday).toList(),
+      1 => _items.where(_upcoming).toList(),
+      _ => _items,
+    };
     return Scaffold(
       appBar: widget.embedded ? null : AppBar(title: Text(t('reminders'))),
-      floatingActionButton: _consented
-          ? FloatingActionButton.extended(
-              onPressed: _add,
-              icon: const Icon(Icons.add),
-              label: Text(t('addReminder')),
-            )
-          : null,
       body: !_consented
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(t('remindersOff'),
-                    style: Theme.of(context).textTheme.titleLarge),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 18)),
               ),
             )
-          : ListView(
-              padding: const EdgeInsets.only(bottom: 96),
+          : Column(
               children: [
-                for (final r in _items)
-                  ListTile(
-                    leading: Icon(_icon(r.kind), size: 36),
-                    title: Text(
-                        '${t('kind_${r.kind.name}')} · ${TimeOfDay(hour: r.hour, minute: r.minute).format(context)}'),
-                    subtitle: Text(r.label),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Switch(
-                          value: r.active,
-                          onChanged: (v) async {
-                            await widget.db.setReminderActive(
-                                widget.patientId, r.id, v, 'caregiver');
-                            await _changed();
-                          },
-                        ),
-                        IconButton(
-                          tooltip: t('delete'),
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () async {
-                            await widget.db.deleteReminder(
-                                widget.patientId, r.id, 'caregiver');
-                            await _changed();
-                          },
-                        ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!widget.embedded) const SizedBox(height: 0),
+                      if (widget.embedded) ...[
+                        ScreenTitle(t('reminders')),
+                        const SizedBox(height: 12),
                       ],
-                    ),
+                      PillTabs(
+                        labels: [t('today'), t('upcoming'), t('all')],
+                        selected: _tab,
+                        onSelected: (i) => setState(() => _tab = i),
+                      ),
+                    ],
                   ),
+                ),
+                Expanded(
+                  child: shown.isEmpty
+                      ? Center(
+                          child: Text(t('nothingHere'),
+                              style: const TextStyle(
+                                  fontSize: 17, color: Palette.muted)))
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                          children: [for (final r in shown) _row(r)],
+                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                  child: FilledButton.icon(
+                    onPressed: _add,
+                    icon: const Icon(Icons.add_rounded, size: 28),
+                    label: Text(t('addReminder')),
+                  ),
+                ),
               ],
             ),
     );
   }
 
-  IconData _icon(ReminderKind k) => switch (k) {
-        ReminderKind.medicine => Icons.medication,
-        ReminderKind.hydration => Icons.water_drop,
-        ReminderKind.activity => Icons.directions_walk,
-        ReminderKind.appointment => Icons.event,
-      };
+  Widget _row(Reminder r) {
+    final style = kindStyle(r.kind);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+        child: Row(
+          children: [
+            IconBadge(
+                icon: style.icon,
+                fg: style.fg,
+                bg: style.bg,
+                size: 50,
+                circle: true),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t('kind_${r.kind.name}'),
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w700)),
+                  Text(_when(r),
+                      style: const TextStyle(fontSize: 14, color: Palette.muted)),
+                  if (r.label.isNotEmpty)
+                    Text(r.label,
+                        style: const TextStyle(
+                            fontSize: 14, color: Palette.muted)),
+                ],
+              ),
+            ),
+            Switch(
+              value: r.active,
+              activeThumbColor: Palette.action,
+              onChanged: (v) async {
+                await widget.db
+                    .setReminderActive(widget.patientId, r.id, v, 'caregiver');
+                await _changed();
+              },
+            ),
+            IconButton(
+              tooltip: t('delete'),
+              icon: const Icon(Icons.delete_outline_rounded, color: Palette.muted),
+              onPressed: () async {
+                await widget.db
+                    .deleteReminder(widget.patientId, r.id, 'caregiver');
+                await _changed();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _NewReminder {

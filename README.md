@@ -66,7 +66,7 @@ The caregiver, healthcare-worker and admin apps and the "Talk to AI" screen
 are not started; they need the backend (auth, roles) first.
 
 Verification so far (Flutter 3.35.7, the version the APK workflow pins):
-`flutter analyze` is clean and 74 unit tests pass, including `AppDatabase`
+`flutter analyze` is clean and 80 unit tests pass, including `AppDatabase`
 tests that run the real database code on desktop SQLite (consent gating, audit
 hash chain, export, erasure, v1 to v2 upgrade). Not yet done: running the app
 on a device or emulator, and widget tests of the screens.
@@ -133,6 +133,35 @@ Alerts are computed on the fly and shown in the dashboard. Notifications to a
 caregiver's own phone, and healthcare-worker dashboards, need the backend.
 Not tracked yet: whether a medicine was actually taken (a "mark as done" on
 reminders would add that, with its own consent decision).
+
+## Look and feel
+
+Follows the second design sheet: teal-green brand (`#1B7F63`, headings
+`#15503F`, action buttons `#2FA864`) on a warm cream background, white rounded
+cards with a soft shadow, pastel tiles with a stronger icon colour of the same
+hue, and Poppins lettering. The font is bundled in `assets/fonts` (SIL Open Font
+License, see `OFL.txt`), so it works offline. Colours live in
+`lib/core/theme.dart`, shared pieces (cards, pill tabs, icon badges, brand mark,
+painted scenic header) in `lib/core/ui.dart`.
+
+Screens built to the sheet: welcome (Get Started / Login / language), login and
+create account, Home (Today's Goal card, four tiles, today's tasks), Games list,
+game screens (title and subtitle, Time / Finish / Score footer, purple leaf-back
+cards), Reminders (Today / Upcoming / All), My Progress (star level, XP,
+games played, best streak, achievements, weekly chart), Profile (language,
+spoken instructions, caregiver area, privacy, log out), caregiver dashboard.
+
+Deliberately different from the sheet:
+
+- No "Cognitive Score" or "Cognitive Health" labels. Progress counts playing
+  (XP, star level, achievements) and says so on screen.
+- No "Talk to Smriti" AI chat: an AI conversation for people with dementia
+  needs its own safety and consent decision.
+- The painted illustration of the couple is replaced by a simple drawn village
+  scene. Replace `SceneHeader` with real artwork when available.
+- Only English and Hindi are offered; Assamese and Bengali need translations.
+- Healthcare-worker and admin apps are not built (they need the backend).
+- The app icon is still Flutter's default.
 
 ## Design decisions
 

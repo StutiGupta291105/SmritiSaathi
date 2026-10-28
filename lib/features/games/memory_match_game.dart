@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import '../../core/adaptive_engine.dart';
 import '../../core/content.dart';
 import '../../core/strings.dart';
+import '../../core/theme.dart';
 import '../../data/app_database.dart';
 import '../../services/voice.dart';
 import 'game_common.dart';
+import 'game_ui.dart';
 
 class _CardState {
   _CardState(this.pair);
@@ -193,17 +195,13 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
   @override
   Widget build(BuildContext context) {
     final cols = _cards.length <= 4 ? 2 : (_cards.length <= 6 ? 3 : 4);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_t('memoryGame')),
-        actions: [
-          TextButton(
-            onPressed: _finish,
-            child: Text(_t('finish'), style: const TextStyle(fontSize: 20)),
-          ),
-        ],
-      ),
-      body: Padding(
+    return GameFrame(
+      title: _t('memoryGame'),
+      subtitle: _t('memoryGameDesc'),
+      lang: widget.language,
+      score: _engine.correctTrials * 10,
+      onFinish: _finish,
+      child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
@@ -245,9 +243,9 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
           decoration: BoxDecoration(
             color: c.matched
                 ? Colors.green.shade100
-                : (show ? Colors.white : Colors.teal.shade700),
-            border: Border.all(color: Colors.teal.shade900, width: 3),
-            borderRadius: BorderRadius.circular(16),
+                : (show ? Colors.white : Palette.purple),
+            border: Border.all(color: c.matched ? Palette.action : Palette.line, width: c.matched ? 3 : 2),
+            borderRadius: BorderRadius.circular(20),
           ),
           alignment: Alignment.center,
           child: show
@@ -260,7 +258,7 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
                             fontSize: 22, fontWeight: FontWeight.w600)),
                   ],
                 )
-              : const Icon(Icons.help_outline, size: 56, color: Colors.white),
+              : const Icon(Icons.eco_rounded, size: 56, color: Colors.white70),
         ),
       ),
     );

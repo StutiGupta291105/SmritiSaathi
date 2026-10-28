@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/profile.dart';
 import '../../core/strings.dart';
-import '../../core/theme.dart';
+import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../data/session_store.dart';
 import '../../services/otp_service.dart';
@@ -19,6 +19,8 @@ class AuthScreen extends StatefulWidget {
     required this.lang,
     required this.onLangChanged,
     required this.onLoggedIn,
+    this.initialSignUp = false,
+    this.onBack,
   });
   final AppDatabase db;
   final OtpService otp;
@@ -26,13 +28,15 @@ class AuthScreen extends StatefulWidget {
   final String lang;
   final ValueChanged<String> onLangChanged;
   final VoidCallback onLoggedIn;
+  final bool initialSignUp;
+  final VoidCallback? onBack;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  bool _signUp = false;
+  late bool _signUp = widget.initialSignUp;
   String _role = 'patient';
   final _name = TextEditingController();
   final _phone = TextEditingController();
@@ -112,6 +116,11 @@ class _AuthScreenState extends State<AuthScreen> {
     final waitingForOtp = _e164 != null;
     return Scaffold(
       appBar: AppBar(
+        leading: widget.onBack == null
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: widget.onBack),
         actions: [
           TextButton(
             onPressed: () =>
@@ -125,13 +134,7 @@ class _AuthScreenState extends State<AuthScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const Icon(Icons.psychology, size: 72, color: Palette.brand),
-            Text(t('appName'),
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineLarge
-                    ?.copyWith(fontWeight: FontWeight.w800, color: Palette.brand)),
-            Text(t('tagline'),
-                textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
+            BrandLogo(subtitle: t('brandSub')),
             const SizedBox(height: 16),
             if (widget.otp.isTestMode)
               Card(
@@ -149,18 +152,19 @@ class _AuthScreenState extends State<AuthScreen> {
             const SizedBox(height: 12),
             Text(t('iAm'), style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final r in kRoles)
-                  ChoiceChip(
-                    label: Text(t('role${r[0].toUpperCase()}${r.substring(1)}'),
-                        style: const TextStyle(fontSize: 18)),
-                    selected: _role == r,
-                    onSelected:
-                        waitingForOtp ? null : (_) => setState(() => _role = r),
-                  ),
-              ],
+            IgnorePointer(
+              ignoring: waitingForOtp,
+              child: Opacity(
+                opacity: waitingForOtp ? 0.5 : 1,
+                child: PillTabs(
+                  labels: [
+                    for (final r in kRoles)
+                      t('role${r[0].toUpperCase()}${r.substring(1)}')
+                  ],
+                  selected: kRoles.indexOf(_role),
+                  onSelected: (i) => setState(() => _role = kRoles[i]),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             if (_signUp)
@@ -173,7 +177,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   style: const TextStyle(fontSize: 20),
                   decoration: InputDecoration(
                       labelText: t('yourName'),
-                      border: const OutlineInputBorder()),
+                      ),
                 ),
               ),
             TextField(
@@ -184,7 +188,7 @@ class _AuthScreenState extends State<AuthScreen> {
               decoration: InputDecoration(
                   labelText: t('phoneNumber'),
                   prefixText: '+91 ',
-                  border: const OutlineInputBorder()),
+                  ),
             ),
             const SizedBox(height: 12),
             if (waitingForOtp) ...[
@@ -197,7 +201,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 maxLength: 6,
                 style: const TextStyle(fontSize: 24, letterSpacing: 6),
                 decoration: InputDecoration(
-                    labelText: t('enterOtp'), border: const OutlineInputBorder()),
+                    labelText: t('enterOtp'), ),
               ),
             ],
             if (_errorKey != null)

@@ -5,6 +5,7 @@ import 'core/theme.dart';
 import 'data/app_database.dart';
 import 'data/session_store.dart';
 import 'features/auth/auth_screen.dart';
+import 'features/auth/welcome_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/profile/profile_flow.dart';
 import 'features/shell/patient_shell.dart';
@@ -77,6 +78,8 @@ class _RootState extends State<Root> {
   Map<String, Object?>? _patient;
   String _lang = 'en'; // UI language before a patient profile exists
   bool _loading = true;
+  bool _started = false; // past the welcome screen
+  bool _signUp = false;
 
   @override
   void initState() {
@@ -114,6 +117,7 @@ class _RootState extends State<Root> {
     if (id != null) await widget.db.recordLogout(id);
     await widget.notifier.clear();
     await widget.session.clear();
+    _started = false;
     await _load();
   }
 
@@ -123,8 +127,25 @@ class _RootState extends State<Root> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final account = _account;
+    if (account == null && !_started) {
+      return WelcomeScreen(
+        lang: _lang,
+        onLangChanged: (l) => setState(() => _lang = l),
+        onGetStarted: () => setState(() {
+          _started = true;
+          _signUp = true;
+        }),
+        onLogin: () => setState(() {
+          _started = true;
+          _signUp = false;
+        }),
+      );
+    }
     if (account == null) {
       return AuthScreen(
+        key: ValueKey(_signUp),
+        initialSignUp: _signUp,
+        onBack: () => setState(() => _started = false),
         db: widget.db,
         otp: widget.otp,
         session: widget.session,
