@@ -175,15 +175,19 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
   }
 
   Future<void> _finish() async {
-    await widget.db.insertSession(
-      patientId: widget.patientId,
-      game: 'memory_match',
-      startedAt: _sessionStart,
-      startLevel: _startLevel,
-      endLevel: _engine.level,
-      trials: _engine.trials,
-      correct: _engine.correctTrials,
-    );
+    try {
+      await widget.db.insertSession(
+        patientId: widget.patientId,
+        game: 'memory_match',
+        startedAt: _sessionStart,
+        startLevel: _startLevel,
+        endLevel: _engine.level,
+        trials: _engine.trials,
+        correct: _engine.correctTrials,
+      );
+    } on ConsentRequired {
+      // Consent withdrawn: play is allowed, but nothing is stored.
+    }
     if (mounted) Navigator.of(context).pop();
   }
 

@@ -24,6 +24,17 @@ flutter run
 Android needs `minSdkVersion 21` or higher for `flutter_secure_storage` and
 `sqflite_sqlcipher` (set in `android/app/build.gradle`).
 
+Platform hardening to apply after `flutter create` (security baseline):
+
+- `AndroidManifest.xml`: set `android:allowBackup="false"` and
+  `android:usesCleartextTraffic="false"` on `<application>`; add
+  `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED`
+  permissions and the `flutter_local_notifications` receivers (see that
+  package's setup guide) so reminders survive a reboot.
+- Enable core library desugaring in `android/app/build.gradle`
+  (`flutter_local_notifications` requires it).
+- iOS: leave App Transport Security at its default (HTTPS only).
+
 ## What exists so far
 
 | Area | File | Status |
@@ -33,6 +44,8 @@ Android needs `minSdkVersion 21` or higher for `flutter_secure_storage` and
 | Caregiver onboarding: consent per purpose + starting level | `lib/features/onboarding/` | written |
 | Game 1: pair matching, level-scaled | `lib/features/games/memory_match_game.dart` | written |
 | English / Hindi strings | `lib/core/strings.dart` | written (migrate to ARB later) |
+| Reminders: medicine, water, activity, appointment (offline local notifications) | `lib/core/reminder_schedule.dart`, `lib/services/reminder_notifier.dart`, `lib/features/reminders/` | written, schedule tests in `test/` |
+| Privacy screen: consent switches, access, erasure | `lib/features/privacy/` | written |
 
 None of this has been compiled or run yet.
 
@@ -51,11 +64,12 @@ None of this has been compiled or run yet.
 | Requirement | Where it lives |
 |---|---|
 | Notice and purpose-wise consent, guardian consent | Onboarding screen, `consents` table |
-| Withdrawal of consent | `consents` keeps newest decision per purpose (`hasConsent`); in-app withdrawal UI still to build |
-| Access and erasure | `exportPatient`, `erasePatient` (UI still to build) |
-| Data minimisation | Only name, language, level, session summaries stored; no contacts or location |
+| Withdrawal of consent | `withdrawConsent`; `Privacy and permissions` screen. Withdrawal takes effect at once |
+| Consent enforced, not just recorded | `requireConsent` gates session writes (`gameplay`), reminders (`reminders`) and sync (`sync`) inside `AppDatabase` |
+| Access and erasure | `exportPatient`, `erasePatient`; both on the Privacy screen, both audited |
+| Data minimisation | Only name, language, level, reminders, session summaries stored; no contacts or location. Lock-screen reminder text is generic (no medicine names); audit log never holds reminder text |
 | Encryption at rest | SQLCipher, key in Keystore/Keychain |
-| Audit trail and 180-day log retention | `audit_log` table; retention job and India-hosted log store still to build |
+| Audit trail and 180-day log retention | SHA-256 hash-chained `audit_log` (`verifyAuditChain`); `purgeAuditOlderThan` never purges under 180 days and only entries already shipped. India-hosted log store still to build |
 | Breach / incident reporting (6 h) | Process document still to write |
 | VAPT, OWASP MASVS | Planned before any real deployment |
 | Encryption in transit, auth, roles | Pending (backend not started) |
@@ -65,7 +79,9 @@ Check the current DPDP Rules text and commencement dates before citing them.
 ## Next steps
 
 1. Run the setup above and confirm it compiles; fix anything it flags.
-2. Reminders (local notifications for medicine, water, appointments).
+2. Compliance rule for every new feature: new personal data needs a consent
+   purpose, a `requireConsent` gate, inclusion in `exportPatient` and
+   `erasePatient`, and an audit entry that holds no health content.
 3. Games 2 and 3: attention (find the target) and routine sequencing.
 4. Sync service and backend (auth, roles, consent log mirror).
 5. Caregiver dashboard (web), plus the baseline-suggestion banner using `suggestBaseline`.

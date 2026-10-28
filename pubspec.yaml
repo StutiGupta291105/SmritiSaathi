@@ -13,6 +13,10 @@ dependencies:
   path: ^1.9.0
   flutter_secure_storage: ^9.2.2  # DB key lives in Android Keystore / iOS Keychain
   uuid: ^4.4.0
+  crypto: ^3.0.3                 # SHA-256 hash chain for tamper-evident audit log
+  flutter_local_notifications: ^17.2.2  # on-device reminders, work offline
+  timezone: ^0.9.4
+  flutter_timezone: ^2.1.0
 
 dev_dependencies:
   flutter_test:
