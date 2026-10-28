@@ -140,19 +140,21 @@ class BrandLogo extends StatelessWidget {
           center ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ShaderMask(
-              shaderCallback: (r) => const LinearGradient(
-                colors: [Palette.action, Palette.orange],
-                begin: Alignment.bottomLeft,
-                end: Alignment.topRight,
-              ).createShader(r),
-              child: Icon(Icons.spa_rounded, size: 46 * size, color: Colors.white),
-            ),
-          ],
+        Container(
+          width: 96 * size,
+          height: 96 * size,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                  color: Color(0x22000000), blurRadius: 14, offset: Offset(0, 5)),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+          ),
         ),
+        SizedBox(height: 8 * size),
         Text('Smriti Sathi',
             style: TextStyle(
               fontSize: 30 * size,

@@ -9,38 +9,18 @@ import 'features/auth/welcome_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/profile/profile_flow.dart';
 import 'features/shell/patient_shell.dart';
+import 'features/splash/splash_screen.dart';
 import 'services/otp_service.dart';
 import 'services/reminder_notifier.dart';
 import 'services/voice.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  final db = await AppDatabase.open();
-  final notifier = ReminderNotifier(db);
-  await notifier.init();
-  runApp(SmritiSathiApp(
-    db: db,
-    notifier: notifier,
-    voice: Voice(),
-    otp: DevOtpService(), // TEST MODE: replace with a real SMS OTP service
-    session: const SessionStore(),
-  ));
+  runApp(const SmritiSathiApp());
 }
 
 class SmritiSathiApp extends StatelessWidget {
-  const SmritiSathiApp({
-    super.key,
-    required this.db,
-    required this.notifier,
-    required this.voice,
-    required this.otp,
-    required this.session,
-  });
-  final AppDatabase db;
-  final ReminderNotifier notifier;
-  final Voice voice;
-  final OtpService otp;
-  final SessionStore session;
+  const SmritiSathiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -48,8 +28,92 @@ class SmritiSathiApp extends StatelessWidget {
       title: 'Smriti Sathi',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      home: Root(
-          db: db, notifier: notifier, voice: voice, otp: otp, session: session),
+      home: const _Boot(),
+    );
+  }
+}
+
+class _Services {
+  _Services(this.db, this.notifier);
+  final AppDatabase db;
+  final ReminderNotifier notifier;
+  final Voice voice = Voice();
+  // TEST MODE: replace with a real SMS OTP service before real use.
+  final OtpService otp = DevOtpService();
+  final SessionStore session = const SessionStore();
+}
+
+/// Shows the splash while the encrypted database opens and reminders are set
+/// up (kept on screen for at least a moment so it can be read), then the app.
+class _Boot extends StatefulWidget {
+  const _Boot();
+
+  @override
+  State<_Boot> createState() => _BootState();
+}
+
+class _BootState extends State<_Boot> {
+  static const _minSplash = Duration(milliseconds: 2400);
+  late Future<_Services> _init = _initialize();
+
+  Future<_Services> _initialize() async {
+    final started = DateTime.now();
+    final db = await AppDatabase.open();
+    final notifier = ReminderNotifier(db);
+    await notifier.init();
+    final remaining = _minSplash - DateTime.now().difference(started);
+    if (remaining > Duration.zero) await Future<void>.delayed(remaining);
+    return _Services(db, notifier);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_Services>(
+      future: _init,
+      builder: (context, snap) {
+        final Widget child;
+        if (snap.hasError) {
+          child = Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded, size: 56),
+                    const SizedBox(height: 12),
+                    const Text('Something went wrong while starting the app.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 18)),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () => setState(() => _init = _initialize()),
+                      child: const Text('Try again'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        } else if (snap.hasData) {
+          final s = snap.data!;
+          child = Root(
+              db: s.db,
+              notifier: s.notifier,
+              voice: s.voice,
+              otp: s.otp,
+              session: s.session);
+        } else {
+          child = const SplashScreen();
+        }
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          child: KeyedSubtree(
+            key: ValueKey(snap.hasData ? 'app' : (snap.hasError ? 'err' : 'splash')),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }

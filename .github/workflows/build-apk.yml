@@ -37,6 +37,8 @@ jobs:
       - name: Apply Android settings
         run: python3 .github/scripts/patch_android.py
       - run: flutter pub get
+      - name: Generate the launcher icon from the logo
+        run: dart run flutter_launcher_icons
       - run: flutter test
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4

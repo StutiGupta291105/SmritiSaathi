@@ -151,6 +151,15 @@ cards), Reminders (Today / Upcoming / All), My Progress (star level, XP,
 games played, best streak, achievements, weekly chart), Profile (language,
 spoken instructions, caregiver area, privacy, log out), caregiver dashboard.
 
+Logo, icon and splash: the logo (elderly woman with app icons in her mind,
+held by green hands) lives in `assets/images`. `logo.png` is used in the app,
+`logo_foreground.png` and `logo_icon.png` feed the Android launcher icon, which
+the APK workflow generates with `dart run flutter_launcher_icons` (after
+`flutter create`). For iOS set `ios: true` in the `flutter_launcher_icons`
+section of `pubspec.yaml` and run it locally. The source image was only about
+190 px across, so a higher-resolution original would make the icon sharper.
+The splash screen (`lib/features/splash`) shows while the database opens.
+
 Deliberately different from the sheet:
 
 - No "Cognitive Score" or "Cognitive Health" labels. Progress counts playing
@@ -161,7 +170,6 @@ Deliberately different from the sheet:
   scene. Replace `SceneHeader` with real artwork when available.
 - Only English and Hindi are offered; Assamese and Bengali need translations.
 - Healthcare-worker and admin apps are not built (they need the backend).
-- The app icon is still Flutter's default.
 
 ## Design decisions
 

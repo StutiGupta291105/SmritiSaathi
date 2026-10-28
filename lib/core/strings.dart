@@ -70,6 +70,11 @@ const Map<String, Map<String, String>> kStrings = {
     'progressNote2':
         'Points and levels reward playing regularly. They are not a health result.',
     'greeting': 'Keep going, you are doing great!',
+    'namaste': 'Namaste!',
+    'splashBody':
+        'Your daily companion for a sharper mind and a healthier you.',
+    'loadingCompanion': 'Loading your companion...',
+    'saathHai': 'Saath hai... har kadam par!',
     'login': 'Log in',
     'getStarted': 'Get Started',
     'chooseLanguage': 'Choose your language',
@@ -330,6 +335,11 @@ const Map<String, Map<String, String>> kStrings = {
     'progressNote2':
         'अंक और स्तर नियमित खेलने का इनाम हैं। ये स्वास्थ्य का परिणाम नहीं हैं।',
     'greeting': 'लगे रहिए, आप बहुत अच्छा कर रहे हैं!',
+    'namaste': 'नमस्ते!',
+    'splashBody':
+        'आपका रोज़ का साथी, तेज़ दिमाग़ और बेहतर सेहत के लिए।',
+    'loadingCompanion': 'आपका साथी लोड हो रहा है...',
+    'saathHai': 'साथ है... हर क़दम पर!',
     'login': 'लॉग इन',
     'getStarted': 'शुरू करें',
     'chooseLanguage': 'अपनी भाषा चुनें',
