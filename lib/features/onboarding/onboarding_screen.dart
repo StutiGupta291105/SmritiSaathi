@@ -75,7 +75,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = (String k) => tr(_lang, k);
+    String t(String k) => tr(_lang, k);
     return Scaffold(
       appBar: AppBar(
         title: Text(t('appName')),

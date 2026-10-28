@@ -4,26 +4,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../core/adaptive_engine.dart';
+import '../../core/content.dart';
 import '../../core/strings.dart';
 import '../../data/app_database.dart';
-
-class _Item {
-  const _Item(this.emoji, this.en, this.hi);
-  final String emoji, en, hi;
-}
-
-// Culturally familiar, widely supported emoji. Later: caregiver-uploaded
-// family photos + names (the personalised-content variant for the paper).
-const _items = [
-  _Item('🥭', 'Mango', 'आम'),
-  _Item('🌼', 'Marigold', 'गेंदा'),
-  _Item('☕', 'Tea', 'चाय'),
-  _Item('🐄', 'Cow', 'गाय'),
-  _Item('🥥', 'Coconut', 'नारियल'),
-  _Item('🍌', 'Banana', 'केला'),
-  _Item('🌺', 'Hibiscus', 'गुड़हल'),
-  _Item('🚲', 'Bicycle', 'साइकिल'),
-];
+import '../../services/voice.dart';
+import 'game_common.dart';
 
 class _CardState {
   _CardState(this.pair);
@@ -41,12 +26,16 @@ class MemoryMatchGame extends StatefulWidget {
     required this.patientId,
     required this.baselineLevel,
     required this.language,
+    required this.voice,
+    required this.voiceOn,
   });
 
   final AppDatabase db;
   final String patientId;
   final int baselineLevel;
   final String language;
+  final Voice voice;
+  final bool voiceOn;
 
   @override
   State<MemoryMatchGame> createState() => _MemoryMatchGameState();
@@ -62,7 +51,7 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
   final _sw = Stopwatch();
 
   List<_CardState> _cards = [];
-  List<_Item> _roundItems = [];
+  List<Item> _roundItems = [];
   int _round = 0;
   int? _first;
   bool _locked = true;
@@ -74,6 +63,8 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
     super.initState();
     _engine = AdaptiveEngine(band: DifficultyBand(widget.baselineLevel));
     _startLevel = _engine.level;
+    widget.voice
+        .speak(_t('memoryPrompt'), widget.language, enabled: widget.voiceOn);
     _startRound();
   }
 
@@ -81,7 +72,7 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
 
   void _startRound() {
     final pairs = _engine.level + 1;
-    final pool = [..._items]..shuffle(_rng);
+    final pool = [...kObjects]..shuffle(_rng);
     _roundItems = pool.take(pairs).toList();
     final cards = <_CardState>[
       for (var i = 0; i < pairs; i++) ...[_CardState(i), _CardState(i)],
@@ -175,24 +166,20 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
   }
 
   Future<void> _finish() async {
-    try {
-      await widget.db.insertSession(
-        patientId: widget.patientId,
-        game: 'memory_match',
-        startedAt: _sessionStart,
-        startLevel: _startLevel,
-        endLevel: _engine.level,
-        trials: _engine.trials,
-        correct: _engine.correctTrials,
-      );
-    } on ConsentRequired {
-      // Consent withdrawn: play is allowed, but nothing is stored.
-    }
+    await saveGameSession(
+      db: widget.db,
+      patientId: widget.patientId,
+      game: 'memory_match',
+      startedAt: _sessionStart,
+      startLevel: _startLevel,
+      engine: _engine,
+    );
     if (mounted) Navigator.of(context).pop();
   }
 
   @override
   void dispose() {
+    widget.voice.stop();
     _sw.stop();
     super.dispose();
   }
@@ -240,7 +227,7 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
   Widget _buildCard(int i) {
     final c = _cards[i];
     final item = _roundItems[c.pair];
-    final label = widget.language == 'hi' ? item.hi : item.en;
+    final label = item.label(widget.language);
     final show = c.faceUp || c.matched;
     return Semantics(
       button: true,

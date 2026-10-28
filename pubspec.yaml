@@ -15,6 +15,7 @@ dependencies:
   uuid: ^4.4.0
   crypto: ^3.0.3                 # SHA-256 hash chain for tamper-evident audit log
   flutter_local_notifications: ^17.2.2  # on-device reminders, work offline
+  flutter_tts: ^4.0.2            # on-device text-to-speech for spoken instructions
   timezone: ^0.9.4
   flutter_timezone: ^2.1.0
 

@@ -6,7 +6,10 @@ import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
+import '../../services/voice.dart';
+import '../games/attention_game.dart';
 import '../games/memory_match_game.dart';
+import '../games/routine_game.dart';
 import '../privacy/privacy_screen.dart';
 import '../reminders/reminders_screen.dart';
 
@@ -16,11 +19,13 @@ class PatientShell extends StatefulWidget {
     super.key,
     required this.db,
     required this.notifier,
+    required this.voice,
     required this.patient,
     required this.onPatientChanged,
   });
   final AppDatabase db;
   final ReminderNotifier notifier;
+  final Voice voice;
   final Map<String, Object?> patient;
 
   /// Reload the patient row (language change, or erasure -> back to onboarding).
@@ -38,16 +43,11 @@ class _PatientShellState extends State<PatientShell> {
   int get _baseline => widget.patient['baseline_level'] as int;
   String t(String k) => tr(_lang, k);
 
-  Future<void> _playMemory() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => MemoryMatchGame(
-        db: widget.db,
-        patientId: _id,
-        baselineLevel: _baseline,
-        language: _lang,
-      ),
-    ));
-    if (mounted) setState(() {});
+  bool get _voiceOn => widget.patient['voice_enabled'] == 1;
+
+  Future<void> _open(Widget game) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => game));
+    if (mounted) setState(() {}); // refresh Home/Progress after a session
   }
 
   void _openSettings() => Navigator.of(context).push(MaterialPageRoute(
@@ -56,6 +56,7 @@ class _PatientShellState extends State<PatientShell> {
           notifier: widget.notifier,
           patientId: _id,
           language: _lang,
+          voiceOn: _voiceOn,
           onChanged: widget.onPatientChanged,
         ),
       ));
@@ -71,7 +72,30 @@ class _PatientShellState extends State<PatientShell> {
         onPlay: () => setState(() => _tab = 1),
         onSettings: _openSettings,
       ),
-      _GamesTab(lang: _lang, onMemory: _playMemory),
+      _GamesTab(
+        lang: _lang,
+        onMemory: () => _open(MemoryMatchGame(
+            db: widget.db,
+            patientId: _id,
+            baselineLevel: _baseline,
+            language: _lang,
+            voice: widget.voice,
+            voiceOn: _voiceOn)),
+        onAttention: () => _open(AttentionGame(
+            db: widget.db,
+            patientId: _id,
+            baselineLevel: _baseline,
+            language: _lang,
+            voice: widget.voice,
+            voiceOn: _voiceOn)),
+        onRoutine: () => _open(RoutineGame(
+            db: widget.db,
+            patientId: _id,
+            baselineLevel: _baseline,
+            language: _lang,
+            voice: widget.voice,
+            voiceOn: _voiceOn)),
+      ),
       RemindersScreen(
         db: widget.db,
         notifier: widget.notifier,
@@ -228,9 +252,14 @@ IconData kindIcon(ReminderKind k) => switch (k) {
 // ---- Games -----------------------------------------------------------------
 
 class _GamesTab extends StatelessWidget {
-  const _GamesTab({required this.lang, required this.onMemory});
+  const _GamesTab({
+    required this.lang,
+    required this.onMemory,
+    required this.onAttention,
+    required this.onRoutine,
+  });
   final String lang;
-  final VoidCallback onMemory;
+  final VoidCallback onMemory, onAttention, onRoutine;
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +269,7 @@ class _GamesTab extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.only(bottom: 14),
         child: Card(
-          color: onTap == null ? color.withOpacity(0.5) : color,
+          color: onTap == null ? color.withAlpha(128) : color,
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: onTap,
@@ -281,9 +310,9 @@ class _GamesTab extends StatelessWidget {
         tile(Palette.tileBlue, Icons.extension, tr(lang, 'memoryGame'),
             tr(lang, 'memoryGameDesc'), onMemory),
         tile(Palette.tileOrange, Icons.center_focus_strong,
-            tr(lang, 'gameAttention'), tr(lang, 'gameAttentionDesc'), null),
+            tr(lang, 'gameAttention'), tr(lang, 'gameAttentionDesc'), onAttention),
         tile(Palette.tileGreen, Icons.wb_sunny, tr(lang, 'gameRoutine'),
-            tr(lang, 'gameRoutineDesc'), null),
+            tr(lang, 'gameRoutineDesc'), onRoutine),
       ],
     );
   }
@@ -411,11 +440,13 @@ class SettingsScreen extends StatelessWidget {
     required this.notifier,
     required this.patientId,
     required this.language,
+    required this.voiceOn,
     required this.onChanged,
   });
   final AppDatabase db;
   final ReminderNotifier notifier;
   final String patientId, language;
+  final bool voiceOn;
   final VoidCallback onChanged;
 
   // Assamese and Bengali are in the design; they need translated strings first.
@@ -436,6 +467,18 @@ class SettingsScreen extends StatelessWidget {
             onSelected: (code) async {
               await db.setLanguage(patientId, code, 'user');
               await notifier.resync(patientId: patientId, lang: code);
+              onChanged();
+              if (context.mounted) Navigator.of(context).pop();
+            },
+          ),
+          const Divider(height: 32),
+          SwitchListTile(
+            secondary: const Icon(Icons.record_voice_over, size: 32),
+            title: Text(tr(language, 'voiceOn'),
+                style: const TextStyle(fontSize: 20)),
+            value: voiceOn,
+            onChanged: (v) async {
+              await db.setVoiceEnabled(patientId, v, 'user');
               onChanged();
               if (context.mounted) Navigator.of(context).pop();
             },

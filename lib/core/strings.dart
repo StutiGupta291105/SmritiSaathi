@@ -30,6 +30,10 @@ const Map<String, Map<String, String>> kStrings = {
     'gameRoutine': 'My day',
     'gameRoutineDesc': 'Put the daily steps in order',
     'chooseGame': 'Choose a game',
+    'memoryPrompt': 'Look at the pictures, then find the matching pairs.',
+    'attentionPrompt': 'Tap the one that is different.',
+    'routinePrompt': 'Tap the steps in the order they happen.',
+    'voiceOn': 'Speak instructions aloud',
     'notAMedicalDevice':
         'This app is for memory exercises and reminders. It does not diagnose or treat any condition.',
     'consentTitle': 'Your data and your permission',
@@ -113,6 +117,10 @@ const Map<String, Map<String, String>> kStrings = {
     'gameRoutine': 'मेरा दिन',
     'gameRoutineDesc': 'रोज़ के काम सही क्रम में लगाएँ',
     'chooseGame': 'खेल चुनें',
+    'memoryPrompt': 'तस्वीरें देखिए, फिर मिलती-जुलती जोड़ियाँ ढूँढिए।',
+    'attentionPrompt': 'जो अलग है उस पर छुएँ।',
+    'routinePrompt': 'काम को सही क्रम में छुएँ।',
+    'voiceOn': 'निर्देश बोलकर सुनाएँ',
     'notAMedicalDevice':
         'यह ऐप याददाश्त के अभ्यास और रिमाइंडर के लिए है। यह किसी बीमारी का निदान या इलाज नहीं करता।',
     'consentTitle': 'आपका डेटा और आपकी अनुमति',

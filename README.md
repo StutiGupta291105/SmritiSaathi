@@ -48,13 +48,28 @@ Platform hardening to apply after `flutter create` (security baseline):
 | Privacy screen: consent switches, access, erasure | `lib/features/privacy/` | written |
 | Elderly app shell per the mockups: Home (greeting, today's tasks), Games, Reminders, Progress, Settings (English/Hindi) | `lib/features/shell/`, `lib/core/theme.dart`, `lib/core/progress.dart` | written, streak tests in `test/` |
 
+| Game 2: "Find the target" (attention; grid 4-16 cells, look-alikes from level 4) | `lib/features/games/attention_game.dart`, `lib/core/attention_round.dart` | written, tests in `test/` |
+| Game 3: "My day" (daily-routine recall; 3-7 steps of morning / tea / evening routines) | `lib/features/games/routine_game.dart`, `lib/core/routine_round.dart` | written, tests in `test/` |
+| Spoken instructions (on-device text-to-speech, English and Hindi, per-person toggle) | `lib/services/voice.dart` | written |
+| Culturally familiar content (objects, look-alikes, routines) | `lib/core/content.dart` | starter set; regional packs and caregiver-edited routines still to build |
+
+Voice notes: speech uses the phone's own TTS engine and we send no text to any
+service. Some Android engines fetch voices online, and Hindi may need a one-time
+voice download; on-screen text is always shown too. Speech-to-text (voice input)
+is not built yet. Routine orders are common defaults, so caregivers should be
+able to edit them to match the person's day.
+
 UI notes from the mockups: Progress shows engagement only (games played, day
 streak, level, weekly activity) and never a "cognitive score" or health label.
 Assamese and Bengali need translated strings before they appear in Settings.
 The caregiver, healthcare-worker and admin apps and the "Talk to AI" screen
 are not started; they need the backend (auth, roles) first.
 
-None of this has been compiled or run yet.
+Verification so far (Flutter 3.47.8): `flutter pub get` resolves, `flutter analyze`
+reports no errors (two deprecation notices for `RadioListTile` on the newest
+Flutter), and all 25 unit tests pass. Not yet done: running on a device or
+emulator, and tests for `AppDatabase` (consent gating, audit hash chain,
+erasure), which need a device or an encrypted-SQLite test harness.
 
 ## Design decisions
 

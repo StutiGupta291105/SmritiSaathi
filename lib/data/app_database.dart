@@ -51,6 +51,7 @@ class AppDatabase {
             display_name TEXT NOT NULL,
             language TEXT NOT NULL DEFAULT 'en',
             baseline_level INTEGER NOT NULL,
+            voice_enabled INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL
           )''');
         await db.execute('''
@@ -400,6 +401,12 @@ class AppDatabase {
     return rows
         .map((r) => DateTime.parse(r['ended_at'] as String).toLocal())
         .toList();
+  }
+
+  Future<void> setVoiceEnabled(String patientId, bool on, String by) async {
+    await _db.update('patients', {'voice_enabled': on ? 1 : 0},
+        where: 'id = ?', whereArgs: [patientId]);
+    await audit(by, 'voice_${on ? 'enabled' : 'disabled'}', 'patient=$patientId');
   }
 
   Future<void> setLanguage(String patientId, String language, String by) async {
