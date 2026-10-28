@@ -65,11 +65,38 @@ Assamese and Bengali need translated strings before they appear in Settings.
 The caregiver, healthcare-worker and admin apps and the "Talk to AI" screen
 are not started; they need the backend (auth, roles) first.
 
-Verification so far (Flutter 3.47.8): `flutter pub get` resolves, `flutter analyze`
-reports no errors (two deprecation notices for `RadioListTile` on the newest
-Flutter), and all 25 unit tests pass. Not yet done: running on a device or
-emulator, and tests for `AppDatabase` (consent gating, audit hash chain,
-erasure), which need a device or an encrypted-SQLite test harness.
+Verification so far (Flutter 3.35.7, the version the APK workflow pins):
+`flutter analyze` is clean and 48 unit tests pass, including `AppDatabase`
+tests that run the real database code on desktop SQLite (consent gating, audit
+hash chain, export, erasure, v1 to v2 upgrade). Not yet done: running the app
+on a device or emulator, and widget tests of the screens.
+
+## Sign-in and profile flow (patient)
+
+1. **Login / create account**: role (patient, doctor, caretaker), mobile number,
+   OTP. Creating a patient account asks name + number + OTP.
+2. **Consent** (first login): notice and per-purpose consent, starting game level.
+3. **Profile completion**, five steps, resumable: about you (photo, date of birth
+   with automatic age, language), family members (name, phone, relationship,
+   optional photo), care team (doctor and caregiver name + ID, saved as invites),
+   daily routine (reminders), phone and location permissions.
+4. **Dashboard**: Home (with tap-to-call family), Games, Reminders, Progress.
+
+**Test-mode pieces that must be replaced before real use:**
+
+- OTP is `DevOtpService`: no SMS is sent and the code is always `123456` (the
+  login screen shows a banner). Swap in a real SMS OTP service behind `OtpService`.
+- Doctor and caregiver invites are only *saved* (status `pending`). Delivering
+  them, and the doctor/caregiver accepting, needs the backend. Doctor and
+  caretaker logins currently reach a "coming soon" page.
+- Doctor and caregiver IDs are not verified against any registry.
+- "Phone" permission is requested as asked, but tap-to-call opens the dialer and
+  does not need it; Google Play restricts `CALL_PHONE`, so consider dropping it.
+  Location is only a permission for now: no location is collected.
+
+iOS needs these `Info.plist` keys after `flutter create` (usage descriptions):
+`NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`,
+`NSLocationWhenInUseUsageDescription`.
 
 ## Design decisions
 
@@ -89,6 +116,10 @@ erasure), which need a device or an encrypted-SQLite test harness.
 | Withdrawal of consent | `withdrawConsent`; `Privacy and permissions` screen. Withdrawal takes effect at once |
 | Consent enforced, not just recorded | `requireConsent` gates session writes (`gameplay`), reminders (`reminders`) and sync (`sync`) inside `AppDatabase` |
 | Access and erasure | `exportPatient`, `erasePatient`; both on the Privacy screen, both audited |
+| Third-party data (family contacts) | Own purpose `family_contacts`; hidden when withdrawn; included in export and erase |
+| Sharing with doctor / caregiver | Purposes `doctor_share`, `caregiver_share`; invites become `revoked` on withdrawal; nothing shared before the backend and their acceptance |
+| Photos | Stored inside the encrypted database; the picker's temporary file is deleted; export lists size only |
+| Login | OTP with 5-try lockout; account existence only revealed after OTP; session id in Keystore/Keychain; logout cancels reminders |
 | Data minimisation | Only name, language, level, reminders, session summaries stored; no contacts or location. Lock-screen reminder text is generic (no medicine names); audit log never holds reminder text |
 | Encryption at rest | SQLCipher, key in Keystore/Keychain |
 | Audit trail and 180-day log retention | SHA-256 hash-chained `audit_log` (`verifyAuditChain`); `purgeAuditOlderThan` never purges under 180 days and only entries already shipped. India-hosted log store still to build |

@@ -38,7 +38,10 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   static const _labels = {
     'gameplay': 'purposeGameplay',
     'reminders': 'purposeReminders',
+    'family_contacts': 'purposeFamily',
+    'doctor_share': 'purposeDoctor',
     'caregiver_share': 'purposeCaregiverShare',
+    'location': 'purposeLocation',
     'sync': 'purposeSync',
   };
 

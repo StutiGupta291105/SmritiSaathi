@@ -34,6 +34,10 @@ class ReminderNotifier {
     }
   }
 
+  /// Cancels every pending reminder (used on logout, so nothing fires for a
+  /// signed-out account on a shared phone).
+  Future<void> clear() => _plugin.cancelAll();
+
   /// Rebuilds the pending notifications from the database. Call after any
   /// reminder or consent change and on every app start.
   Future<void> resync({required String patientId, required String lang}) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/progress.dart';
 import '../../core/reminder_schedule.dart';
@@ -10,6 +11,7 @@ import '../../services/voice.dart';
 import '../games/attention_game.dart';
 import '../games/memory_match_game.dart';
 import '../games/routine_game.dart';
+import '../profile/photo_picker.dart' show Avatar;
 import '../privacy/privacy_screen.dart';
 import '../reminders/reminders_screen.dart';
 
@@ -22,11 +24,13 @@ class PatientShell extends StatefulWidget {
     required this.voice,
     required this.patient,
     required this.onPatientChanged,
+    required this.onLogout,
   });
   final AppDatabase db;
   final ReminderNotifier notifier;
   final Voice voice;
   final Map<String, Object?> patient;
+  final VoidCallback onLogout;
 
   /// Reload the patient row (language change, or erasure -> back to onboarding).
   final VoidCallback onPatientChanged;
@@ -58,6 +62,7 @@ class _PatientShellState extends State<PatientShell> {
           language: _lang,
           voiceOn: _voiceOn,
           onChanged: widget.onPatientChanged,
+          onLogout: widget.onLogout,
         ),
       ));
 
@@ -68,6 +73,7 @@ class _PatientShellState extends State<PatientShell> {
         db: widget.db,
         patientId: _id,
         name: widget.patient['display_name'] as String,
+        photo: widget.patient['photo'] as List<int>?,
         lang: _lang,
         onPlay: () => setState(() => _tab = 1),
         onSettings: _openSettings,
@@ -139,12 +145,14 @@ class _HomeTab extends StatelessWidget {
     required this.db,
     required this.patientId,
     required this.name,
+    required this.photo,
     required this.lang,
     required this.onPlay,
     required this.onSettings,
   });
   final AppDatabase db;
   final String patientId, name, lang;
+  final List<int>? photo;
   final VoidCallback onPlay, onSettings;
 
   String _greeting() {
@@ -178,6 +186,8 @@ class _HomeTab extends StatelessWidget {
       children: [
         Row(
           children: [
+            Avatar(photo: photo, radius: 30),
+            const SizedBox(width: 12),
             Expanded(
               child: Text('${_greeting()},\n$name',
                   style: theme.textTheme.headlineMedium
@@ -198,6 +208,41 @@ class _HomeTab extends StatelessWidget {
           icon: const Icon(Icons.extension, size: 32),
           label: Text(tr(lang, 'playGames')),
           onPressed: onPlay,
+        ),
+        FutureBuilder(
+          future: db.listFamily(patientId),
+          builder: (context, snap) {
+            final family = snap.data ?? const <Map<String, Object?>>[];
+            if (family.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 24),
+                Text(tr(lang, 'callFamily'),
+                    style: theme.textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                for (final m in family)
+                  Card(
+                    color: Palette.tileGreen,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 6),
+                      leading: Avatar(photo: m['photo'] as List<int>?, radius: 28),
+                      title: Text(m['name'] as String,
+                          style: const TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.w700)),
+                      subtitle: Text(tr(lang, 'rel_${m['relation']}'),
+                          style: const TextStyle(fontSize: 16)),
+                      trailing: const Icon(Icons.call, size: 36, color: Palette.brand),
+                      // Opens the phone dialer with the number filled in.
+                      onTap: () => launchUrl(
+                          Uri(scheme: 'tel', path: m['phone'] as String)),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 24),
         Text(tr(lang, 'todaysTasks'),
@@ -442,12 +487,14 @@ class SettingsScreen extends StatelessWidget {
     required this.language,
     required this.voiceOn,
     required this.onChanged,
+    required this.onLogout,
   });
   final AppDatabase db;
   final ReminderNotifier notifier;
   final String patientId, language;
   final bool voiceOn;
   final VoidCallback onChanged;
+  final VoidCallback onLogout;
 
   // Assamese and Bengali are in the design; they need translated strings first.
   static const _languages = {'en': 'English', 'hi': 'हिन्दी'};
@@ -501,6 +548,16 @@ class SettingsScreen extends StatelessWidget {
                 },
               ),
             )),
+          ),
+          const Divider(height: 32),
+          ListTile(
+            leading: const Icon(Icons.logout, size: 32),
+            title: Text(tr(language, 'logout'),
+                style: const TextStyle(fontSize: 20)),
+            onTap: () {
+              Navigator.of(context).popUntil((r) => r.isFirst);
+              onLogout();
+            },
           ),
         ],
       ),

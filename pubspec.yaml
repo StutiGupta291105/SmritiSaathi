@@ -16,12 +16,16 @@ dependencies:
   crypto: ^3.0.3                 # SHA-256 hash chain for tamper-evident audit log
   flutter_local_notifications: ^17.2.2  # on-device reminders, work offline
   flutter_tts: ^4.0.2            # on-device text-to-speech for spoken instructions
+  image_picker: ^1.1.2           # optional photos (stored inside the encrypted DB)
+  permission_handler: ^12.0.1    # phone and location permission prompts
+  url_launcher: ^6.3.1           # tap-to-call family (opens the phone dialer)
   timezone: ^0.9.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  sqflite_common_ffi: ^2.3.3   # runs AppDatabase tests on a desktop SQLite
 
 flutter:
   uses-material-design: true

@@ -13,11 +13,15 @@ class RemindersScreen extends StatefulWidget {
     required this.notifier,
     required this.patientId,
     required this.language,
+    this.embedded = false,
   });
   final AppDatabase db;
   final ReminderNotifier notifier;
   final String patientId;
   final String language;
+
+  /// Embedded in another screen (the profile flow): no app bar of its own.
+  final bool embedded;
 
   @override
   State<RemindersScreen> createState() => _RemindersScreenState();
@@ -73,7 +77,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(t('reminders'))),
+      appBar: widget.embedded ? null : AppBar(title: Text(t('reminders'))),
       floatingActionButton: _consented
           ? FloatingActionButton.extended(
               onPressed: _add,

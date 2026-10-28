@@ -26,7 +26,15 @@ gradle.write_text(
 manifest = root / "src" / "main" / "AndroidManifest.xml"
 perms = "".join(
     f'    <uses-permission android:name="android.permission.{p}"/>\n'
-    for p in ("POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM", "RECEIVE_BOOT_COMPLETED", "VIBRATE")
+    for p in (
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "CALL_PHONE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+    )
 )
 patch(manifest, "<application", perms + "    <application", )
 patch(manifest, 'android:label="smriti_assist"', 'android:label="Smriti Sathi"\n        android:allowBackup="false"')

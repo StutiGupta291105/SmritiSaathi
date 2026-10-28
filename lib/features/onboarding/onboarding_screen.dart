@@ -3,13 +3,23 @@ import 'package:flutter/material.dart';
 import '../../core/strings.dart';
 import '../../data/app_database.dart';
 
-const String kNoticeVersion = 'v1';
+const String kNoticeVersion = 'v2';
 
-/// One-time onboarding done BY THE CAREGIVER/GUARDIAN: consent (DPDP) +
-/// starting level. Consent is per purpose; only gameplay storage is required.
+/// First step after a patient account is created: notice and per-purpose
+/// consent (DPDP), given by the patient or a guardian, plus the starting game
+/// level. Only gameplay storage is required; every other purpose starts
+/// unticked so that consent is an active choice.
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key, required this.db, required this.onDone});
+  const OnboardingScreen({
+    super.key,
+    required this.db,
+    required this.account,
+    required this.lang,
+    required this.onDone,
+  });
   final AppDatabase db;
+  final Map<String, Object?> account;
+  final String lang;
   final VoidCallback onDone;
 
   @override
@@ -17,46 +27,49 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  String _lang = 'en';
-  final _patientName = TextEditingController();
-  final _givenByName = TextEditingController();
-  final _givenByRelation = TextEditingController();
+  late final TextEditingController _givenByName =
+      TextEditingController(text: widget.account['name'] as String);
+  final _givenByRelation = TextEditingController(text: 'self');
   int _level = 2;
   final Map<String, bool> _purposes = {
     'gameplay': true,
-    'reminders': true,
+    'reminders': false,
+    'family_contacts': false,
+    'doctor_share': false,
     'caregiver_share': false,
     'sync': false,
   };
   bool _saving = false;
 
+  String t(String k) => tr(widget.lang, k);
+
   @override
   void dispose() {
-    _patientName.dispose();
     _givenByName.dispose();
     _givenByRelation.dispose();
     super.dispose();
   }
 
   bool get _valid =>
-      _patientName.text.trim().isNotEmpty &&
       _givenByName.text.trim().isNotEmpty &&
       _givenByRelation.text.trim().isNotEmpty &&
       _purposes['gameplay'] == true;
 
   Future<void> _submit() async {
     setState(() => _saving = true);
-    final caregiver = _givenByName.text.trim();
+    final by = _givenByName.text.trim();
     final id = await widget.db.createPatient(
-      displayName: _patientName.text.trim(),
+      accountId: widget.account['id'] as String,
+      phone: widget.account['phone'] as String,
+      displayName: widget.account['name'] as String,
       baselineLevel: _level,
-      language: _lang,
-      caregiverName: caregiver,
+      language: widget.lang,
+      createdBy: by,
     );
     await widget.db.recordConsent(
       patientId: id,
       purposes: _purposes,
-      givenByName: caregiver,
+      givenByName: by,
       givenByRelation: _givenByRelation.text.trim(),
       noticeVersion: kNoticeVersion,
     );
@@ -69,24 +82,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         onChanged: required
             ? null
             : (v) => setState(() => _purposes[key] = v ?? false),
-        title: Text(tr(_lang, stringKey), style: const TextStyle(fontSize: 18)),
+        title: Text(t(stringKey), style: const TextStyle(fontSize: 18)),
         controlAffinity: ListTileControlAffinity.leading,
       );
 
   @override
   Widget build(BuildContext context) {
-    String t(String k) => tr(_lang, k);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(t('appName')),
-        actions: [
-          TextButton(
-            onPressed: () => setState(() => _lang = _lang == 'en' ? 'hi' : 'en'),
-            child: Text(_lang == 'en' ? 'हिन्दी' : 'English',
-                style: const TextStyle(fontSize: 18)),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(t('appName'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -105,8 +108,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(t('consentIntro'), style: const TextStyle(fontSize: 18)),
           _purposeTile('gameplay', 'purposeGameplay', required: true),
           _purposeTile('reminders', 'purposeReminders'),
+          _purposeTile('family_contacts', 'purposeFamily'),
+          _purposeTile('doctor_share', 'purposeDoctor'),
           _purposeTile('caregiver_share', 'purposeCaregiverShare'),
           _purposeTile('sync', 'purposeSync'),
+          const SizedBox(height: 8),
           TextField(
             controller: _givenByName,
             decoration: InputDecoration(labelText: t('givenByName')),
@@ -120,28 +126,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const Divider(height: 40),
           Text(t('setupTitle'),
               style: Theme.of(context).textTheme.headlineSmall),
-          TextField(
-            controller: _patientName,
-            decoration: InputDecoration(labelText: t('patientName')),
-            onChanged: (_) => setState(() {}),
-          ),
           const SizedBox(height: 12),
           Text(t('startLevel'), style: const TextStyle(fontSize: 18)),
           for (var l = 1; l <= 5; l++)
-            RadioListTile<int>(
-              value: l,
-              groupValue: _level,
-              onChanged: (v) => setState(() => _level = v ?? _level),
+            ListTile(
+              leading: Icon(
+                  l == _level
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 30),
               title: Text(t('level$l'), style: const TextStyle(fontSize: 18)),
+              onTap: () => setState(() => _level = l),
             ),
           Text(t('levelHelp')),
           const SizedBox(height: 24),
-          SizedBox(
-            height: 64,
-            child: FilledButton(
-              onPressed: _valid && !_saving ? _submit : null,
-              child: Text(t('continue'), style: const TextStyle(fontSize: 22)),
-            ),
+          FilledButton(
+            onPressed: _valid && !_saving ? _submit : null,
+            child: Text(t('continue')),
           ),
         ],
       ),
