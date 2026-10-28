@@ -1,0 +1,23 @@
+name: smriti_assist
+description: Offline-first cognitive engagement and memory assistance app for elderly users (non-diagnostic).
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqflite_sqlcipher: ^3.1.0   # AES-encrypted local DB (CERT-In: encryption at rest, offline too)
+  path: ^1.9.0
+  flutter_secure_storage: ^9.2.2  # DB key lives in Android Keystore / iOS Keychain
+  uuid: ^4.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
