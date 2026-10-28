@@ -1,4 +1,4 @@
-# SmritiAssist
+# Smriti Sathi (Better Memory. Brighter Days.)
 
 Offline-first mobile app (Android + iOS, Flutter) offering memory and attention
 games, routine support and reminders for elderly users, with a caregiver view.
@@ -46,6 +46,13 @@ Platform hardening to apply after `flutter create` (security baseline):
 | English / Hindi strings | `lib/core/strings.dart` | written (migrate to ARB later) |
 | Reminders: medicine, water, activity, appointment (offline local notifications) | `lib/core/reminder_schedule.dart`, `lib/services/reminder_notifier.dart`, `lib/features/reminders/` | written, schedule tests in `test/` |
 | Privacy screen: consent switches, access, erasure | `lib/features/privacy/` | written |
+| Elderly app shell per the mockups: Home (greeting, today's tasks), Games, Reminders, Progress, Settings (English/Hindi) | `lib/features/shell/`, `lib/core/theme.dart`, `lib/core/progress.dart` | written, streak tests in `test/` |
+
+UI notes from the mockups: Progress shows engagement only (games played, day
+streak, level, weekly activity) and never a "cognitive score" or health label.
+Assamese and Bengali need translated strings before they appear in Settings.
+The caregiver, healthcare-worker and admin apps and the "Talk to AI" screen
+are not started; they need the backend (auth, roles) first.
 
 None of this has been compiled or run yet.
 

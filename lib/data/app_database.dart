@@ -393,6 +393,21 @@ class AppDatabase {
       });
   }
 
+  /// Local end times of all sessions, for streaks and weekly activity.
+  Future<List<DateTime>> sessionTimes(String patientId) async {
+    final rows = await _db.query('sessions',
+        columns: ['ended_at'], where: 'patient_id = ?', whereArgs: [patientId]);
+    return rows
+        .map((r) => DateTime.parse(r['ended_at'] as String).toLocal())
+        .toList();
+  }
+
+  Future<void> setLanguage(String patientId, String language, String by) async {
+    await _db.update('patients', {'language': language},
+        where: 'id = ?', whereArgs: [patientId]);
+    await audit(by, 'language_changed', 'patient=$patientId lang=$language');
+  }
+
   Future<List<int>> recentEndLevels(String patientId, {int limit = 5}) async {
     final rows = await _db.query('sessions',
         columns: ['end_level'],
