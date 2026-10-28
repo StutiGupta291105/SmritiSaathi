@@ -66,7 +66,7 @@ The caregiver, healthcare-worker and admin apps and the "Talk to AI" screen
 are not started; they need the backend (auth, roles) first.
 
 Verification so far (Flutter 3.35.7, the version the APK workflow pins):
-`flutter analyze` is clean and 48 unit tests pass, including `AppDatabase`
+`flutter analyze` is clean and 74 unit tests pass, including `AppDatabase`
 tests that run the real database code on desktop SQLite (consent gating, audit
 hash chain, export, erasure, v1 to v2 upgrade). Not yet done: running the app
 on a device or emulator, and widget tests of the screens.
@@ -97,6 +97,42 @@ on a device or emulator, and widget tests of the screens.
 iOS needs these `Info.plist` keys after `flutter create` (usage descriptions):
 `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`,
 `NSLocationWhenInUseUsageDescription`.
+
+## Phase 2: caregiver dashboard, alerts, learned difficulty
+
+**Caregiver area** (Settings, behind a 4-6 digit PIN created on first use): an
+overview (games in the last 7 days, streak, last played, correct answers by
+game), alerts, the starting-level control, shortcuts to edit reminders and the
+daily routine, and the family and care team. It appears only while the
+`caregiver_share` purpose is consented. The PIN is stored salted and hashed,
+locks for 15 minutes after 5 wrong tries, and every outcome is audited. It is
+an access control on a phone the patient also holds, not strong authentication,
+and it cannot be recovered (forgetting it means erase and set up again).
+
+**Learned difficulty** (`lib/core/ability_model.dart`): a one-parameter logistic
+model, P(correct | level) = sigmoid(1.2 x (ability - level)), fitted on the
+person's own per-level results (the last 40 sessions of each game) by MAP
+estimation. The prior is centred so that with no data the recommendation is
+exactly the caregiver's baseline. Each game starts at the level whose predicted
+success is closest to 75 percent, clamped to the caregiver's band (baseline
+plus or minus one). The within-session staircase still runs on top. The
+dashboard shows the level each game will start at and how many answers it is
+based on. Sessions saved before this version have no per-level tallies and are
+ignored by the model.
+
+**Alerts** (`lib/core/engagement_alerts.dart`), all about play, never health:
+
+| Alert | Rule |
+|---|---|
+| Not played | at least 5 sessions so far and none for 3 or more days |
+| Fewer sessions | last 7 days have half or fewer than the 7 days before (which had at least 4) |
+| Fewer correct answers | last 3 sessions average 20 or more points below the 5 before (needs 8 sessions) |
+| Raise / lower baseline | last 3 sessions all ended at the top / bottom of the band |
+
+Alerts are computed on the fly and shown in the dashboard. Notifications to a
+caregiver's own phone, and healthcare-worker dashboards, need the backend.
+Not tracked yet: whether a medicine was actually taken (a "mark as done" on
+reminders would add that, with its own consent decision).
 
 ## Design decisions
 

@@ -9,6 +9,9 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/ability_model.dart';
+import '../core/adaptive_engine.dart';
+import '../core/engagement_alerts.dart';
 import '../core/reminder_schedule.dart';
 
 /// Thrown when an operation needs a purpose the patient has not consented to
@@ -32,6 +35,8 @@ const kConsentPurposes = [
   'sync',
 ];
 
+enum PinResult { ok, wrong, locked }
+
 /// CERT-In directions: keep logs for a rolling 180 days (we never purge
 /// younger than this, whatever the caller passes).
 const int kMinLogRetentionDays = 180;
@@ -47,8 +52,9 @@ const int kMinLogRetentionDays = 180;
 ///  * Every sensitive action goes to [audit_log] (append-only from app code).
 ///  * `synced = 0` rows form the sync queue for when connectivity returns.
 class AppDatabase {
-  AppDatabase._(this._db);
+  AppDatabase._(this._db) : _clock = DateTime.now;
   final Database _db;
+  final DateTime Function() _clock;
   static const _uuid = Uuid();
 
   static Future<AppDatabase> open() async {
@@ -64,7 +70,7 @@ class AppDatabase {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 2;
+  static const schemaVersion = 3;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -80,6 +86,8 @@ class AppDatabase {
         baseline_level INTEGER NOT NULL,
         voice_enabled INTEGER NOT NULL DEFAULT 1,
         setup_stage INTEGER NOT NULL DEFAULT 0,
+        caregiver_pin_hash TEXT,
+        caregiver_pin_salt TEXT,
         created_at TEXT NOT NULL
       )''');
     await _createAccountTables(db);
@@ -105,6 +113,7 @@ class AppDatabase {
         end_level INTEGER NOT NULL,
         trials INTEGER NOT NULL,
         correct INTEGER NOT NULL,
+        level_stats TEXT,
         synced INTEGER NOT NULL DEFAULT 0
       )''');
     await db.execute('''
@@ -154,11 +163,21 @@ class AppDatabase {
       }
       await _createAccountTables(db);
     }
+    if (oldVersion < 3) {
+      for (final stmt in [
+        'ALTER TABLE sessions ADD COLUMN level_stats TEXT',
+        'ALTER TABLE patients ADD COLUMN caregiver_pin_hash TEXT',
+        'ALTER TABLE patients ADD COLUMN caregiver_pin_salt TEXT',
+      ]) {
+        await db.execute(stmt);
+      }
+    }
   }
 
   /// For tests: wraps an already-open database (for example in-memory SQLite).
   @visibleForTesting
-  AppDatabase.forTesting(this._db);
+  AppDatabase.forTesting(this._db, {DateTime Function()? clock})
+      : _clock = clock ?? DateTime.now;
 
   static Future<void> _createAccountTables(Database db) async {
     await db.execute('''
@@ -333,6 +352,12 @@ class AppDatabase {
     await audit(createdBy, 'patient_created',
         'patient=$id account=$accountId baseline=$baselineLevel');
     return id;
+  }
+
+  Future<Map<String, Object?>?> patientById(String id) async {
+    final rows =
+        await _db.query('patients', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : rows.first;
   }
 
   Future<Map<String, Object?>?> patientForAccount(String accountId) async {
@@ -626,6 +651,7 @@ class AppDatabase {
     required int endLevel,
     required int trials,
     required int correct,
+    String? levelStats,
   }) async {
     await requireConsent(patientId, 'gameplay');
     await _db.insert('sessions', {
@@ -638,6 +664,7 @@ class AppDatabase {
         'end_level': endLevel,
         'trials': trials,
         'correct': correct,
+        'level_stats': levelStats,
       });
   }
 
@@ -670,6 +697,133 @@ class AppDatabase {
         orderBy: 'ended_at DESC',
         limit: limit);
     return rows.map((r) => r['end_level'] as int).toList().reversed.toList();
+  }
+
+  // ---- caregiver dashboard data ------------------------------------------
+
+  Future<List<SessionRecord>> sessionRecords(String patientId) async {
+    final rows = await _db.query('sessions',
+        where: 'patient_id = ?', whereArgs: [patientId], orderBy: 'ended_at');
+    return [
+      for (final r in rows)
+        SessionRecord(
+          game: r['game'] as String,
+          endedAt: DateTime.parse(r['ended_at'] as String).toLocal(),
+          startLevel: r['start_level'] as int,
+          endLevel: r['end_level'] as int,
+          trials: r['trials'] as int,
+          correct: r['correct'] as int,
+        )
+    ];
+  }
+
+  /// Per-level tallies from the most recent sessions of [game], for the
+  /// ability model. Sessions saved before level tallies existed are skipped.
+  Future<List<LevelStat>> levelStats(String patientId, String game,
+      {int lastSessions = 40}) async {
+    final rows = await _db.query('sessions',
+        columns: ['level_stats'],
+        where: 'patient_id = ? AND game = ? AND level_stats IS NOT NULL',
+        whereArgs: [patientId, game],
+        orderBy: 'ended_at DESC',
+        limit: lastSessions);
+    final totals = <int, List<int>>{};
+    for (final r in rows) {
+      final decoded = jsonDecode(r['level_stats'] as String) as Map;
+      decoded.forEach((level, v) {
+        final t = totals.putIfAbsent(int.parse('$level'), () => [0, 0]);
+        t[0] += (v as List)[0] as int;
+        t[1] += v[1] as int;
+      });
+    }
+    return [
+      for (final e in totals.entries) LevelStat(e.key, e.value[0], e.value[1])
+    ];
+  }
+
+  /// The learned model for one game (see [AbilityModel]).
+  Future<AbilityModel> abilityModel(
+          String patientId, String game, int baseline) async =>
+      AbilityModel.fit(
+          stats: await levelStats(patientId, game), baseline: baseline);
+
+  /// Level a game should start at: the model's pick inside the caregiver's band.
+  Future<int> recommendedStartLevel(
+      String patientId, String game, int baseline) async {
+    final model = await abilityModel(patientId, game, baseline);
+    return model.recommend(DifficultyBand(baseline));
+  }
+
+  // ---- caregiver PIN -------------------------------------------------------
+
+  static const _pinRounds = 10000;
+  static const maxPinTries = 5;
+  static const pinLockMinutes = 15;
+  final Map<String, int> _pinFailures = {};
+  final Map<String, DateTime> _pinLockedUntil = {};
+
+  static String _hashPin(String pin, String salt) {
+    List<int> h = utf8.encode('$salt:$pin');
+    for (var i = 0; i < _pinRounds; i++) {
+      h = sha256.convert(h).bytes;
+    }
+    return base64UrlEncode(h);
+  }
+
+  Future<bool> hasCaregiverPin(String patientId) async {
+    final r = await _db.query('patients',
+        columns: ['caregiver_pin_hash'],
+        where: 'id = ?',
+        whereArgs: [patientId]);
+    return r.isNotEmpty && r.first['caregiver_pin_hash'] != null;
+  }
+
+  /// The PIN guards the caregiver area on a phone the patient also holds. It
+  /// is stored salted and hashed, never in the clear.
+  Future<void> setCaregiverPin(String patientId, String pin, String by) async {
+    final rnd = Random.secure();
+    final salt = base64UrlEncode(List<int>.generate(16, (_) => rnd.nextInt(256)));
+    await _db.update(
+        'patients',
+        {'caregiver_pin_salt': salt, 'caregiver_pin_hash': _hashPin(pin, salt)},
+        where: 'id = ?',
+        whereArgs: [patientId]);
+    await audit(by, 'caregiver_pin_set', 'patient=$patientId');
+  }
+
+  /// Wrong tries are counted; after [maxPinTries] the area is locked for
+  /// [pinLockMinutes] minutes. Every outcome is audited.
+  Future<PinResult> verifyCaregiverPin(
+      String patientId, String pin, String by) async {
+    final until = _pinLockedUntil[patientId];
+    if (until != null) {
+      if (_clock().isBefore(until)) return PinResult.locked;
+      _pinLockedUntil.remove(patientId);
+      _pinFailures.remove(patientId);
+    }
+    final r = await _db.query('patients',
+        columns: ['caregiver_pin_hash', 'caregiver_pin_salt'],
+        where: 'id = ?',
+        whereArgs: [patientId]);
+    if (r.isEmpty || r.first['caregiver_pin_hash'] == null) {
+      return PinResult.wrong;
+    }
+    final ok = _hashPin(pin, r.first['caregiver_pin_salt'] as String) ==
+        r.first['caregiver_pin_hash'];
+    if (ok) {
+      _pinFailures.remove(patientId);
+      await audit(by, 'caregiver_area_opened', 'patient=$patientId');
+      return PinResult.ok;
+    }
+    final n = (_pinFailures[patientId] ?? 0) + 1;
+    _pinFailures[patientId] = n;
+    await audit(by, 'caregiver_pin_failed', 'patient=$patientId tries=$n');
+    if (n >= maxPinTries) {
+      _pinLockedUntil[patientId] =
+          _clock().add(const Duration(minutes: pinLockMinutes));
+      return PinResult.locked;
+    }
+    return PinResult.wrong;
   }
 
   // ---- sync queue --------------------------------------------------------
@@ -720,7 +874,8 @@ class AppDatabase {
   /// Photos are reported as a size, not dumped as raw bytes.
   Map<String, Object?> _withoutBlobs(Map<String, Object?> row) => {
         for (final e in row.entries)
-          e.key: e.value is List<int>
+          if (e.key != 'caregiver_pin_hash' && e.key != 'caregiver_pin_salt')
+            e.key: e.value is List<int>
               ? '<photo: ${(e.value as List<int>).length} bytes>'
               : e.value
       };

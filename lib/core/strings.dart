@@ -117,6 +117,55 @@ const Map<String, Map<String, String>> kStrings = {
     'purposeFamily': 'Save family members and show them for calling',
     'purposeDoctor': 'Share progress and reports with my doctor (after they accept)',
     'purposeLocation': 'Use my location for safety (not collected yet)',
+    'caregiverArea': 'Caregiver area',
+    'pinCreateTitle': 'Create a caregiver PIN',
+    'pinCreateHelp':
+        'This 4 to 6 digit PIN keeps the caregiver area private on this phone. Remember it: it cannot be recovered. If it is forgotten, the data can only be erased and set up again.',
+    'pinEnter': 'Enter the caregiver PIN',
+    'pinRepeat': 'Repeat the PIN',
+    'pinMismatch': 'The two PINs do not match.',
+    'pinShort': 'Use 4 to 6 digits.',
+    'pinWrong': 'Wrong PIN.',
+    'pinLocked': 'Too many wrong tries. Please try again in 15 minutes.',
+    'dashTitle': 'Caregiver dashboard',
+    'dashNote':
+        'This shows how the person plays and uses the app. It is not a medical assessment.',
+    'alertsTitle': 'Things to know',
+    'noAlerts': 'Nothing unusual in how the app is being used.',
+    'alertHelp':
+        'Alerts describe play only. Tiredness or a bad day can change how someone plays. Consider checking in with them, and with their doctor if you are worried.',
+    'alert_inactive': 'Has not played for {a} days.',
+    'alert_fewerSessions':
+        'Played {a} times in the last 7 days, compared with {b} the week before.',
+    'alert_accuracyDip':
+        'The last few games had about {a} percentage points fewer correct answers than before.',
+    'alert_suggestRaiseBaseline':
+        'Has been finishing at the top of the level range. You could raise the starting level.',
+    'alert_suggestLowerBaseline':
+        'Has been finishing at the bottom of the level range. You could lower the starting level.',
+    'overviewTitle': 'Overview',
+    'last7': 'Games in the last 7 days',
+    'lastPlayed': 'Last played',
+    'never': 'Not yet',
+    'accuracyByGame': 'Correct answers by game',
+    'sessionsCount': '{a} games',
+    'difficultyTitle': 'Difficulty',
+    'startingLevel': 'Starting level set by caregiver',
+    'changeLevel': 'Change starting level',
+    'levelWord': 'Level {a}',
+    'modelTitle': 'Where the next game will start',
+    'modelBody':
+        'The app learns from past games and picks a level that should feel challenging but not discouraging. It never goes more than one step from the starting level.',
+    'modelNoData': 'Not enough games yet, so the starting level is used.',
+    'modelBasedOn': 'based on {a} answers',
+    'manageReminders': 'Edit reminders and daily routine',
+    'familyAndTeam': 'Family and care team',
+    'noneAdded': 'None added yet',
+    'statusPending': 'invite waiting',
+    'statusRevoked': 'stopped',
+    'statusAccepted': 'accepted',
+    'statusDeclined': 'declined',
+
     'notAMedicalDevice':
         'This app is for memory exercises and reminders. It does not diagnose or treat any condition.',
     'consentTitle': 'Your data and your permission',
@@ -287,6 +336,55 @@ const Map<String, Map<String, String>> kStrings = {
     'purposeFamily': 'परिवार के सदस्य सहेजें और फ़ोन करने के लिए दिखाएँ',
     'purposeDoctor': 'मेरी प्रगति और रिपोर्ट डॉक्टर के साथ साझा करें (उनके स्वीकार करने के बाद)',
     'purposeLocation': 'सुरक्षा के लिए मेरी लोकेशन इस्तेमाल करें (अभी इकट्ठा नहीं की जाती)',
+    'caregiverArea': 'देखभालकर्ता क्षेत्र',
+    'pinCreateTitle': 'देखभालकर्ता पिन बनाएँ',
+    'pinCreateHelp':
+        'यह 4 से 6 अंकों का पिन इस फ़ोन पर देखभालकर्ता क्षेत्र को निजी रखता है। इसे याद रखें: यह वापस नहीं मिल सकता। भूल जाने पर डेटा केवल मिटाकर फिर से शुरू किया जा सकता है।',
+    'pinEnter': 'देखभालकर्ता पिन डालें',
+    'pinRepeat': 'पिन दोबारा डालें',
+    'pinMismatch': 'दोनों पिन एक जैसे नहीं हैं।',
+    'pinShort': '4 से 6 अंक इस्तेमाल करें।',
+    'pinWrong': 'ग़लत पिन।',
+    'pinLocked': 'बहुत ग़लत कोशिशें हुईं। कृपया 15 मिनट बाद फिर कोशिश करें।',
+    'dashTitle': 'देखभालकर्ता डैशबोर्ड',
+    'dashNote':
+        'यह दिखाता है कि व्यक्ति ऐप कैसे खेलता और इस्तेमाल करता है। यह कोई चिकित्सा जाँच नहीं है।',
+    'alertsTitle': 'जानने योग्य बातें',
+    'noAlerts': 'ऐप के इस्तेमाल में कुछ असामान्य नहीं है।',
+    'alertHelp':
+        'ये सूचनाएँ केवल खेलने के तरीक़े के बारे में हैं। थकान या ख़राब दिन से भी खेल बदल सकता है। उनसे बात करें, और चिंता हो तो उनके डॉक्टर से भी।',
+    'alert_inactive': '{a} दिन से नहीं खेला।',
+    'alert_fewerSessions':
+        'पिछले 7 दिनों में {a} बार खेला, जबकि उससे पहले के हफ़्ते में {b} बार।',
+    'alert_accuracyDip':
+        'पिछले कुछ खेलों में पहले से लगभग {a} प्रतिशत अंक कम सही उत्तर रहे।',
+    'alert_suggestRaiseBaseline':
+        'स्तर की सीमा में सबसे ऊपर ख़त्म कर रहे हैं। आप शुरुआती स्तर बढ़ा सकते हैं।',
+    'alert_suggestLowerBaseline':
+        'स्तर की सीमा में सबसे नीचे ख़त्म कर रहे हैं। आप शुरुआती स्तर घटा सकते हैं।',
+    'overviewTitle': 'सारांश',
+    'last7': 'पिछले 7 दिनों के खेल',
+    'lastPlayed': 'आख़िरी बार खेला',
+    'never': 'अभी तक नहीं',
+    'accuracyByGame': 'खेल के अनुसार सही उत्तर',
+    'sessionsCount': '{a} खेल',
+    'difficultyTitle': 'कठिनाई',
+    'startingLevel': 'देखभालकर्ता द्वारा तय शुरुआती स्तर',
+    'changeLevel': 'शुरुआती स्तर बदलें',
+    'levelWord': 'स्तर {a}',
+    'modelTitle': 'अगला खेल कहाँ से शुरू होगा',
+    'modelBody':
+        'ऐप पिछले खेलों से सीखकर ऐसा स्तर चुनता है जो चुनौतीपूर्ण लगे पर हतोत्साहित न करे। यह शुरुआती स्तर से एक कदम से ज़्यादा दूर नहीं जाता।',
+    'modelNoData': 'अभी पर्याप्त खेल नहीं हुए, इसलिए शुरुआती स्तर इस्तेमाल होगा।',
+    'modelBasedOn': '{a} उत्तरों के आधार पर',
+    'manageReminders': 'रिमाइंडर और दिनचर्या बदलें',
+    'familyAndTeam': 'परिवार और देखभाल टीम',
+    'noneAdded': 'अभी कोई नहीं जोड़ा',
+    'statusPending': 'निमंत्रण बाकी',
+    'statusRevoked': 'बंद',
+    'statusAccepted': 'स्वीकार किया',
+    'statusDeclined': 'अस्वीकार किया',
+
     'notAMedicalDevice':
         'यह ऐप याददाश्त के अभ्यास और रिमाइंडर के लिए है। यह किसी बीमारी का निदान या इलाज नहीं करता।',
     'consentTitle': 'आपका डेटा और आपकी अनुमति',
@@ -346,3 +444,7 @@ const Map<String, Map<String, String>> kStrings = {
 
 String tr(String lang, String key) =>
     kStrings[lang]?[key] ?? kStrings['en']![key] ?? key;
+
+/// Like [tr], filling `{a}` / `{b}` placeholders with numbers.
+String trf(String lang, String key, {int a = 0, int b = 0}) =>
+    tr(lang, key).replaceAll('{a}', '$a').replaceAll('{b}', '$b');

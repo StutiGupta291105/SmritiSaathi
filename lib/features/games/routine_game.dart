@@ -21,6 +21,7 @@ class RoutineGame extends StatefulWidget {
     required this.db,
     required this.patientId,
     required this.baselineLevel,
+    required this.startLevel,
     required this.language,
     required this.voice,
     required this.voiceOn,
@@ -28,6 +29,9 @@ class RoutineGame extends StatefulWidget {
   final AppDatabase db;
   final String patientId;
   final int baselineLevel;
+
+  /// Where this session starts: the learned model's pick inside the band.
+  final int startLevel;
   final String language;
   final Voice voice;
   final bool voiceOn;
@@ -57,7 +61,9 @@ class _RoutineGameState extends State<RoutineGame> {
   @override
   void initState() {
     super.initState();
-    _engine = AdaptiveEngine(band: DifficultyBand(widget.baselineLevel));
+    _engine = AdaptiveEngine(
+        band: DifficultyBand(widget.baselineLevel),
+        startLevel: widget.startLevel);
     _startLevel = _engine.level;
     widget.voice.speak(_t('routinePrompt'), widget.language,
         enabled: widget.voiceOn);

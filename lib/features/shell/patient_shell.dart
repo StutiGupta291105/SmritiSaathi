@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
 import '../../services/voice.dart';
+import '../caregiver/caregiver_area.dart';
 import '../games/attention_game.dart';
 import '../games/memory_match_game.dart';
 import '../games/routine_game.dart';
@@ -49,9 +50,14 @@ class _PatientShellState extends State<PatientShell> {
 
   bool get _voiceOn => widget.patient['voice_enabled'] == 1;
 
-  Future<void> _open(Widget game) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => game));
-    if (mounted) setState(() {}); // refresh Home/Progress after a session
+  /// Starts a game at the level the learned model recommends (always inside
+  /// the caregiver's band), then refreshes the tabs when it ends.
+  Future<void> _play(String game, Widget Function(int startLevel) build) async {
+    final level = await widget.db.recommendedStartLevel(_id, game, _baseline);
+    if (!mounted) return;
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => build(level)));
+    if (mounted) setState(() {});
   }
 
   void _openSettings() => Navigator.of(context).push(MaterialPageRoute(
@@ -80,26 +86,29 @@ class _PatientShellState extends State<PatientShell> {
       ),
       _GamesTab(
         lang: _lang,
-        onMemory: () => _open(MemoryMatchGame(
+        onMemory: () => _play('memory_match', (lvl) => MemoryMatchGame(
             db: widget.db,
             patientId: _id,
             baselineLevel: _baseline,
             language: _lang,
             voice: widget.voice,
+            startLevel: lvl,
             voiceOn: _voiceOn)),
-        onAttention: () => _open(AttentionGame(
+        onAttention: () => _play('attention', (lvl) => AttentionGame(
             db: widget.db,
             patientId: _id,
             baselineLevel: _baseline,
             language: _lang,
             voice: widget.voice,
+            startLevel: lvl,
             voiceOn: _voiceOn)),
-        onRoutine: () => _open(RoutineGame(
+        onRoutine: () => _play('routine', (lvl) => RoutineGame(
             db: widget.db,
             patientId: _id,
             baselineLevel: _baseline,
             language: _lang,
             voice: widget.voice,
+            startLevel: lvl,
             voiceOn: _voiceOn)),
       ),
       RemindersScreen(
@@ -529,6 +538,21 @@ class SettingsScreen extends StatelessWidget {
               onChanged();
               if (context.mounted) Navigator.of(context).pop();
             },
+          ),
+          const Divider(height: 32),
+          ListTile(
+            leading: const Icon(Icons.supervisor_account, size: 32),
+            title: Text(tr(language, 'caregiverArea'),
+                style: const TextStyle(fontSize: 20)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => openCaregiverArea(
+              context,
+              db: db,
+              notifier: notifier,
+              patientId: patientId,
+              lang: language,
+              onChanged: onChanged,
+            ),
           ),
           const Divider(height: 32),
           ListTile(
