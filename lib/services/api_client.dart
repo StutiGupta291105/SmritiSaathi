@@ -126,7 +126,10 @@ class ApiClient {
     bool auth = true,
     bool retried = false,
   }) async {
-    final uri = baseUri.replace(path: '${baseUri.path}$path');
+    final target = Uri.parse(path); // may carry a query string
+    final uri = baseUri.replace(
+        path: '${baseUri.path}${target.path}',
+        query: target.hasQuery ? target.query : null);
     final headers = <String, String>{
       'content-type': 'application/json',
       'accept': 'application/json',

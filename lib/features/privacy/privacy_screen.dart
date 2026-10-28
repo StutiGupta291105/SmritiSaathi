@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/strings.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
+import '../../services/sync_service.dart';
 import '../onboarding/onboarding_screen.dart' show kNoticeVersion;
 
 /// DPDP rights in one place: change or withdraw consent per purpose, see all
@@ -18,7 +19,9 @@ class PrivacyScreen extends StatefulWidget {
     required this.patientId,
     required this.language,
     required this.onErased,
+    this.hooks,
   });
+  final ServerHooks? hooks;
   final AppDatabase db;
   final ReminderNotifier notifier;
   final String patientId;
@@ -86,6 +89,8 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     await widget.notifier
         .resync(patientId: widget.patientId, lang: widget.language);
     await _load();
+    // Tell the server now, so sharing stops there as well.
+    await widget.hooks?.syncNow();
   }
 
   Future<void> _export() async {
@@ -125,6 +130,13 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       ),
     );
     if (ok != true) return;
+    final remote = widget.hooks;
+    if (remote != null && !await remote.eraseRemote(widget.patientId)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(t('eraseNeedsInternet'))));
+      return;
+    }
     await widget.db.erasePatient(widget.patientId, _actor);
     await widget.notifier.resync(patientId: widget.patientId, lang: widget.language);
     if (mounted) widget.onErased();

@@ -159,6 +159,17 @@ void main() {
           throwsA(isA<ApiException>().having((e) => e.isNetwork, 'network', true)));
     });
 
+    test('query strings are sent as a query, not as part of the path', () async {
+      Uri? seen;
+      final api = make(MockClient((r) async {
+        seen = r.url;
+        return json(200, {'ok': true});
+      }));
+      await api.report('p1', 30);
+      expect(seen!.path, '/v1/patients/p1/report');
+      expect(seen!.queryParameters, {'days': '30'});
+    });
+
     test('lists are parsed and 204 answers are fine', () async {
       final api = make(MockClient((r) async => r.method == 'DELETE'
           ? http.Response('', 204)

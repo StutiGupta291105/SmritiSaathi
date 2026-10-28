@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
+import '../../services/sync_service.dart';
 import '../caregiver/caregiver_area.dart';
 import '../privacy/privacy_screen.dart';
 import '../profile/photo_picker.dart' show Avatar;
@@ -21,7 +22,9 @@ class ProfileTab extends StatelessWidget {
     required this.patient,
     required this.onChanged,
     required this.onLogout,
+    this.hooks,
   });
+  final ServerHooks? hooks;
   final AppDatabase db;
   final ReminderNotifier notifier;
   final Map<String, Object?> patient;
@@ -173,6 +176,7 @@ class ProfileTab extends StatelessWidget {
             t('privacy'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => PrivacyScreen(
+                    hooks: hooks,
                     db: db,
                     notifier: notifier,
                     patientId: _id,

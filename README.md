@@ -153,10 +153,32 @@ on the clipboard for the caregiver to paste to a doctor or family.
 | Reports over 7 / 30 / 90 days and a shareable summary | done |
 | Baseline suggestion banner with one-tap review | done |
 | On-device adaptive model | done, lighter than first planned: a per-game logistic ability model rather than a contextual bandit; it uses level history only, not time of day or other context |
-| Caregiver on their own phone: push alerts and live dashboard | not possible yet, needs the backend (Phase 3) |
-| Healthcare-worker dashboard, patient list, visit management | not possible yet, needs the backend and accounts (Phase 3) |
+| Caregiver on their own phone: live dashboard | done in Phase 3 (pull to refresh); push notifications not built |
+| Healthcare-worker dashboard, patient list | done in Phase 3 (read-only report view); visit management not built |
 | Doctor prescribing and updating a condition | out of scope for now: needs the backend, clinical review and regulatory decisions |
 
+
+## Phase 3: backend and connected app
+
+The server lives in `backend/` (FastAPI, PostgreSQL in production, India region;
+see `docs/DEPLOYMENT.md`, `docs/SECURITY.md`, `docs/INCIDENT_RESPONSE.md`). The
+app talks to it only when built with an API address:
+
+    flutter build apk --release --dart-define=API_BASE_URL=https://your-api
+
+The APK workflow reads that from the repository variable `API_BASE_URL`. With no
+address the app stays the offline test build (fixed code 123456, no server).
+
+| Item | Status |
+|---|---|
+| Real OTP login through the server, roles, rotating tokens | done (needs an SMS provider and DLT registration to send real SMS) |
+| Invites reach doctors and caretakers by phone number; they accept or decline | done |
+| Consent decisions mirrored to the server, including withdrawals | done |
+| Game results and reminder timing synced, only with the matching consent; reminder text never leaves the phone | done |
+| Caretaker and doctor see a shared report only while consent is on and the link accepted | done |
+| Erase removes server data first (needs internet) | done |
+| India-hosted log store, incident process, security review documents | written; hosting, named incident lead and external testing are for you to arrange |
+| Not built yet | push notifications, restoring a patient on a new phone from the server, doctor registry verification, database migrations tool, caretaker changing the starting level from the app after first sync |
 
 ## Look and feel
 
@@ -222,7 +244,7 @@ Deliberately different from the sheet:
 | Audit trail and 180-day log retention | SHA-256 hash-chained `audit_log` (`verifyAuditChain`); `purgeAuditOlderThan` never purges under 180 days and only entries already shipped. India-hosted log store still to build |
 | Breach / incident reporting (6 h) | Process document still to write |
 | VAPT, OWASP MASVS | Planned before any real deployment |
-| Encryption in transit, auth, roles | Pending (backend not started) |
+| Encryption in transit, auth, roles | Built in `backend/` (HTTPS enforced by the app, hashed phone numbers, rotating tokens); needs deployment and external testing |
 
 Check the current DPDP Rules text and commencement dates before citing them.
 

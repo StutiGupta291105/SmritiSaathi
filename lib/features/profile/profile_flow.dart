@@ -529,6 +529,7 @@ class _CareInviteState extends State<_CareInvite> {
   Map<String, Object?>? _link;
   final _name = TextEditingController();
   final _proId = TextEditingController();
+  final _phone = TextEditingController();
 
   String t(String k) => tr(widget.lang, k);
 
@@ -542,6 +543,7 @@ class _CareInviteState extends State<_CareInvite> {
   void dispose() {
     _name.dispose();
     _proId.dispose();
+    _phone.dispose();
     super.dispose();
   }
 
@@ -552,7 +554,9 @@ class _CareInviteState extends State<_CareInvite> {
   }
 
   bool get _valid =>
-      _name.text.trim().isNotEmpty && _proId.text.trim().isNotEmpty;
+      _name.text.trim().isNotEmpty &&
+      _proId.text.trim().isNotEmpty &&
+      normalizePhone(_phone.text) != null;
 
   Future<void> _save() async {
     await widget.db.addCareInvite(
@@ -560,6 +564,7 @@ class _CareInviteState extends State<_CareInvite> {
       kind: widget.kind,
       name: _name.text.trim(),
       professionalId: _proId.text.trim(),
+      phone: normalizePhone(_phone.text),
       by: widget.by,
     );
     await _load();
@@ -608,6 +613,13 @@ class _CareInviteState extends State<_CareInvite> {
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                     labelText: t(isDoctor ? 'doctorId' : 'caregiverId')),
+              ),
+              TextField(
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                    labelText: t('invitePhone'), prefixText: '+91 '),
               ),
               const SizedBox(height: 12),
               FilledButton(

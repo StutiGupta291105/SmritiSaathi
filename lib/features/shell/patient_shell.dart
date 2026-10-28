@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/sync_service.dart';
+
 import '../../core/strings.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
@@ -23,7 +25,9 @@ class PatientShell extends StatefulWidget {
     required this.patient,
     required this.onPatientChanged,
     required this.onLogout,
+    this.hooks,
   });
+  final ServerHooks? hooks;
   final AppDatabase db;
   final ReminderNotifier notifier;
   final Voice voice;
@@ -122,6 +126,7 @@ class _PatientShellState extends State<PatientShell> {
         embedded: true,
       ),
       ProfileTab(
+        hooks: widget.hooks,
         db: widget.db,
         notifier: widget.notifier,
         patient: widget.patient,

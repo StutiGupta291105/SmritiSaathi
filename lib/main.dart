@@ -8,12 +8,14 @@ import 'features/auth/auth_screen.dart';
 import 'features/auth/welcome_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/profile/profile_flow.dart';
+import 'features/remote/remote_home.dart';
 import 'features/shell/patient_shell.dart';
 import 'features/splash/splash_screen.dart';
 import 'core/config.dart';
 import 'services/api_client.dart';
 import 'services/otp_service.dart';
 import 'services/reminder_notifier.dart';
+import 'services/sync_service.dart';
 import 'services/voice.dart';
 
 void main() {
@@ -106,6 +108,7 @@ class _BootState extends State<_Boot> {
               notifier: s.notifier,
               voice: s.voice,
               otp: s.otp,
+              api: s.api,
               session: s.session);
         } else {
           child = const SplashScreen();
@@ -130,18 +133,22 @@ class Root extends StatefulWidget {
     required this.voice,
     required this.otp,
     required this.session,
+    this.api,
   });
   final AppDatabase db;
   final ReminderNotifier notifier;
   final Voice voice;
   final OtpService otp;
   final SessionStore session;
+  final ApiClient? api;
 
   @override
   State<Root> createState() => _RootState();
 }
 
-class _RootState extends State<Root> {
+class _RootState extends State<Root> with WidgetsBindingObserver {
+  ServerUser? _serverUser;
+  bool _syncing = false;
   Map<String, Object?>? _account;
   Map<String, Object?>? _patient;
   String _lang = 'en'; // UI language before a patient profile exists
@@ -152,7 +159,35 @@ class _RootState extends State<Root> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _sync();
+  }
+
+  /// Uploads what the patient agreed to share. Silent when offline: the data
+  /// stays queued on the phone and goes out next time.
+  Future<void> _sync() async {
+    final api = widget.api;
+    final patient = _patient;
+    if (api == null || patient == null || _syncing) return;
+    if ((patient['setup_stage'] as int) < 5 || !await api.hasSession) return;
+    _syncing = true;
+    try {
+      final outcome = await SyncService(widget.db, api).run(patient['id'] as String);
+      if (outcome == SyncOutcome.signedOut) await _logout();
+    } finally {
+      _syncing = false;
+    }
   }
 
   Future<void> _load() async {
@@ -171,12 +206,15 @@ class _RootState extends State<Root> {
             lang: patient['language'] as String);
       }
     }
+    final serverUser = await widget.api?.currentUser();
     if (mounted) {
       setState(() {
         _account = account;
         _patient = patient;
+        _serverUser = serverUser;
         _loading = false;
       });
+      _sync();
     }
   }
 
@@ -184,6 +222,7 @@ class _RootState extends State<Root> {
     final id = _account?['id'] as String?;
     if (id != null) await widget.db.recordLogout(id);
     await widget.notifier.clear();
+    await widget.api?.logout();
     await widget.session.clear();
     _started = false;
     await _load();
@@ -223,6 +262,16 @@ class _RootState extends State<Root> {
       );
     }
     if (account['role'] != 'patient') {
+      final api = widget.api;
+      final user = _serverUser;
+      if (api != null && user != null) {
+        return RemoteHome(
+            api: api,
+            user: user,
+            lang: _lang,
+            onLogout: _logout,
+            onSignedOut: _logout);
+      }
       return _RoleComingSoon(
           lang: _lang, name: account['name'] as String, onLogout: _logout);
     }
@@ -240,7 +289,9 @@ class _RootState extends State<Root> {
         onDone: _load,
       );
     }
+    final api = widget.api;
     return PatientShell(
+      hooks: api == null ? null : serverHooks(widget.db, api, _sync),
       db: widget.db,
       notifier: widget.notifier,
       voice: widget.voice,
