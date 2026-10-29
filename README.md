@@ -226,8 +226,8 @@ Fonts are written for a 390 dp phone and scaled by `lib/core/responsive.dart`: a
 
 ## Look and feel
 
-Follows the second design sheet: teal-green brand (`#1B7F63`, headings
-`#15503F`, action buttons `#2FA864`) on a warm cream background, white rounded
+Follows the second design sheet: green brand (`#1B8A4A`, headings
+`#15503F`, buttons `#1B8A4A`) on a warm cream background (`#FAF3EA`), white rounded
 cards with a soft shadow, pastel tiles with a stronger icon colour of the same
 hue, and Nunito lettering (fallbacks: Lexend, Noto Sans Bengali, Noto Sans Devanagari). The fonts are bundled in `assets/fonts` (SIL Open Font
 License, see the `OFL-*.txt` files), so it works offline. Colours live in

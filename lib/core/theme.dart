@@ -7,18 +7,18 @@ import 'package:flutter/material.dart';
 const List<String> kFontFallback = ['Lexend', 'NotoSansBengali', 'NotoSansDevanagari'];
 
 class Palette {
-  static const brand = Color(0xFF1B7F63); // nav highlight, links, accents
+  static const brand = Color(0xFF1B8A4A); // nav highlight, links, accents
   static const brandDeep = Color(0xFF0F2A47); // headings and wordmark: deep navy, as on the sheet
-  static const action = Color(0xFF2FA864); // primary buttons ("Play Now")
-  static const cream = Color(0xFFFBF7EE);
+  static const action = Color(0xFF1B8A4A); // primary buttons ("Play Now")
+  static const cream = Color(0xFFFAF3EA);
   static const ink = Color(0xFF1F2A37);
   static const muted = Color(0xFF6B7280);
-  static const line = Color(0xFFE7E2D6);
+  static const line = Color(0xFFEFE4D3);
 
   // Pastel tile backgrounds (kept under their original names).
   static const tileBlue = Color(0xFFDDE8FB);
   static const tileOrange = Color(0xFFFDE8D0);
-  static const tileGreen = Color(0xFFD9F1E3);
+  static const tileGreen = Color(0xFFE9F5EE);
   static const tilePurple = Color(0xFFE9E1F8);
   static const tileSky = Color(0xFFD8EEF7);
   static const tileRed = Color(0xFFFDE3E1);
@@ -26,7 +26,7 @@ class Palette {
   // Matching strong colours for icons.
   static const blue = Color(0xFF3B6FE0);
   static const orange = Color(0xFFF08A24);
-  static const green = Color(0xFF1B7F63);
+  static const green = Color(0xFF1B8A4A);
   static const purple = Color(0xFF8B6CE0);
   static const sky = Color(0xFF2A9DC8);
   static const red = Color(0xFFE5484D);
