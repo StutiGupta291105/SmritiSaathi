@@ -62,9 +62,10 @@ jobs:
         run: dart run flutter_launcher_icons
       - run: flutter test
       # API_BASE_URL is a repository variable (Settings > Secrets and variables >
-      # Actions > Variables). Leave it unset to build the offline test version.
+      # Actions > Variables). When it is unset the APK points at the Render test
+      # server; set it to another address to override.
       - name: Build the APK
-        run: flutter build apk --release --dart-define=API_BASE_URL=${{ vars.API_BASE_URL }}
+        run: flutter build apk --release --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://smriti-api-227e.onrender.com' }}
       - uses: actions/upload-artifact@v4
         with:
           name: smriti-sathi-apk
