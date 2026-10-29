@@ -1,20 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../core/engagement_alerts.dart';
-import '../../core/profile.dart';
-import '../../core/language_picker.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
 import '../../services/sync_service.dart';
-import '../caregiver/caregiver_area.dart';
-import '../privacy/privacy_screen.dart';
-import '../profile/photo_picker.dart' show Avatar;
+import 'settings_pages.dart';
 
-/// Profile tab: who is signed in, language, spoken instructions, caregiver
-/// area, privacy and log out.
+/// Settings tab: Profile (all details, language, voice, caregiver area,
+/// privacy), Help and Support, About, Emergency SOS, and Log out.
 class ProfileTab extends StatelessWidget {
   const ProfileTab({
     super.key,
@@ -37,33 +32,27 @@ class ProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dob =
-        patient['dob'] == null ? null : DateTime.parse(patient['dob'] as String);
-    final phone = patient['phone'] as String?;
-    final voiceOn = patient['voice_enabled'] == 1;
+    void open(Widget screen) =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 
-    Widget row(IconData icon, Color fg, Color bg, String label,
-            {VoidCallback? onTap, Widget? trailing, Color? labelColor}) =>
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: AppCard(
-            onTap: onTap,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    Widget row(Key key, IconData icon, Color fg, Color bg, String label,
+            VoidCallback onTap) =>
+        InkWell(
+          key: key,
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
             child: Row(children: [
               IconBadge(icon: icon, fg: fg, bg: bg, size: 44, circle: true),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(label,
-                    style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: labelColor)),
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w600)),
               ),
-              trailing ??
-                  (onTap == null
-                      ? const SizedBox.shrink()
-                      : const Icon(Icons.chevron_right_rounded,
-                          size: 28, color: Palette.muted)),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 28, color: Palette.muted),
             ]),
           ),
         );
@@ -73,110 +62,30 @@ class ProfileTab extends StatelessWidget {
       children: [
         ScreenTitle(t('settings')),
         const SizedBox(height: 16),
-        // Language
-        Text(t('language'),
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Palette.brandDeep)),
-        const SizedBox(height: 8),
-        LanguageRow(
-          lang: _lang,
-          onChanged: (code) async {
-            await db.setLanguage(_id, code, 'user');
-            await notifier.resync(patientId: _id, lang: code);
-            onChanged();
-          },
-        ),
-        const SizedBox(height: 18),
-
-        // Who is signed in
         AppCard(
-          child: Row(children: [
-            Avatar(photo: patient['photo'] as List<int>?, radius: 36),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${patient['display_name']}',
-                      style: const TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.w700)),
-                  if (dob != null)
-                    Text('${t('age')}: ${ageFromDob(dob, DateTime.now())} ${t('years')}',
-                        style: const TextStyle(
-                            fontSize: 14, color: Palette.muted)),
-                  if (phone != null)
-                    Text(maskPhone(phone),
-                        style: const TextStyle(
-                            fontSize: 14, color: Palette.muted)),
-                ],
-              ),
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Column(children: [
+            row(const ValueKey('rowProfile'), Icons.person_outline_rounded,
+                Palette.green, Palette.tileGreen, t('tabProfile'),
+                () => open(ProfileDetailsScreen(
+                      hooks: hooks,
+                      db: db,
+                      notifier: notifier,
+                      patientId: _id,
+                      onChanged: onChanged,
+                    ))),
+            row(const ValueKey('rowHelp'), Icons.help_outline_rounded,
+                Palette.blue, Palette.tileBlue, t('helpSupport'),
+                () => open(HelpSupportScreen(lang: _lang))),
+            row(const ValueKey('rowAbout'), Icons.info_outline_rounded,
+                Palette.purple, Palette.tilePurple, t('aboutApp'),
+                () => open(AboutAppScreen(lang: _lang))),
+            row(const ValueKey('rowSos'), Icons.phone_in_talk_outlined,
+                Palette.red, Palette.tileRed, t('emergencySos'),
+                () => open(SosScreen(db: db, patientId: _id, lang: _lang))),
           ]),
         ),
-        const SizedBox(height: 12),
-        row(Icons.record_voice_over_rounded, Palette.sky, Palette.tileSky,
-            t('voiceOn'),
-            trailing: Switch(
-              value: voiceOn,
-              activeThumbColor: Palette.action,
-              onChanged: (v) async {
-                await db.setVoiceEnabled(_id, v, 'user');
-                onChanged();
-              },
-            )),
-        row(Icons.supervisor_account_rounded, Palette.green, Palette.tileGreen,
-            t('caregiverArea'),
-            trailing: FutureBuilder<List<EngagementAlert>>(
-              future: db.currentAlerts(_id),
-              builder: (context, snap) {
-                final n = (snap.data ?? const <EngagementAlert>[])
-                    .where((a) => a.severity == AlertSeverity.attention)
-                    .length;
-                return Row(mainAxisSize: MainAxisSize.min, children: [
-                  if (n > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                          color: Palette.red,
-                          borderRadius: BorderRadius.circular(14)),
-                      child: Text('$n',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14)),
-                    ),
-                  const Icon(Icons.chevron_right_rounded,
-                      size: 28, color: Palette.muted),
-                ]);
-              },
-            ),
-            onTap: () => openCaregiverArea(
-                  context,
-                  db: db,
-                  notifier: notifier,
-                  patientId: _id,
-                  lang: _lang,
-                  onChanged: onChanged,
-                )),
-        row(Icons.lock_rounded, Palette.purple, Palette.tilePurple,
-            t('privacy'),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => PrivacyScreen(
-                    hooks: hooks,
-                    db: db,
-                    notifier: notifier,
-                    patientId: _id,
-                    language: _lang,
-                    onErased: () {
-                      Navigator.of(context).popUntil((r) => r.isFirst);
-                      onChanged();
-                    },
-                  ),
-                ))),
-        const SizedBox(height: 6),
+        const SizedBox(height: 16),
         AppCard(
           color: Palette.tileRed,
           onTap: onLogout,
@@ -194,6 +103,10 @@ class ProfileTab extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 20),
+        Text('${t('appName')} • ${t('tagline')} • $kFooterLine',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: Palette.muted)),
       ],
     );
   }
