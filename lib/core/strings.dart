@@ -319,6 +319,16 @@ const Map<String, Map<String, String>> kStrings = {
 
     'notAMedicalDevice':
         'This app is for memory exercises and reminders. It does not diagnose or treat any condition.',
+    'allowPermsTitle': 'Allow Permissions',
+    'permIntro': 'Allow only what you are comfortable with. You can change these any time in Settings → Privacy.',
+    'permRequired': 'Required',
+    'permAllowed': 'Allowed',
+    'permGameplay': 'Save results',
+    'permReminders': 'Reminders',
+    'permFamily': 'Family contacts',
+    'permDoctor': 'Share with doctor',
+    'permCaregiver': 'Share with caregiver',
+    'permSync': 'Online backup',
     'consentTitle': 'Your data and your permission',
     'consentIntro':
         'We save game results on this device. A caregiver or guardian can give permission on behalf of the person using the app.',
@@ -683,6 +693,16 @@ const Map<String, Map<String, String>> kStrings = {
 
     'notAMedicalDevice':
         'यह ऐप याददाश्त के अभ्यास और रिमाइंडर के लिए है। यह किसी बीमारी का निदान या इलाज नहीं करता।',
+    'allowPermsTitle': 'अनुमतियाँ दें',
+    'permIntro': 'केवल वही अनुमति दें जिसमें आप सहज हों। आप इन्हें कभी भी सेटिंग्स → गोपनीयता में बदल सकते हैं।',
+    'permRequired': 'ज़रूरी',
+    'permAllowed': 'अनुमति दी गई',
+    'permGameplay': 'परिणाम सहेजें',
+    'permReminders': 'रिमाइंडर',
+    'permFamily': 'परिवार के संपर्क',
+    'permDoctor': 'डॉक्टर के साथ साझा करें',
+    'permCaregiver': 'देखभाल करने वाले के साथ साझा करें',
+    'permSync': 'ऑनलाइन बैकअप',
     'consentTitle': 'आपका डेटा और आपकी अनुमति',
     'consentIntro':
         'खेल के परिणाम इसी फ़ोन में सुरक्षित रहते हैं। ऐप इस्तेमाल करने वाले की ओर से देखभाल करने वाला या अभिभावक अनुमति दे सकता है।',

@@ -16,6 +16,7 @@ import 'package:smriti_assist/core/theme.dart';
 import 'package:smriti_assist/data/app_database.dart';
 import 'package:smriti_assist/data/session_store.dart';
 import 'package:smriti_assist/features/auth/auth_screen.dart';
+import 'package:smriti_assist/features/onboarding/onboarding_screen.dart';
 import 'package:smriti_assist/features/auth/welcome_screen.dart';
 import 'package:smriti_assist/features/companion/chat_screen.dart';
 import 'package:smriti_assist/features/games/attention_game.dart';
@@ -136,6 +137,9 @@ void main() {
         api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l),
     'remote patient': (l) => RemotePatientScreen(
         api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l, canSetBaseline: true),
+    'allow permissions': (l) => OnboardingScreen(
+        db: db, account: const {'id': 'a1', 'phone': '9999999999', 'name': 'Asha Ramchandra Prasad'},
+        lang: l, onDone: () {}),
     'welcome': (l) => WelcomeScreen(lang: l, onGetStarted: () {}, onLogin: () {}),
     'auth': (l) => AuthScreen(
         db: db, otp: DevOtpService(), session: const SessionStore(), lang: l,

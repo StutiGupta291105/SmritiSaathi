@@ -65,6 +65,8 @@ ThemeData buildTheme() {
       style: FilledButton.styleFrom(
         backgroundColor: Palette.action,
         foregroundColor: Colors.white,
+        disabledBackgroundColor: const Color(0xFFDADFDC),
+        disabledForegroundColor: Palette.muted,
         minimumSize: const Size.fromHeight(54),
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(16))),
