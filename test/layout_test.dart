@@ -136,7 +136,7 @@ void main() {
         api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l),
     'remote patient': (l) => RemotePatientScreen(
         api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l, canSetBaseline: true),
-    'welcome': (l) => WelcomeScreen(lang: l, onLangChanged: (_) {}, onGetStarted: () {}, onLogin: () {}),
+    'welcome': (l) => WelcomeScreen(lang: l, onGetStarted: () {}, onLogin: () {}),
     'auth': (l) => AuthScreen(
         db: db, otp: DevOtpService(), session: const SessionStore(), lang: l,
         onLangChanged: (_) {}, onLoggedIn: () {}, initialSignUp: true, onBack: () {}),

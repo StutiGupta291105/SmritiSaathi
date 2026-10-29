@@ -176,24 +176,26 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             const SizedBox(height: 8),
             Text(_signUp ? t('createAccount') : t('login'),
+                textAlign: TextAlign.center,
                 style: theme.textTheme.headlineSmall
                     ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            Text(t('iAm'), style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            IgnorePointer(
-              ignoring: waitingForOtp,
-              child: Opacity(
-                opacity: waitingForOtp ? 0.5 : 1,
-                child: PillTabs(
-                  labels: [
-                    for (final r in kRoles)
-                      t('role${r[0].toUpperCase()}${r.substring(1)}')
-                  ],
-                  selected: kRoles.indexOf(_role),
-                  onSelected: (i) => setState(() => _role = kRoles[i]),
-                ),
-              ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              key: const ValueKey('roleDropdown'),
+              initialValue: _role,
+              isExpanded: true,
+              borderRadius: BorderRadius.circular(16),
+              decoration: InputDecoration(labelText: t('iAm')),
+              items: [
+                for (final r in const ['patient', 'caretaker', 'doctor'])
+                  DropdownMenuItem(
+                    value: r,
+                    child: Text(t('role${r[0].toUpperCase()}${r.substring(1)}')),
+                  ),
+              ],
+              onChanged: waitingForOtp
+                  ? null
+                  : (v) => setState(() => _role = v ?? _role),
             ),
             const SizedBox(height: 16),
             if (_signUp)

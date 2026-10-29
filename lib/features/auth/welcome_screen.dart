@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 
-import '../../core/languages.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 
-/// First screen: scenic header, brand, Get Started / Login, language choice.
+/// First screen: scenic header, brand, Get Started / Login.
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({
     super.key,
     required this.lang,
-    required this.onLangChanged,
     required this.onGetStarted,
     required this.onLogin,
   });
   final String lang;
-  final ValueChanged<String> onLangChanged;
   final VoidCallback onGetStarted, onLogin;
 
   String t(String k) => tr(lang, k);
@@ -67,58 +64,6 @@ class WelcomeScreen extends StatelessWidget {
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Palette.brand)),
-                  ),
-                  const SizedBox(height: 22),
-                  Text(
-                    t('chooseLanguage'),
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Palette.brandDeep),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      for (final e in kLanguages.entries)
-                        Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                                left: e.key == kLanguages.keys.first ? 0 : 8),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(14),
-                              onTap: () => onLangChanged(e.key),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 12, horizontal: 2),
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: lang == e.key
-                                      ? Palette.action
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                      color: lang == e.key
-                                          ? Palette.action
-                                          : Palette.line),
-                                ),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    e.value,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: lang == e.key
-                                          ? Colors.white
-                                          : Palette.ink,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
                   ),
                 ],
               ),

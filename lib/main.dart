@@ -274,7 +274,6 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     if (account == null && !_started) {
       return WelcomeScreen(
         lang: _lang,
-        onLangChanged: (l) => setState(() => _lang = l),
         onGetStarted: () => setState(() {
           _started = true;
           _signUp = true;
