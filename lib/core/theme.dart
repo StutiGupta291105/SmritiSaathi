@@ -40,7 +40,7 @@ ThemeData buildTheme() {
   final base = ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
-    fontFamily: 'Poppins',
+    fontFamily: 'Inter',
     scaffoldBackgroundColor: Palette.cream,
     materialTapTargetSize: MaterialTapTargetSize.padded,
     appBarTheme: const AppBarTheme(
@@ -49,7 +49,7 @@ ThemeData buildTheme() {
       foregroundColor: Palette.brandDeep,
       centerTitle: false,
       titleTextStyle: TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'Inter',
           fontSize: 22,
           fontWeight: FontWeight.w600,
           color: Palette.brandDeep),
@@ -69,7 +69,7 @@ ThemeData buildTheme() {
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(16))),
         textStyle: const TextStyle(
-            fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.w600),
+            fontFamily: 'Inter', fontSize: 18, fontWeight: FontWeight.w600),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -81,7 +81,7 @@ ThemeData buildTheme() {
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(16))),
         textStyle: const TextStyle(
-            fontFamily: 'Poppins', fontSize: 17, fontWeight: FontWeight.w600),
+            fontFamily: 'Inter', fontSize: 17, fontWeight: FontWeight.w600),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -110,7 +110,7 @@ ThemeData buildTheme() {
       shadowColor: const Color(0x22000000),
       indicatorColor: Colors.transparent,
       labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-            fontFamily: 'Poppins',
+            fontFamily: 'Inter',
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: states.contains(WidgetState.selected)

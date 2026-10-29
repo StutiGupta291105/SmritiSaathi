@@ -56,11 +56,11 @@ void main() {
 
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    final poppins = FontLoader('Poppins');
+    final inter = FontLoader('Inter');
     for (final w in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
-      poppins.addFont(rootBundle.load('assets/fonts/Poppins-$w.ttf'));
+      inter.addFont(rootBundle.load('assets/fonts/Inter-$w.otf'));
     }
-    await poppins.load();
+    await inter.load();
     sqfliteFfiInit();
     final raw = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
         options: OpenDatabaseOptions(

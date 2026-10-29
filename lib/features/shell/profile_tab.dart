@@ -71,34 +71,8 @@ class ProfileTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       children: [
-        ScreenTitle(t('tabProfile')),
+        ScreenTitle(t('settings')),
         const SizedBox(height: 16),
-        AppCard(
-          child: Row(children: [
-            Avatar(photo: patient['photo'] as List<int>?, radius: 36),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${patient['display_name']}',
-                      style: const TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.w700)),
-                  if (dob != null)
-                    Text('${t('age')}: ${ageFromDob(dob, DateTime.now())} ${t('years')}',
-                        style: const TextStyle(
-                            fontSize: 14, color: Palette.muted)),
-                  if (phone != null)
-                    Text(maskPhone(phone),
-                        style: const TextStyle(
-                            fontSize: 14, color: Palette.muted)),
-                ],
-              ),
-            ),
-          ]),
-        ),
-        const SizedBox(height: 18),
-
         // Language
         Text(t('language'),
             style: const TextStyle(
@@ -128,6 +102,32 @@ class ProfileTab extends StatelessWidget {
         ),
         const SizedBox(height: 18),
 
+        // Who is signed in
+        AppCard(
+          child: Row(children: [
+            Avatar(photo: patient['photo'] as List<int>?, radius: 36),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${patient['display_name']}',
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.w700)),
+                  if (dob != null)
+                    Text('${t('age')}: ${ageFromDob(dob, DateTime.now())} ${t('years')}',
+                        style: const TextStyle(
+                            fontSize: 14, color: Palette.muted)),
+                  if (phone != null)
+                    Text(maskPhone(phone),
+                        style: const TextStyle(
+                            fontSize: 14, color: Palette.muted)),
+                ],
+              ),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 12),
         row(Icons.record_voice_over_rounded, Palette.sky, Palette.tileSky,
             t('voiceOn'),
             trailing: Switch(

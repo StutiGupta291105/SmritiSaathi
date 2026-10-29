@@ -207,6 +207,7 @@ class _PatientShellState extends State<PatientShell> {
         patientId: _id,
         language: _lang,
         embedded: true,
+        onBack: () => setState(() => _tab = 0),
       ),
       ProfileTab(
         hooks: widget.hooks,

@@ -18,6 +18,7 @@ class RemindersScreen extends StatefulWidget {
     required this.patientId,
     required this.language,
     this.embedded = false,
+    this.onBack,
   });
   final AppDatabase db;
   final ReminderNotifier notifier;
@@ -26,6 +27,9 @@ class RemindersScreen extends StatefulWidget {
 
   /// Embedded in another screen (the profile flow): no app bar of its own.
   final bool embedded;
+
+  /// Shows a back arrow beside the title (used when this is a tab).
+  final VoidCallback? onBack;
 
   @override
   State<RemindersScreen> createState() => _RemindersScreenState();
@@ -133,8 +137,23 @@ class _RemindersScreenState extends State<RemindersScreen> {
                     children: [
                       if (!widget.embedded) const SizedBox(height: 0),
                       if (widget.embedded) ...[
-                        ScreenTitle(t('reminders')),
-                        const SizedBox(height: 12),
+                        Row(children: [
+                          if (widget.onBack != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 10),
+                              child: InkWell(
+                                onTap: widget.onBack,
+                                borderRadius: BorderRadius.circular(20),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(Icons.arrow_back_rounded,
+                                      color: Palette.brandDeep),
+                                ),
+                              ),
+                            ),
+                          Expanded(child: ScreenTitle(t('reminders'))),
+                        ]),
+                        const SizedBox(height: 14),
                       ],
                       PillTabs(
                         labels: [t('today'), t('upcoming'), t('all')],
@@ -179,16 +198,16 @@ class _RemindersScreenState extends State<RemindersScreen> {
       child: Opacity(
         opacity: r.active ? 1 : 0.55,
         child: AppCard(
-          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+          padding: const EdgeInsets.fromLTRB(14, 14, 6, 14),
           child: Row(
             children: [
               IconBadge(
                   icon: style.icon,
                   fg: style.fg,
                   bg: style.bg,
-                  size: 46,
+                  size: 52,
                   circle: true),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

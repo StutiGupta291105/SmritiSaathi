@@ -108,10 +108,7 @@ class HomeTab extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(t('greeting'),
-                style: const TextStyle(fontSize: 13, color: Palette.muted)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
 
             // Today's Goal
             AppCard(
@@ -148,11 +145,14 @@ class HomeTab extends StatelessWidget {
                   ),
                   if (!done) ...[
                     const SizedBox(height: 12),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(46)),
-                      onPressed: onPlay,
-                      child: Text(t('playNow')),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(46)),
+                        onPressed: onPlay,
+                        child: Text(t('playNow')),
+                      ),
                     ),
                   ],
                 ],

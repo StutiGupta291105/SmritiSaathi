@@ -13,7 +13,7 @@ const double kMaxContentWidth = 640;
 /// The design sheet uses compact type (titles about 20, body about 13). Our
 /// sizes were written larger, so everything is brought down by this factor.
 /// A person's own system font-size setting is applied on top of it.
-const double kTextBase = 0.82;
+const double kTextBase = 1.0;
 
 double fontScaleFor(double width, double systemScale) {
   final screen = (width / kBaseWidth).clamp(0.9, 1.3);

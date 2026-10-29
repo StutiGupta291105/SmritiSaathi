@@ -35,6 +35,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _turns = <ChatTurn>[];
   final _input = TextEditingController();
+  final _focus = FocusNode();
   final _scroll = ScrollController();
   bool _busy = false;
   bool _emergency = false;
@@ -54,6 +55,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     widget.voice.stop();
     _input.dispose();
+    _focus.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -132,64 +134,55 @@ class _ChatScreenState extends State<ChatScreen> {
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Palette.line),
           ),
-          child: Text(turn.text, style: const TextStyle(fontSize: 19, height: 1.35)),
+          child: Text(turn.text, style: const TextStyle(fontSize: 16, height: 1.35)),
         ),
       );
 
   Widget _chip(IconData icon, String label, VoidCallback onTap) => ActionChip(
         avatar: Icon(icon, size: 22, color: Palette.brandDeep),
-        label: Text(label, style: const TextStyle(fontSize: 16)),
+        label: Text(label, style: const TextStyle(fontSize: 14)),
         backgroundColor: Colors.white,
         side: const BorderSide(color: Palette.line),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         onPressed: onTap,
       );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(t('chatTitle'))),
+      appBar: AppBar(centerTitle: true, title: Text(t('chatTitle'))),
       body: SafeArea(
         child: Column(children: [
-          Container(
-            width: double.infinity,
-            color: Palette.tileSky,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(t('chatNote'), style: const TextStyle(fontSize: 13)),
-          ),
           Expanded(
             child: ListView(
               controller: _scroll,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               children: [
-                const Center(
-                  child: Column(children: [
-                    CircleAvatar(
-                      radius: 38,
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                        shape: BoxShape.circle, color: Palette.tilePurple),
+                    child: const CircleAvatar(
+                      radius: 52,
                       backgroundColor: Colors.white,
                       backgroundImage: AssetImage('assets/images/logo_icon.png'),
                     ),
-                    SizedBox(height: 6),
-                    Text('Smriti',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Palette.brandDeep)),
-                  ]),
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 14),
                 for (final turn in _turns) _bubble(turn),
                 if (_busy)
                   Padding(
                     padding: const EdgeInsets.all(8),
                     child: Text(t('chatThinking'),
-                        style: const TextStyle(color: Palette.muted, fontSize: 16)),
+                        style: const TextStyle(color: Palette.muted, fontSize: 15)),
                   ),
                 if (_offlineNote)
                   Padding(
                     padding: const EdgeInsets.all(8),
                     child: Text(t('chatWorkingOffline'),
-                        style: const TextStyle(color: Palette.muted, fontSize: 14)),
+                        style: const TextStyle(color: Palette.muted, fontSize: 13)),
                   ),
                 if (_canAskOnline)
                   Padding(
@@ -200,7 +193,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(t('chatOnlineAsk'),
-                                style: const TextStyle(fontSize: 16)),
+                                style: const TextStyle(fontSize: 15)),
                             const SizedBox(height: 10),
                             FilledButton(
                                 onPressed: _allowOnline, child: Text(t('allow'))),
@@ -213,7 +206,7 @@ class _ChatScreenState extends State<ChatScreen> {
           // Pinned, so it can never be scrolled out of sight.
           if (_emergency)
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(backgroundColor: Palette.red),
                 onPressed: () => launchUrl(Uri(scheme: 'tel', path: '112')),
@@ -221,43 +214,87 @@ class _ChatScreenState extends State<ChatScreen> {
                 label: Text(t('chatCall112')),
               ),
             ),
+          Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Material(
+                color: Palette.action,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () {
+                    _focus.requestFocus();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(t('chatMicHint'))));
+                  },
+                  child: const SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: Icon(Icons.mic_rounded,
+                          size: 32, color: Colors.white)),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(t('chatTapSpeak'),
+                  style: const TextStyle(fontSize: 13, color: Palette.muted)),
+            ]),
+          ),
+          const SizedBox(height: 8),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: [
-              _chip(Icons.today_rounded, t('qaDay'),
-                  () => _quick(t('qaDay'), () => widget.service.day(widget.lang))),
-              const SizedBox(width: 8),
-              _chip(
-                  Icons.notifications_active_rounded,
-                  t('qaNext'),
-                  () => _quick(t('qaNext'),
-                      () => widget.service.next(widget.patientId, widget.lang))),
-              const SizedBox(width: 8),
-              _chip(Icons.favorite_rounded, t('qaNice'),
-                  () => _quick(t('qaNice'), () async => widget.service.nice(widget.lang))),
+                _chip(Icons.today_rounded, t('qaDay'),
+                    () => _quick(t('qaDay'), () => widget.service.day(widget.lang))),
+                const SizedBox(width: 8),
+                _chip(
+                    Icons.notifications_active_rounded,
+                    t('qaNext'),
+                    () => _quick(t('qaNext'),
+                        () => widget.service.next(widget.patientId, widget.lang))),
+                const SizedBox(width: 8),
+                _chip(Icons.favorite_rounded, t('qaNice'),
+                    () => _quick(t('qaNice'), () async => widget.service.nice(widget.lang))),
               ]),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
             child: Row(children: [
               Expanded(
                 child: TextField(
                   controller: _input,
-                  style: const TextStyle(fontSize: 19),
+                  focusNode: _focus,
+                  style: const TextStyle(fontSize: 16),
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _send(),
-                  decoration: InputDecoration(hintText: t('chatHint')),
+                  decoration: InputDecoration(
+                    hintText: t('chatHint'),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: const BorderSide(color: Palette.line)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: const BorderSide(color: Palette.line)),
+                    suffixIcon: IconButton(
+                        tooltip: t('chatSend'),
+                        onPressed: _busy ? null : _send,
+                        icon: const Icon(Icons.send_rounded,
+                            color: Palette.action)),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                  tooltip: t('chatSend'),
-                  onPressed: _busy ? null : _send,
-                  icon: const Icon(Icons.send_rounded)),
             ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Text(t('chatNote'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11.5, color: Palette.muted)),
           ),
         ]),
       ),

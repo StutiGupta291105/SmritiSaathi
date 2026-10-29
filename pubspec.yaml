@@ -42,12 +42,12 @@ flutter:
   assets:
     - assets/images/
   fonts:
-    - family: Poppins   # bundled (SIL Open Font License), so it works offline
+    - family: Inter   # bundled (SIL Open Font License, see assets/fonts/OFL-Inter.txt), works offline
       fonts:
-        - asset: assets/fonts/Poppins-Regular.ttf
-        - asset: assets/fonts/Poppins-Medium.ttf
+        - asset: assets/fonts/Inter-Regular.otf
+        - asset: assets/fonts/Inter-Medium.otf
           weight: 500
-        - asset: assets/fonts/Poppins-SemiBold.ttf
+        - asset: assets/fonts/Inter-SemiBold.otf
           weight: 600
-        - asset: assets/fonts/Poppins-Bold.ttf
+        - asset: assets/fonts/Inter-Bold.otf
           weight: 700

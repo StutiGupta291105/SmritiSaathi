@@ -1234,7 +1234,7 @@ class _RemoteReportScreenState extends State<RemoteReportScreen> {
                     color: Palette.brandDeep)),
             const SizedBox(height: 12),
             SizedBox(
-              height: 156,
+              height: 180,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -1253,7 +1253,7 @@ class _RemoteReportScreenState extends State<RemoteReportScreen> {
                             const SizedBox(height: 2),
                             Container(
                               width: 26,
-                              height: 6 + 80.0 * pct / 100,
+                              height: 6 + 64.0 * pct / 100,
                               decoration: BoxDecoration(
                                 color: info.color,
                                 borderRadius: BorderRadius.circular(8),

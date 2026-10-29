@@ -152,52 +152,96 @@ class ProgressScreen extends StatelessWidget {
         ]),
         const SizedBox(height: 14),
 
-        // Achievements
+        // Achievements: a compact card; tap for the full list.
         AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Expanded(
-                  child: Text(t('achievements'),
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700)),
-                ),
-                const SizedBox(width: 8),
-                Text('${rewards.unlockedCount} / ${rewards.achievements.length}',
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Palette.orange)),
-              ]),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final a in rewards.achievements)
-                    SizedBox(
-                      width: 84,
-                      child: Column(children: [
-                        IconBadge(
-                          icon: _achievementIcons[a.id] ?? Icons.star_rounded,
-                          fg: a.unlocked ? Palette.orange : Palette.muted,
-                          bg: a.unlocked ? Palette.tileOrange : const Color(0xFFEFEFEF),
-                          size: 52,
-                          circle: true,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(t('ach_${a.id}'),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 11.5,
-                                color: a.unlocked ? Palette.ink : Palette.muted)),
-                      ]),
+          onTap: () => showModalBottomSheet<void>(
+            context: context,
+            backgroundColor: Palette.cream,
+            isScrollControlled: true,
+            shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+            builder: (_) => SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t('achievements'),
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Palette.brandDeep)),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (final a in rewards.achievements)
+                          SizedBox(
+                            width: 84,
+                            child: Column(children: [
+                              IconBadge(
+                                icon: _achievementIcons[a.id] ?? Icons.star_rounded,
+                                fg: a.unlocked ? Palette.orange : Palette.muted,
+                                bg: a.unlocked
+                                    ? Palette.tileOrange
+                                    : const Color(0xFFEFEFEF),
+                                size: 52,
+                                circle: true,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(t('ach_${a.id}'),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: a.unlocked
+                                          ? Palette.ink
+                                          : Palette.muted)),
+                            ]),
+                          ),
+                      ],
                     ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(children: [
+            const IconBadge(
+                icon: Icons.emoji_events_rounded,
+                fg: Palette.orange,
+                bg: Palette.tileOrange,
+                size: 38,
+                circle: true),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t('achievements'),
+                      style: const TextStyle(
+                          fontSize: 13.5, color: Palette.muted)),
+                  Row(children: [
+                    Text('${rewards.unlockedCount}',
+                        style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: Palette.orange)),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.star_rounded,
+                        size: 20, color: Palette.orange),
+                    Text(' / ${rewards.achievements.length}',
+                        style: const TextStyle(
+                            fontSize: 14, color: Palette.muted)),
+                  ]),
                 ],
               ),
-            ],
-          ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Palette.muted),
+          ]),
         ),
         const SizedBox(height: 14),
 

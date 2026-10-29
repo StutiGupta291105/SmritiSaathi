@@ -219,14 +219,27 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
                     style: Theme.of(context).textTheme.headlineMedium),
               ),
             Expanded(
-              child: GridView.count(
-                crossAxisCount: cols,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.95,
-                children: [
-                  for (var i = 0; i < _cards.length; i++) _buildCard(i),
-                ],
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 14,
+                        offset: Offset(0, 5)),
+                  ],
+                ),
+                child: GridView.count(
+                  crossAxisCount: cols,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.95,
+                  children: [
+                    for (var i = 0; i < _cards.length; i++) _buildCard(i),
+                  ],
+                ),
               ),
             ),
           ],

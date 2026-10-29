@@ -50,37 +50,73 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
                   FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Palette.brand,
+                      elevation: 3,
+                      shadowColor: const Color(0x33000000),
+                    ),
                     onPressed: onGetStarted,
                     child: Text(t('getStarted')),
                   ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(onPressed: onLogin, child: Text(t('login'))),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 6),
+                  TextButton(
+                    onPressed: onLogin,
+                    child: Text(t('login'),
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Palette.brand)),
+                  ),
+                  const SizedBox(height: 22),
                   Text(
                     t('chooseLanguage'),
-                    style: const TextStyle(fontSize: 14, color: Palette.muted),
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Palette.brandDeep),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 10,
+                  const SizedBox(height: 10),
+                  Row(
                     children: [
                       for (final e in kLanguages.entries)
-                        ChoiceChip(
-                          label: Text(
-                            e.value,
-                            style: const TextStyle(fontSize: 18),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                                left: e.key == kLanguages.keys.first ? 0 : 8),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: () => onLangChanged(e.key),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12, horizontal: 2),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: lang == e.key
+                                      ? Palette.action
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                      color: lang == e.key
+                                          ? Palette.action
+                                          : Palette.line),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    e.value,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: lang == e.key
+                                          ? Colors.white
+                                          : Palette.ink,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          selected: lang == e.key,
-                          selectedColor: Palette.action,
-                          labelStyle: TextStyle(
-                            color: lang == e.key ? Colors.white : Palette.ink,
-                          ),
-                          showCheckmark: false,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          onSelected: (_) => onLangChanged(e.key),
                         ),
                     ],
                   ),
