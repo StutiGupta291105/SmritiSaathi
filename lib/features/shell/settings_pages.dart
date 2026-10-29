@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/language_picker.dart';
 import '../../core/profile.dart';
+import '../../services/api_client.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -419,10 +420,15 @@ class AccountProfileScreen extends StatefulWidget {
     required this.lang,
     required this.onLangChanged,
     this.careId,
+    this.api,
     this.accent = Palette.brand,
   });
   final String name, role, lang;
   final String? careId;
+
+  /// With the online service: lets the person choose a number their patients
+  /// can call from the app.
+  final ApiClient? api;
   final ValueChanged<String>? onLangChanged;
   final Color accent;
 
@@ -432,7 +438,50 @@ class AccountProfileScreen extends StatefulWidget {
 
 class _AccountProfileScreenState extends State<AccountProfileScreen> {
   late String _lang = widget.lang;
+  late String? _careId = widget.careId;
+  final _phone = TextEditingController();
+  bool _saving = false;
+  String? _saved;
   String t(String k) => tr(_lang, k);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMe();
+  }
+
+  @override
+  void dispose() {
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadMe() async {
+    if (widget.api == null) return;
+    try {
+      final me = await widget.api!.me();
+      if (!mounted) return;
+      setState(() {
+        _careId = me.careId ?? _careId;
+        _phone.text = (me.contactPhone ?? '').replaceFirst('+91', '');
+      });
+    } catch (_) {}
+  }
+
+  bool get _phoneOk => _phone.text.trim().isEmpty || normalizePhone(_phone.text) != null;
+
+  Future<void> _savePhone() async {
+    setState(() => _saving = true);
+    try {
+      final n = _phone.text.trim().isEmpty ? '' : normalizePhone(_phone.text)!;
+      await widget.api!.setContactPhone(n);
+      if (mounted) setState(() => _saved = t('contactSaved'));
+    } on ApiException {
+      if (mounted) setState(() => _saved = t('chatSendFailed'));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -462,7 +511,32 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                   style: const TextStyle(fontSize: 15, color: Palette.muted)),
             ),
             const SizedBox(height: 20),
-            CareIdCard(careId: widget.careId, lang: _lang, accent: widget.accent),
+            CareIdCard(careId: _careId, lang: _lang, accent: widget.accent),
+            if (widget.api != null) ...[
+              const SizedBox(height: 20),
+              Text(t('contactPhoneLabel'),
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Palette.brandDeep)),
+              const SizedBox(height: 8),
+              TextField(
+                key: const ValueKey('contactPhone'),
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                onChanged: (_) => setState(() => _saved = null),
+                decoration: InputDecoration(
+                    prefixText: '+91 ',
+                    helperText: t('contactPhoneHelp'),
+                    helperMaxLines: 2),
+              ),
+              const SizedBox(height: 10),
+              FilledButton(
+                key: const ValueKey('saveContact'),
+                onPressed: _phoneOk && !_saving ? _savePhone : null,
+                child: Text(_saved ?? t('save')),
+              ),
+            ],
             const SizedBox(height: 20),
             Text(t('language'),
                 style: const TextStyle(

@@ -98,3 +98,22 @@ end).
 5. Legal review of the consent notice and the DPDP obligations (children and people
    who cannot give consent themselves, guardian consent, retention periods).
 6. Clinical review of every message the app shows about the person's use of it.
+
+
+## Chat between a patient and their caretaker or doctor
+
+- A conversation is the accepted link between the two. Both sides can read and write
+  only while the link is accepted and the patient's matching sharing consent is on;
+  withdrawing consent ends the link, and then nobody can open the chat. Anything else
+  answers 404 like an unknown id (`chat.py`, `test_chat.py`).
+- Text, photos (JPEG/PNG/WebP, 600 KB at most) and voice notes (AAC, 600 KB, 2 minutes)
+  are stored in the database table `messages`, not as files. The audit log records that a
+  message was sent and its kind, never the content.
+- The patient's export lists the messages (media without its bytes); erasing the patient
+  deletes the conversation.
+- A push notification only says "You have a new message."; it never carries content or
+  the sender's name.
+- A caretaker or doctor may choose to share a phone number so their patients can call
+  from the app (`users.contact_phone`). It is shown only to the patient linked to them.
+- Not yet: end-to-end encryption (the server can read messages, like the rest of the
+  shared data), message retention limits, and reporting or blocking.

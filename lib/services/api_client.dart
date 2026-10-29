@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -19,18 +20,21 @@ class ApiException implements Exception {
 
 /// The signed-in server account.
 class ServerUser {
-  const ServerUser(this.id, this.role, this.name, [this.careId]);
+  const ServerUser(this.id, this.role, this.name, [this.careId, this.contactPhone]);
   final String id, role, name;
+
+  /// The number a caretaker or doctor lets their patients call; null when none.
+  final String? contactPhone;
 
   /// What a patient types to invite a caretaker or doctor; null for patients
   /// and for sessions saved before IDs existed.
   final String? careId;
 
   Map<String, Object?> toJson() =>
-      {'id': id, 'role': role, 'name': name, 'care_id': careId};
+      {'id': id, 'role': role, 'name': name, 'care_id': careId, 'contact_phone': contactPhone};
   factory ServerUser.fromJson(Map<String, dynamic> j) => ServerUser(
       j['id'] as String, j['role'] as String, j['name'] as String,
-      j['care_id'] as String?);
+      j['care_id'] as String?, j['contact_phone'] as String?);
 }
 
 /// Where the tokens and the signed-in user are kept. The platform keystore in
@@ -173,6 +177,27 @@ class ApiClient {
       if (j is Map && j['detail'] is String) detail = j['detail'] as String;
     } catch (_) {}
     throw ApiException(res.statusCode, detail);
+  }
+
+  /// A binary download (a chat photo or voice note), signed in like any call.
+  Future<Uint8List> _bytes(String path, {bool retried = false}) async {
+    final uri = baseUri.replace(path: '${baseUri.path}$path');
+    final token = await _tokens.read(_kAccess);
+    http.Response res;
+    try {
+      final req = http.Request('GET', uri);
+      if (token != null) req.headers['authorization'] = 'Bearer $token';
+      res = await http.Response.fromStream(await _http.send(req).timeout(timeout));
+    } on TimeoutException {
+      throw ApiException(0, 'timeout');
+    } on Exception {
+      throw ApiException(0, 'network');
+    }
+    if (res.statusCode == 401 && !retried && await _refresh()) {
+      return _bytes(path, retried: true);
+    }
+    if (res.statusCode >= 200 && res.statusCode < 300) return res.bodyBytes;
+    throw ApiException(res.statusCode, 'error');
   }
 
   Future<bool> _refresh() async {
@@ -338,4 +363,48 @@ class ApiClient {
       _raw('PATCH', '/v1/patients/$patientId/baseline', body: {'baseline_level': level});
 
   Future<void> revokeLink(String linkId) => _raw('DELETE', '/v1/links/$linkId');
+
+  // ---- chat -----------------------------------------------------------------
+
+  /// Every conversation this account can open, with unread counts.
+  Future<List<Map<String, dynamic>>> chatThreads() async {
+    final j = await _raw('GET', '/v1/chat/threads');
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  /// The latest page, or only what is newer than [after], or an older page.
+  Future<List<Map<String, dynamic>>> chatMessages(String linkId,
+      {int after = 0, int before = 0}) async {
+    final q = after > 0 ? '?after=$after' : before > 0 ? '?before=$before' : '';
+    final j = await _raw('GET', '/v1/chat/$linkId/messages$q');
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> sendChatMessage(
+    String linkId, {
+    required String kind, // text | image | voice
+    String text = '',
+    Uint8List? media,
+    String mime = '',
+    int durationMs = 0,
+  }) =>
+      _raw('POST', '/v1/chat/$linkId/messages', body: {
+        'kind': kind,
+        'text': text,
+        if (media != null) 'media_b64': base64Encode(media),
+        'mime': mime,
+        'duration_ms': durationMs,
+      });
+
+  Future<Uint8List> chatMedia(int messageId) => _bytes('/v1/chat/media/$messageId');
+
+  Future<void> chatMarkRead(String linkId, int upto) =>
+      _raw('POST', '/v1/chat/$linkId/read', body: {'upto': upto});
+
+  /// A caretaker or doctor chooses the number their patients may call ('' = none).
+  Future<ServerUser> setContactPhone(String phoneE164) async {
+    final j = await _raw('PUT', '/v1/auth/me/contact', body: {'phone': phoneE164});
+    return ServerUser.fromJson(j);
+  }
+
 }

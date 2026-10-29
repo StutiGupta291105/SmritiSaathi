@@ -172,7 +172,8 @@ void main() {
         body: SafeArea(
             child: HomeTab(
                 db: db, patientId: pid, name: 'Dada Ramchandra Prasad', photo: null, lang: l,
-                onPlay: () {}, onGames: () {}, onReminders: () {}, onProgress: () {}, onTalk: () {}))),
+                onPlay: () {}, onGames: () {}, onReminders: () {}, onProgress: () {}, onTalk: () {},
+                onChatCaregiver: () {}, onChatDoctor: () {}, unreadCaregiver: 3, unreadDoctor: 12))),
     'games': (l) => Scaffold(
         body: SafeArea(
             child: GamesTab(lang: l, onPlay: (_) {}))),

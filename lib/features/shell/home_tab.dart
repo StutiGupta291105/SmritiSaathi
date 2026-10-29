@@ -31,11 +31,20 @@ class HomeTab extends StatelessWidget {
     required this.onReminders,
     required this.onProgress,
     required this.onTalk,
+    this.onChatCaregiver,
+    this.onChatDoctor,
+    this.unreadCaregiver = 0,
+    this.unreadDoctor = 0,
   });
   final AppDatabase db;
   final String patientId, name, lang;
   final List<int>? photo;
   final VoidCallback onPlay, onGames, onReminders, onProgress, onTalk;
+
+  /// Messages with the linked caregiver and doctor; null hides the buttons
+  /// (builds without an online service).
+  final VoidCallback? onChatCaregiver, onChatDoctor;
+  final int unreadCaregiver, unreadDoctor;
 
   String t(String k) => tr(lang, k);
 
@@ -181,6 +190,16 @@ class HomeTab extends StatelessWidget {
                       Palette.tilePurple, Palette.purple, onTalk)),
             ]),
 
+            if (onChatCaregiver != null && onChatDoctor != null) ...[
+              const SizedBox(height: 14),
+              _chatCard('talkCaregiver', Icons.volunteer_activism_rounded,
+                  t('talkToCaregiver'), Palette.green, Palette.tileGreen,
+                  unreadCaregiver, onChatCaregiver!),
+              const SizedBox(height: 10),
+              _chatCard('talkDoctor', Icons.medical_services_rounded,
+                  t('talkToDoctor'), Palette.purple, Palette.tilePurple,
+                  unreadDoctor, onChatDoctor!),
+            ],
             const SizedBox(height: 14),
             AppCard(
               onTap: () => _showFamily(context),
@@ -266,6 +285,36 @@ class HomeTab extends StatelessWidget {
             ),
           ),
         ),
+      );
+
+  Widget _chatCard(String key, IconData icon, String label, Color fg, Color bg,
+          int unread, VoidCallback onTap) =>
+      AppCard(
+        key: ValueKey(key),
+        onTap: onTap,
+        color: bg,
+        child: Row(children: [
+          IconBadge(icon: icon, fg: fg, bg: Colors.white, circle: true),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(label,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          ),
+          if (unread > 0)
+            Container(
+              margin: const EdgeInsetsDirectional.only(end: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                  color: Palette.red, borderRadius: BorderRadius.circular(14)),
+              child: Text('$unread',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14)),
+            ),
+          const Icon(Icons.chevron_right_rounded),
+        ]),
       );
 
   Future<void> _showFamily(BuildContext context) async {

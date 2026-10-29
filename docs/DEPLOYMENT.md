@@ -14,6 +14,26 @@ afterwards takes about a minute) and the free database expires after 30 days.
    New repository variable `API_BASE_URL` = that address (no trailing slash).
 5. Run the Build Android APK workflow and install the new APK on both phones.
 
+# Turning on push notifications for new chat messages
+
+The server already sends a push on every new message (`SMRITI_PUSH_PROVIDER=fcm`), and
+the app already registers a token when one is available. Two things are yours to do,
+because they need your Firebase project:
+
+1. Create a Firebase project, add an Android app with package `in.smritisathi.app`, and
+   download `google-services.json`.
+2. Create a service-account key (Project settings > Service accounts) and set on the
+   server: `SMRITI_PUSH_PROVIDER=fcm`, `SMRITI_FCM_PROJECT_ID`, and
+   `SMRITI_FCM_CREDENTIALS_FILE` (plus `pip install google-auth requests`).
+3. In the app: add `firebase_core` and `firebase_messaging`, put `google-services.json` in
+   `android/app/` (the APK workflow must copy it in), and implement `PushTokenSource`
+   with `FirebaseMessaging.instance.getToken()` as described in
+   `lib/services/push_service.dart`.
+
+Until then messages still arrive: open chats refresh every few seconds, dashboards and the
+patient's home refresh every 20 seconds and show a banner, and unread counts are always
+correct. They just do not wake a phone whose app is closed.
+
 # Deployment guide (reference: AWS Mumbai, ap-south-1)
 
 Nothing is deployed yet. This is a reference layout; any Indian region of any

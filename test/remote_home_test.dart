@@ -233,6 +233,8 @@ void main() {
     }
     await t.tap(find.byKey(const ValueKey('rowProfile')));
     await t.pumpAndSettle();
+    await t.drag(find.byType(ListView).last, const Offset(0, -400));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('languageRow')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('lang_hi')));

@@ -9,7 +9,8 @@ import '../../core/strings.dart';
 /// Lets the person take or choose a photo, shrunk to 512 px. The bytes go
 /// straight into the encrypted database; the temporary file the picker leaves
 /// in the app cache is deleted so no unencrypted copy stays on the phone.
-Future<Uint8List?> pickPhoto(BuildContext context, String lang) async {
+Future<Uint8List?> pickPhoto(BuildContext context, String lang,
+    {int maxSide = 512, int quality = 80}) async {
   final source = await showModalBottomSheet<ImageSource>(
     context: context,
     builder: (_) => SafeArea(
@@ -35,7 +36,10 @@ Future<Uint8List?> pickPhoto(BuildContext context, String lang) async {
   if (source == null) return null;
   try {
     final picked = await ImagePicker().pickImage(
-        source: source, maxWidth: 512, maxHeight: 512, imageQuality: 80);
+        source: source,
+        maxWidth: maxSide.toDouble(),
+        maxHeight: maxSide.toDouble(),
+        imageQuality: quality);
     if (picked == null) return null;
     final bytes = await picked.readAsBytes();
     try {

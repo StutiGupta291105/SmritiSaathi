@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/dates.dart';
@@ -7,6 +9,7 @@ import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../services/api_client.dart';
+import '../chat/messages_screen.dart';
 import '../reminders/reminder_style.dart';
 import '../shell/settings_pages.dart';
 
@@ -48,6 +51,8 @@ class _RemoteHomeState extends State<RemoteHome> {
   bool _loading = true;
   String? _errorKey;
   late String? _careId = widget.user.careId;
+  List<Map<String, dynamic>> _threads = const [];
+  Timer? _chatTimer;
   late int _tab = widget.initialTab;
 
   String t(String k) => tr(widget.lang, k);
@@ -57,6 +62,47 @@ class _RemoteHomeState extends State<RemoteHome> {
   void initState() {
     super.initState();
     _load();
+    _chatTimer = Timer.periodic(const Duration(seconds: 20), (_) => _loadThreads());
+  }
+
+  @override
+  void dispose() {
+    _chatTimer?.cancel();
+    super.dispose();
+  }
+
+  int get _unreadTotal =>
+      _threads.fold<int>(0, (n, x) => n + ((x['unread'] as int?) ?? 0));
+
+  Future<void> _loadThreads() async {
+    try {
+      final rows = await widget.api.chatThreads();
+      if (!mounted) return;
+      final before = _unreadTotal;
+      setState(() => _threads = rows);
+      if (_unreadTotal > before && ModalRoute.of(context)?.isCurrent == true) {
+        final from = rows.firstWhere((x) => ((x['unread'] as int?) ?? 0) > 0,
+            orElse: () => const {});
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(t('newMessageFrom')
+                .replaceAll('{a}', '${from['patient_name'] ?? ''}'))));
+      }
+    } on ApiException catch (e) {
+      if (e.isUnauthorized) widget.onSignedOut?.call();
+    }
+  }
+
+  Future<void> _openChat(Map<String, dynamic> th) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => MessagesScreen(
+              api: widget.api,
+              linkId: th['link_id'] as String,
+              title: '${th['patient_name']}',
+              lang: widget.lang,
+              accent: _accent,
+              onActivity: _loadThreads,
+            )));
+    _loadThreads();
   }
 
   Future<void> _load() async {
@@ -67,6 +113,7 @@ class _RemoteHomeState extends State<RemoteHome> {
     try {
       final invites = await widget.api.myInvites();
       final patients = await widget.api.myPatients();
+      await _loadThreads();
       if (_careId == null) {
         try {
           _careId = (await widget.api.me()).careId;
@@ -113,7 +160,17 @@ class _RemoteHomeState extends State<RemoteHome> {
               canSetBaseline: widget.user.role == 'caretaker',
               accent: _accent,
               lang: widget.lang,
+              onMessage: _threadFor(p['patient_id'] as String) == null
+                  ? null
+                  : () => _openChat(_threadFor(p['patient_id'] as String)!),
               onSignedOut: widget.onSignedOut)));
+
+  Map<String, dynamic>? _threadFor(String patientId) {
+    for (final th in _threads) {
+      if (th['patient_id'] == patientId) return th;
+    }
+    return null;
+  }
 
   int _alertCount(Map<String, dynamic> p) =>
       (p['alerts_needing_attention'] as int?) ?? 0;
@@ -178,7 +235,10 @@ class _RemoteHomeState extends State<RemoteHome> {
                 onDestinationSelected: (i) => setState(() => _tab = i),
                 destinations: [
                   NavigationDestination(
-                      icon: const Icon(Icons.home_outlined),
+                      icon: Badge(
+                          isLabelVisible: _unreadTotal > 0,
+                          label: Text('$_unreadTotal'),
+                          child: const Icon(Icons.home_outlined)),
                       selectedIcon: Icon(Icons.home_rounded, color: _accent),
                       label: t('tabHome')),
                   NavigationDestination(
@@ -322,6 +382,55 @@ class _RemoteHomeState extends State<RemoteHome> {
         ),
       );
 
+  Widget _threadRow(Map<String, dynamic> th) {
+    final unread = (th['unread'] as int?) ?? 0;
+    final kind = th['last_kind'] as String?;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        key: ValueKey('thread_${th['link_id']}'),
+        padding: const EdgeInsets.all(12),
+        onTap: () => _openChat(th),
+        child: Row(children: [
+          _avatar('${th['patient_name']}'),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${th['patient_name']}',
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Palette.brandDeep)),
+                Text(
+                    kind == null
+                        ? t('noMessagesYet')
+                        : kind == 'image'
+                            ? t('photoMsg')
+                            : kind == 'voice'
+                                ? t('voiceNote')
+                                : t('chatMessages'),
+                    style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
+              ],
+            ),
+          ),
+          if (unread > 0)
+            Container(
+              margin: const EdgeInsetsDirectional.only(end: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+              decoration: BoxDecoration(
+                  color: Palette.red, borderRadius: BorderRadius.circular(12)),
+              child: Text('$unread',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, color: Colors.white)),
+            ),
+          Icon(Icons.chat_bubble_outline_rounded, color: _accent),
+        ]),
+      ),
+    );
+  }
+
   // ---- tab 0: dashboard ------------------------------------------------------
 
   Widget _dashboard() {
@@ -386,6 +495,14 @@ class _RemoteHomeState extends State<RemoteHome> {
                 Palette.tileRed, '$_alertTotal', t('rmStatAlerts')),
           ]),
           const SizedBox(height: 18),
+          if (_threads.isNotEmpty) ...[
+            _heading(t('chatMessages')),
+            const SizedBox(height: 8),
+            for (final th in ([..._threads]
+              ..sort((a, b) => '${b['last_at'] ?? ''}'.compareTo('${a['last_at'] ?? ''}'))))
+              _threadRow(th),
+            const SizedBox(height: 10),
+          ],
           _heading(t('rmRecent')),
           const SizedBox(height: 10),
           if (recent.isEmpty)
@@ -610,6 +727,7 @@ class _RemoteHomeState extends State<RemoteHome> {
                 () => open(AccountProfileScreen(
                       name: widget.user.name,
                       careId: _careId,
+                      api: widget.api,
                       role: widget.user.role,
                       lang: widget.lang,
                       accent: _accent,
@@ -669,7 +787,11 @@ class RemotePatientScreen extends StatefulWidget {
     this.canSetBaseline = false,
     this.accent = Palette.action,
     this.onSignedOut,
+    this.onMessage,
   });
+
+  /// Opens the conversation with this patient; null when there is none.
+  final VoidCallback? onMessage;
   final ApiClient api;
   final String patientId, name, lang;
   final bool canSetBaseline;
@@ -755,6 +877,15 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
     final r = _report;
     return Scaffold(
       appBar: AppBar(
+        actions: [
+          if (widget.onMessage != null)
+            IconButton(
+              key: const ValueKey('messagePatient'),
+              tooltip: t('chatMessages'),
+              icon: Icon(Icons.chat_rounded, color: widget.accent),
+              onPressed: widget.onMessage,
+            ),
+        ],
         titleSpacing: 0,
         title: Row(children: [
           CircleAvatar(
