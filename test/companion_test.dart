@@ -129,6 +129,7 @@ void main() {
           givenByName: 'Asha',
           givenByRelation: 'self',
           noticeVersion: 'v2');
+      await db.setServerPatientId(pid, 'srv-1');
       calls = [];
       sentBody = null;
       failWith = 0;
@@ -142,6 +143,14 @@ void main() {
 
     test('without the companion consent nothing goes online', () async {
       final r = await ask(make(), 'How are you?');
+      expect(calls, isEmpty);
+      expect(r.text, contains('Tap a button'));
+    });
+
+    test('before the first sync (no server id) it stays on the phone', () async {
+      await consent(true);
+      await raw.update('patients', {'server_patient_id': null});
+      final r = await ask(make(), 'Hello');
       expect(calls, isEmpty);
       expect(r.text, contains('Tap a button'));
     });
@@ -170,7 +179,7 @@ void main() {
           history: const [ChatTurn(false, 'Hi'), ChatTurn(true, 'Hello')],
           text: 'Tell me a story');
       expect(r.text, 'I am here.');
-      expect(calls, ['/v1/patients/$pid/companion/chat']);
+      expect(calls, ['/v1/patients/srv-1/companion/chat']);
       final body = sentBody!;
       expect(jsonEncode(body), isNot(contains('SECRET')));
       expect((body['messages'] as List).map((m) => m['role']), ['assistant', 'user', 'user']);

@@ -193,6 +193,14 @@ address the app stays the offline test build (fixed code 123456, no server).
 | Talk to Smriti: AI chat through the server | done and off by default; own consent; read the companion section of `docs/SECURITY.md` (data can leave India, cost, safety limits) before turning it on |
 | Push notifications to caretakers and doctors | server done and tested with a fake provider; the Firebase provider is untested live and the app does not register for push yet |
 
+### Testing Phase 4
+
+- `flutter test` (157 tests) and `cd backend && python -m pytest` (94 tests) run in CI.
+- `test_e2e/server_flow_test.dart` drives the app's real code against a running server
+  with no mocks: sign-up by OTP, sync, caretaker invite and report, Talk to Smriti, restore on
+  a new phone, withdrawing consent, and erasure. Its header explains how to run it. It found
+  a real bug (the companion used the phone's patient id instead of the server's) that the mocked tests missed.
+
 ## Look and feel
 
 Follows the second design sheet: teal-green brand (`#1B7F63`, headings

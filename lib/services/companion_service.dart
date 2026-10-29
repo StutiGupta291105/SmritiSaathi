@@ -32,9 +32,14 @@ class CompanionService {
   final ApiClient? api;
   final DateTime Function() _clock;
 
+  /// The server's id for this patient, once the app has synced at least once.
+  Future<String?> _serverId(String patientId) async =>
+      (await db.patientById(patientId))?['server_patient_id'] as String?;
+
   Future<bool> onlineAllowed(String patientId) async =>
       api != null &&
       await api!.hasSession &&
+      await _serverId(patientId) != null &&
       await db.hasConsent(patientId, 'companion');
 
   /// True when the server could be used if the person agreed.
@@ -71,7 +76,7 @@ class CompanionService {
     final done = await db.doneKeys(patientId, days: 2);
     try {
       final out = await api!.companionChat(
-        patientId,
+        (await _serverId(patientId))!,
         messages: [
           for (final t in history.take(history.length))
             {'role': t.fromUser ? 'user' : 'assistant', 'content': t.text},
