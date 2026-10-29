@@ -286,12 +286,12 @@ class _ProfileFlowState extends State<ProfileFlow> {
             if (picked != null) setState(() => _dob = picked);
           },
         ),
-        if (age != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text('${t('age')}: $age ${t('years')}',
-                style: kHeadlineSmall.copyWith(color: Palette.brand)),
-          ),
+        _label(t('age')),
+        TextFormField(
+          key: ValueKey('profileAge_$age'),
+          initialValue: age == null ? '' : '$age ${t('years')}',
+          readOnly: true,
+        ),
         _label('${t('cityTown')} ${t('optional')}'),
         TextField(
           key: const ValueKey('profileCity'),
