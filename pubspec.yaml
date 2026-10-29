@@ -51,3 +51,26 @@ flutter:
           weight: 600
         - asset: assets/fonts/Nunito-Bold.ttf
           weight: 700
+    - family: Lexend   # fallback after Nunito (OFL, see assets/fonts/OFL-Lexend.txt)
+      fonts:
+        - asset: assets/fonts/Lexend-Regular.ttf
+        - asset: assets/fonts/Lexend-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Lexend-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Lexend-Bold.ttf
+          weight: 700
+    - family: NotoSansBengali   # Bengali/Assamese script (OFL, see OFL-NotoSans.txt)
+      fonts:
+        - asset: assets/fonts/NotoSansBengali-Regular.ttf
+        - asset: assets/fonts/NotoSansBengali-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansBengali-Bold.ttf
+          weight: 700
+    - family: NotoSansDevanagari   # Devanagari script: Hindi, Marathi, Nepali... (OFL)
+      fonts:
+        - asset: assets/fonts/NotoSansDevanagari-Regular.ttf
+        - asset: assets/fonts/NotoSansDevanagari-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansDevanagari-Bold.ttf
+          weight: 700

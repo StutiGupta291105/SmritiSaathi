@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 /// Colours taken from the design sheet: teal-green brand on a warm cream
 /// background, bright green action buttons, soft pastel tiles with a stronger
 /// icon colour of the same hue.
+/// Nunito leads; Lexend, then the Noto script fonts, cover anything it lacks.
+const List<String> kFontFallback = ['Lexend', 'NotoSansBengali', 'NotoSansDevanagari'];
+
 class Palette {
   static const brand = Color(0xFF1B7F63); // nav highlight, links, accents
   static const brandDeep = Color(0xFF0F2A47); // headings and wordmark: deep navy, as on the sheet
@@ -41,6 +44,7 @@ ThemeData buildTheme() {
     useMaterial3: true,
     colorScheme: scheme,
     fontFamily: 'Nunito',
+    fontFamilyFallback: kFontFallback,
     scaffoldBackgroundColor: Palette.cream,
     materialTapTargetSize: MaterialTapTargetSize.padded,
     appBarTheme: const AppBarTheme(

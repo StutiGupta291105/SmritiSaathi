@@ -59,11 +59,18 @@ void main() {
 
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    final font = FontLoader('Nunito');
-    for (final w in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
-      font.addFont(rootBundle.load('assets/fonts/Nunito-$w.ttf'));
+    for (final fam in {
+      'Nunito': ['Regular', 'Medium', 'SemiBold', 'Bold'],
+      'Lexend': ['Regular', 'Medium', 'SemiBold', 'Bold'],
+      'NotoSansBengali': ['Regular', 'SemiBold', 'Bold'],
+      'NotoSansDevanagari': ['Regular', 'SemiBold', 'Bold'],
+    }.entries) {
+      final font = FontLoader(fam.key);
+      for (final w in fam.value) {
+        font.addFont(rootBundle.load('assets/fonts/${fam.key}-$w.ttf'));
+      }
+      await font.load();
     }
-    await font.load();
     sqfliteFfiInit();
     final raw = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
         options: OpenDatabaseOptions(
