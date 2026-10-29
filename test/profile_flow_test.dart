@@ -130,6 +130,38 @@ void main() {
     expect(find.text('4/5  ·  Caregiver details'), findsOneWidget);
   });
 
+  testWidgets('caregiver page takes a Care ID, not a phone number', (t) async {
+    await t.binding.setSurfaceSize(const Size(390, 1500));
+    await t.runAsync(() => db.recordConsent(
+        patientId: pid,
+        purposes: {'caregiver_share': true},
+        givenByName: 'Asha Devi',
+        givenByRelation: 'self',
+        noticeVersion: 'v2'));
+    final w = (await t.runAsync(() => app(stage: 3)))!;
+    await t.pumpWidget(w);
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await t.pump();
+    expect(find.text('Mobile number'), findsNothing);
+    await t.enterText(find.byType(TextField).first, 'Ravi');
+    await t.enterText(find.byKey(const ValueKey('careId_caregiver')), 'hello');
+    await t.pump();
+    expect(find.textContaining('not a Care ID'), findsOneWidget);
+    expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save invite')).onPressed, isNull);
+    // a doctor's ID does not fit the caregiver page
+    await t.enterText(find.byKey(const ValueKey('careId_caregiver')), 'dr-ab23xy');
+    await t.pump();
+    expect(find.textContaining('not a Care ID'), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey('careId_caregiver')), 'cg-ab23xy');
+    await t.pump();
+    await t.tap(find.widgetWithText(FilledButton, 'Save invite'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await t.pump();
+    final links = (await t.runAsync(() => db.listCareLinks(pid)))!;
+    expect(links.single['professional_id'], 'CG-AB23XY');
+    expect(links.single['phone'], isNull);
+  });
+
   testWidgets('routine page: add a daily routine, delete it, then Save finishes',
       (t) async {
     final w = (await t.runAsync(() => app(stage: 4)))!;

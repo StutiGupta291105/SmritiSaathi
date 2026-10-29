@@ -4,6 +4,18 @@ import '../lang_data.dart';
 const LangData kLangKn = LangData(
   strings: {
     "appName": "ಸ್ಮೃತಿ ಸಾಥಿ",
+    "inviteSent": "ಆಹ್ವಾನ ಕಳುಹಿಸಲಾಗಿದೆ. ಅವರ ಒಪ್ಪಿಗೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ.",
+    "careIdLabel": "ನಿಮ್ಮ Care ID",
+    "careIdShare": "ನೀವು ಯಾರನ್ನು ನೋಡಿಕೊಳ್ಳುತ್ತೀರೋ ಅವರಿಗೆ ಈ ID ನೀಡಿ. ಅವರು ತಮ್ಮ ಆ್ಯಪ್‌ನಲ್ಲಿ ಇದನ್ನು ನಮೂದಿಸಿ ನಿಮ್ಮನ್ನು ಆಹ್ವಾನಿಸುತ್ತಾರೆ.",
+    "careIdCopy": "ID ನಕಲಿಸಿ",
+    "careIdCopied": "ID ನಕಲಿಸಲಾಗಿದೆ",
+    "rmRequests": "ವಿನಂತಿಗಳು",
+    "rmNoRequests": "ಈಗ ಯಾವುದೇ ವಿನಂತಿ ಇಲ್ಲ. ಯಾರಾದರೂ ನಿಮ್ಮ Care ID ಬಳಸಿ ಆಹ್ವಾನಿಸಿದರೆ ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ.",
+    "careIdField": "ಅವರ Care ID",
+    "careIdHelp": "ಅವರ ಆ್ಯಪ್‌ನಲ್ಲಿ ವಿನಂತಿಗಳನ್ನು ತೆರೆದು ತಮ್ಮ Care ID ನಿಮಗೆ ನೀಡಲು ಹೇಳಿ.",
+    "invalidCareId": "ಇದು Care ID ಅಲ್ಲ. ಇದು CG-AB23XY ಅಥವಾ DR-AB23XY ರೀತಿ ಇರುತ್ತದೆ.",
+    "careIdNotFound": "ಈ ID ಯಾರಿಗೂ ಇಲ್ಲ. ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+    "careIdChange": "ಬೇರೆ ID ನಮೂದಿಸಿ",
     "helpSupport": "ಸಹಾಯ ಮತ್ತು ಬೆಂಬಲ",
     "aboutApp": "ಆ್ಯಪ್ ಬಗ್ಗೆ",
     "emergencySos": "ತುರ್ತು SOS",

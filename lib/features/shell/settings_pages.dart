@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/language_picker.dart';
@@ -417,9 +418,11 @@ class AccountProfileScreen extends StatefulWidget {
     required this.role,
     required this.lang,
     required this.onLangChanged,
+    this.careId,
     this.accent = Palette.brand,
   });
   final String name, role, lang;
+  final String? careId;
   final ValueChanged<String>? onLangChanged;
   final Color accent;
 
@@ -459,6 +462,8 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                   style: const TextStyle(fontSize: 15, color: Palette.muted)),
             ),
             const SizedBox(height: 20),
+            CareIdCard(careId: widget.careId, lang: _lang, accent: widget.accent),
+            const SizedBox(height: 20),
             Text(t('language'),
                 style: const TextStyle(
                     fontSize: 16,
@@ -478,4 +483,44 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       ),
     );
   }
+}
+
+
+/// A caretaker's or doctor's own Care ID, with a copy button. A patient types
+/// it to invite them; nothing is shared until they accept.
+class CareIdCard extends StatelessWidget {
+  const CareIdCard({super.key, required this.careId, required this.lang, this.accent = Palette.brand});
+  final String? careId;
+  final String lang;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+        key: const ValueKey('careIdCard'),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(tr(lang, 'careIdLabel'),
+              style: const TextStyle(fontSize: 14, color: Palette.muted)),
+          const SizedBox(height: 4),
+          Row(children: [
+            Expanded(
+              child: Text(careId ?? '…',
+                  key: const ValueKey('careIdText'),
+                  style: kHeadlineMedium.copyWith(color: accent, letterSpacing: 1.5)),
+            ),
+            if (careId != null)
+              IconButton(
+                tooltip: tr(lang, 'careIdCopy'),
+                icon: const Icon(Icons.copy_rounded),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: careId!));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(tr(lang, 'careIdCopied'))));
+                },
+              ),
+          ]),
+          const SizedBox(height: 6),
+          Text(tr(lang, 'careIdShare'),
+              style: const TextStyle(fontSize: 14, height: 1.35, color: Palette.muted)),
+        ]),
+      );
 }

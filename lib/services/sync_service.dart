@@ -73,17 +73,29 @@ class SyncService {
 
       for (final inv in await db.unsentInvites(patientId)) {
         try {
+          // A phone number means an older invite; new ones carry the care ID.
+          final phone = inv['phone'] as String?;
+          final byPhone = phone != null && phone.isNotEmpty;
           final out = await api.createInvite(
             serverId,
             role: _serverRole[inv['kind']] ?? 'caretaker',
-            phoneE164: inv['phone'] as String,
+            phoneE164: byPhone ? phone : '',
+            careId: byPhone ? '' : inv['professional_id'] as String,
             name: inv['name'] as String,
-            professionalId: inv['professional_id'] as String,
+            professionalId: byPhone ? inv['professional_id'] as String : '',
           );
           await db.setCareLinkServerId(inv['id'] as String, out['id'] as String);
         } on ApiException catch (e) {
-          // 403: consent for this kind of sharing is not given; leave it queued.
           if (e.isNetwork || e.isUnauthorized) rethrow;
+          // Nobody has that ID (or it is the wrong kind): the patient is told
+          // and can enter another. 403 (no consent yet) stays queued.
+          if (e.detail == 'care_id_not_found' ||
+              e.detail == 'invalid_care_id' ||
+              e.detail == 'care_id_wrong_role') {
+            await db.setCareLinkStatus(inv['id'] as String, 'notfound');
+          } else if (e.detail == 'already_invited') {
+            await db.setCareLinkStatus(inv['id'] as String, 'pending');
+          }
         }
       }
 

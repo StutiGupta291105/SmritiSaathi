@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .config import Settings, load_settings
-from .db import Base, make_engine, make_session_factory
+from .db import Base, add_missing_columns, make_engine, make_session_factory
 from .migrate import require_up_to_date
 from .ratelimit import SlidingWindowLimiter
 from . import companion as companion_mod
@@ -27,6 +27,7 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
         require_up_to_date(engine)  # tables are only ever changed by `alembic upgrade head`
     else:
         Base.metadata.create_all(engine)
+        add_missing_columns(engine, Base.metadata)
     app.state.settings = s
     app.state.engine = engine
     app.state.sessionmaker = make_session_factory(engine, {"audit_key": s.secret_key})

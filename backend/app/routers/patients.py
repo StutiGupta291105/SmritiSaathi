@@ -13,7 +13,7 @@ from ..models import (CONSENT_PURPOSES, ROLE_PURPOSE, Consent, GameSession,
                       ReminderMark, ReminderSchedule, User)
 from ..schemas import (BaselineIn, ConsentsIn, InviteIn, LinkOut, PatientIn,
                        PatientOut, SyncIn, SyncOut)
-from ..security import normalize_phone, phone_hmac
+from ..security import clean_care_id, normalize_phone, phone_hmac, role_of_care_id
 
 router = APIRouter(prefix="/v1/patients", tags=["patients"])
 
@@ -120,19 +120,33 @@ def invite(patient_id: str, body: InviteIn, request: Request,
     p = patient_for_owner(db, user, patient_id)
     if not consent_granted(db, p.id, ROLE_PURPOSE[body.role]):
         raise HTTPException(403, "consent_required")
-    phone = normalize_phone(body.phone)
-    if phone is None:
-        raise HTTPException(422, "invalid_phone")
-    if body.role == "doctor" and not body.professional_id.strip():
-        raise HTTPException(422, "professional_id_required")
-    ph = phone_hmac(phone, settings_of(request))
+    care_id = clean_care_id(body.care_id) if body.care_id.strip() else None
+    if body.care_id.strip() and care_id is None:
+        raise HTTPException(422, "invalid_care_id")
+    if care_id:
+        if role_of_care_id(care_id) != body.role:
+            raise HTTPException(422, "care_id_wrong_role")
+        # IDs are random and the answer is rate limited like everything else.
+        if db.scalar(select(User.id).where(User.care_id == care_id,
+                                           User.role == body.role)) is None:
+            raise HTTPException(404, "care_id_not_found")
+        ph, who = "", Link.invitee_care_id == care_id
+    else:
+        phone = normalize_phone(body.phone)
+        if phone is None:
+            raise HTTPException(422, "invalid_phone")
+        if body.role == "doctor" and not body.professional_id.strip():
+            raise HTTPException(422, "professional_id_required")
+        ph = phone_hmac(phone, settings_of(request))
+        who = Link.invitee_phone_hmac == ph
     dup = db.execute(select(Link).where(
-        Link.patient_id == p.id, Link.member_role == body.role,
-        Link.invitee_phone_hmac == ph, Link.status.in_(("pending", "accepted")),
+        Link.patient_id == p.id, Link.member_role == body.role, who,
+        Link.status.in_(("pending", "accepted")),
     )).scalar_one_or_none()
     if dup:
         raise HTTPException(409, "already_invited")
     link = Link(patient_id=p.id, member_role=body.role, invitee_phone_hmac=ph,
+                invitee_care_id=care_id,
                 invitee_name=body.name.strip(), professional_id=body.professional_id.strip())
     db.add(link)
     db.flush()

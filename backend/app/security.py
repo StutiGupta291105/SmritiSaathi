@@ -65,3 +65,24 @@ def decode_access_token(token: str, s: Settings) -> dict:
         token, s.secret_key, algorithms=["HS256"], audience=AUDIENCE,
         options={"require": ["exp", "sub", "aud", "iat"]},
     )
+
+
+_CARE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O/1/I/L
+CARE_ID_PATTERN = re.compile(r"^(CG|DR)-[A-HJKMNP-Z2-9]{6}$")
+_CARE_PREFIX = {"caretaker": "CG", "doctor": "DR"}
+
+
+def new_care_id(role: str) -> str:
+    """An ID a patient types to invite a caretaker ('CG-') or doctor ('DR-')."""
+    return _CARE_PREFIX[role] + "-" + "".join(
+        secrets.choice(_CARE_ALPHABET) for _ in range(6))
+
+
+def clean_care_id(raw: str) -> str | None:
+    """Upper-cased and checked, or None when it is not shaped like a care ID."""
+    cid = raw.strip().upper().replace(" ", "")
+    return cid if CARE_ID_PATTERN.match(cid) else None
+
+
+def role_of_care_id(cid: str) -> str:
+    return "doctor" if cid.startswith("DR-") else "caretaker"

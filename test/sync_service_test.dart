@@ -21,6 +21,7 @@ void main() {
   late List<String> calls;
   late Map<String, Object?> lastSync;
   late Object? lastConsents;
+  Map<String, dynamic>? lastInvite;
   var offline = false;
   var existing = false;
   var serverBaseline = 2;
@@ -48,6 +49,10 @@ void main() {
             }
             if (p.endsWith('/invites')) {
               expect(body['role'], 'caretaker'); // local 'caregiver' maps here
+              lastInvite = body;
+              if (body['care_id'] == 'CG-NOBODY') {
+                return _j(404, {'detail': 'care_id_not_found'});
+              }
               return _j(201, {'id': 'srv-l'});
             }
             if (p.endsWith('/sync')) {
@@ -137,6 +142,36 @@ void main() {
     expect(await db.unsyncedSessions(pid), isEmpty);
     final row = (await raw.query('care_links', where: 'id = ?', whereArgs: [link])).single;
     expect([row['server_link_id'], row['status'], row['verified']], ['srv-l', 'accepted', 1]);
+  });
+
+  test('an invite by Care ID is sent as the ID, with no phone number', () async {
+    await db.addCareInvite(
+        patientId: pid,
+        kind: 'caregiver',
+        name: 'Ravi',
+        professionalId: 'CG-AB23XY',
+        by: 'Asha');
+    expect(await make().run(pid), SyncOutcome.done);
+    expect(lastInvite!['care_id'], 'CG-AB23XY');
+    expect(lastInvite!.containsKey('phone'), isFalse);
+  });
+
+  test('an unknown Care ID is marked, not retried forever', () async {
+    final id = await db.addCareInvite(
+        patientId: pid,
+        kind: 'caregiver',
+        name: 'Ravi',
+        professionalId: 'CG-NOBODY',
+        by: 'Asha');
+    await make().run(pid);
+    var row = (await raw.query('care_links', where: 'id = ?', whereArgs: [id])).single;
+    expect(row['status'], 'notfound');
+    calls.clear();
+    await make().run(pid);
+    expect(calls.where((c) => c.endsWith('/invites')), isEmpty);
+    // the patient can replace it
+    await db.deleteCareLink(id);
+    expect(await raw.query('care_links', where: 'id = ?', whereArgs: [id]), isEmpty);
   });
 
   test('second run does not recreate or resend consents and sessions', () async {

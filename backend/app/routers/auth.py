@@ -11,14 +11,29 @@ from ..deps import current_user, get_db, ip_hash, settings_of
 from ..models import OtpChallenge, RefreshToken, User, new_id
 from ..schemas import (OtpRequest, OtpRequestOut, OtpVerify, RefreshIn,
                        TokenOut, UserOut)
-from ..security import (constant_time_equal, make_access_token, new_otp,
+from ..security import (constant_time_equal, make_access_token, new_care_id, new_otp,
                         new_refresh_token, normalize_phone, otp_hash,
                         phone_hmac, refresh_hash)
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
 
+def ensure_care_id(db: Session, user: User) -> None:
+    """Caretakers and doctors each get one ID, so a patient can invite them
+    without anyone's phone number being shared."""
+    if user.role == "patient" or user.care_id:
+        return
+    for _ in range(10):
+        cid = new_care_id(user.role)
+        if db.scalar(select(User.id).where(User.care_id == cid)) is None:
+            user.care_id = cid
+            db.flush()
+            return
+    raise HTTPException(500, "care_id_unavailable")
+
+
 def _issue(db: Session, user: User, s) -> TokenOut:
+    ensure_care_id(db, user)
     refresh = new_refresh_token()
     db.add(RefreshToken(
         user_id=user.id, token_hash=refresh_hash(refresh, s),
@@ -27,7 +42,7 @@ def _issue(db: Session, user: User, s) -> TokenOut:
     return TokenOut(
         access_token=make_access_token(user.id, user.role, s),
         refresh_token=refresh,
-        user=UserOut(id=user.id, role=user.role, name=user.name),
+        user=UserOut(id=user.id, role=user.role, name=user.name, care_id=user.care_id),
     )
 
 
@@ -141,5 +156,6 @@ def logout(body: RefreshIn, request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserOut)
-def me(user: User = Depends(current_user)):
-    return UserOut(id=user.id, role=user.role, name=user.name)
+def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    ensure_care_id(db, user)
+    return UserOut(id=user.id, role=user.role, name=user.name, care_id=user.care_id)

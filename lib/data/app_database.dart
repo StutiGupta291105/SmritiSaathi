@@ -978,9 +978,17 @@ class AppDatabase {
   Future<List<Map<String, Object?>>> unsentInvites(String patientId) =>
       _db.query('care_links',
           where:
-              "patient_id = ? AND server_link_id IS NULL AND phone IS NOT NULL AND status = 'pending'",
+              "patient_id = ? AND server_link_id IS NULL AND status = 'pending'",
           whereArgs: [patientId],
           orderBy: 'rowid');
+
+  /// 'notfound': the server has no one with that care ID.
+  Future<void> setCareLinkStatus(String linkId, String status) =>
+      _db.update('care_links', {'status': status},
+          where: 'id = ?', whereArgs: [linkId]);
+
+  Future<void> deleteCareLink(String linkId) =>
+      _db.delete('care_links', where: 'id = ?', whereArgs: [linkId]);
 
   Future<void> setCareLinkServerId(String linkId, String serverLinkId) =>
       _db.update('care_links', {'server_link_id': serverLinkId},

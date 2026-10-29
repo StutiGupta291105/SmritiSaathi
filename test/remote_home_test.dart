@@ -100,12 +100,19 @@ void main() {
     });
     await t.pumpWidget(_app(api));
     await t.pumpAndSettle();
-    expect(find.text('Meera'), findsOneWidget);
+    // The dashboard lists only people who already share; a request is not one.
+    expect(find.text('Meera'), findsNothing);
     expect(find.text('Asha'), findsOneWidget);
+    // Requests have their own tab, with a badge and the person's Care ID.
+    await t.tap(find.text('Requests'));
+    await t.pumpAndSettle();
+    expect(find.text('Meera'), findsOneWidget);
+    expect(find.byKey(const ValueKey('careIdCard')), findsOneWidget);
     await t.tap(find.text('Accept'));
     await t.pumpAndSettle();
     expect(accepted, isTrue);
     expect(find.text('Meera'), findsNothing);
+    expect(find.byKey(const ValueKey('noRequests')), findsOneWidget);
   });
 
   testWidgets('opening a patient shows the shared report and alerts', (t) async {

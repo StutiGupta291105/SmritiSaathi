@@ -33,6 +33,8 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     # Set by an operator after checking a doctor's registration; never by the user.
     verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # What a patient types to invite this caretaker or doctor (CG-XXXXXX / DR-XXXXXX).
+    care_id: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)
     __table_args__ = (UniqueConstraint("phone_hmac", "role", name="uq_user_phone_role"),)
 
 
@@ -79,7 +81,8 @@ class Link(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), index=True)
     member_role: Mapped[str] = mapped_column(String(12))
-    invitee_phone_hmac: Mapped[str] = mapped_column(String(64), index=True)
+    invitee_phone_hmac: Mapped[str] = mapped_column(String(64), index=True, default="")
+    invitee_care_id: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)
     invitee_name: Mapped[str] = mapped_column(String(120))
     professional_id: Mapped[str] = mapped_column(String(64), default="")
     member_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)

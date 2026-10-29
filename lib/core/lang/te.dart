@@ -4,6 +4,18 @@ import '../lang_data.dart';
 const LangData kLangTe = LangData(
   strings: {
     "appName": "స్మృతి సాథీ",
+    "inviteSent": "ఆహ్వానం పంపబడింది. వారు అంగీకరించడానికి వేచి ఉంది.",
+    "careIdLabel": "మీ Care ID",
+    "careIdShare": "మీరు చూసుకునే వారికి ఈ ID ఇవ్వండి. వారు తమ యాప్‌లో దీన్ని నమోదు చేసి మిమ్మల్ని ఆహ్వానిస్తారు.",
+    "careIdCopy": "ID కాపీ చేయండి",
+    "careIdCopied": "ID కాపీ అయింది",
+    "rmRequests": "అభ్యర్థనలు",
+    "rmNoRequests": "ప్రస్తుతం అభ్యర్థనలు లేవు. ఎవరైనా మీ Care ID తో ఆహ్వానిస్తే ఇక్కడ కనిపిస్తుంది.",
+    "careIdField": "వారి Care ID",
+    "careIdHelp": "వారి యాప్‌లో అభ్యర్థనలు తెరిచి వారి Care ID మీకు ఇవ్వమని చెప్పండి.",
+    "invalidCareId": "ఇది Care ID కాదు. ఇది CG-AB23XY లేదా DR-AB23XY లా ఉంటుంది.",
+    "careIdNotFound": "ఈ ID ఎవరికీ లేదు. సరిచూసి మళ్లీ ప్రయత్నించండి.",
+    "careIdChange": "మరో ID నమోదు చేయండి",
     "helpSupport": "సహాయం మరియు మద్దతు",
     "aboutApp": "యాప్ గురించి",
     "emergencySos": "అత్యవసర SOS",

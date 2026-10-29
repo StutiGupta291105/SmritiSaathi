@@ -4,6 +4,18 @@ import '../lang_data.dart';
 const LangData kLangSa = LangData(
   strings: {
     "appName": "स्मृतिसाथी",
+    "inviteSent": "आमन्त्रणं प्रेषितम्। तस्य स्वीकारं प्रतीक्षते।",
+    "careIdLabel": "भवतः Care ID",
+    "careIdShare": "यस्य भवान् परिचर्यां करोति तस्मै इमं ID ददातु। सः स्वस्य अनुप्रयोगे इमं योजयित्वा भवन्तम् आमन्त्रयिष्यति।",
+    "careIdCopy": "ID प्रतिलिपिं करोतु",
+    "careIdCopied": "ID प्रतिलिपितम्",
+    "rmRequests": "अनुरोधाः",
+    "rmNoRequests": "अधुना कोऽपि अनुरोधः नास्ति। यदा कश्चित् भवतः Care ID द्वारा आमन्त्रयति तदा अत्र दृश्यते।",
+    "careIdField": "तस्य Care ID",
+    "careIdHelp": "तं वदतु यत् स्वस्य अनुप्रयोगे अनुरोधान् उद्घाट्य स्वं Care ID भवते ददातु।",
+    "invalidCareId": "एषः Care ID न अस्ति। सः CG-AB23XY अथवा DR-AB23XY इव दृश्यते।",
+    "careIdNotFound": "एतस्य ID कस्यापि नास्ति। परीक्ष्य पुनः यतताम्।",
+    "careIdChange": "अन्यम् ID योजयतु",
     "helpSupport": "साहाय्यं समर्थनं च",
     "aboutApp": "अनुप्रयोगविषये",
     "emergencySos": "आपत्कालीन SOS",

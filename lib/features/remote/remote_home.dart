@@ -47,6 +47,7 @@ class _RemoteHomeState extends State<RemoteHome> {
   List<Map<String, dynamic>> _patients = const [];
   bool _loading = true;
   String? _errorKey;
+  late String? _careId = widget.user.careId;
   late int _tab = widget.initialTab;
 
   String t(String k) => tr(widget.lang, k);
@@ -66,6 +67,13 @@ class _RemoteHomeState extends State<RemoteHome> {
     try {
       final invites = await widget.api.myInvites();
       final patients = await widget.api.myPatients();
+      if (_careId == null) {
+        try {
+          _careId = (await widget.api.me()).careId;
+        } catch (_) {
+          // The ID shows once the next refresh works.
+        }
+      }
       if (!mounted) return;
       setState(() {
         _invites = invites;
@@ -131,7 +139,13 @@ class _RemoteHomeState extends State<RemoteHome> {
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
-    final pages = [_dashboard(), _patientsTab(), _alertsTab(), _settings()];
+    final pages = [
+      _dashboard(),
+      _patientsTab(),
+      _requestsTab(),
+      _alertsTab(),
+      _settings()
+    ];
     return Theme(
       // Buttons and tabs take the role's colour.
       data: base.copyWith(
@@ -171,6 +185,13 @@ class _RemoteHomeState extends State<RemoteHome> {
                       icon: const Icon(Icons.groups_outlined),
                       selectedIcon: Icon(Icons.groups_rounded, color: _accent),
                       label: t('rmStatPeople')),
+                  NavigationDestination(
+                      icon: Badge(
+                          isLabelVisible: _invites.isNotEmpty,
+                          label: Text('${_invites.length}'),
+                          child: const Icon(Icons.mail_outline_rounded)),
+                      selectedIcon: Icon(Icons.mail_rounded, color: _accent),
+                      label: t('rmRequests')),
                   NavigationDestination(
                       icon: Badge(
                           isLabelVisible: _alertTotal > 0,
@@ -334,7 +355,7 @@ class _RemoteHomeState extends State<RemoteHome> {
           ),
           IconButton(
             tooltip: t('rmStatAlerts'),
-            onPressed: () => setState(() => _tab = 2),
+            onPressed: () => setState(() => _tab = 3),
             icon: Badge(
                 isLabelVisible: _alertTotal > 0,
                 label: Text('$_alertTotal'),
@@ -365,12 +386,6 @@ class _RemoteHomeState extends State<RemoteHome> {
                 Palette.tileRed, '$_alertTotal', t('rmStatAlerts')),
           ]),
           const SizedBox(height: 18),
-          if (_invites.isNotEmpty) ...[
-            _heading(t('rmInvites')),
-            const SizedBox(height: 8),
-            for (final i in _invites) _inviteCard(i),
-            const SizedBox(height: 8),
-          ],
           _heading(t('rmRecent')),
           const SizedBox(height: 10),
           if (recent.isEmpty)
@@ -419,6 +434,32 @@ class _RemoteHomeState extends State<RemoteHome> {
             ],
           ),
         ),
+      );
+
+  // ---- tab 2: requests (invitations from patients) -------------------------
+
+  Widget _requestsTab() => ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        children: [
+          ScreenTitle(t('rmRequests')),
+          const SizedBox(height: 12),
+          CareIdCard(careId: _careId, lang: widget.lang, accent: _accent),
+          const SizedBox(height: 16),
+          _errorLine(),
+          if (_loading)
+            const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()))
+          else if (_invites.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(t('rmNoRequests'),
+                  key: const ValueKey('noRequests'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: Palette.muted)),
+            ),
+          for (final i in _invites) _inviteCard(i),
+        ],
       );
 
   // ---- tab 1: patients -------------------------------------------------------
@@ -568,6 +609,7 @@ class _RemoteHomeState extends State<RemoteHome> {
                 Palette.green, Palette.tileGreen, t('tabProfile'),
                 () => open(AccountProfileScreen(
                       name: widget.user.name,
+                      careId: _careId,
                       role: widget.user.role,
                       lang: widget.lang,
                       accent: _accent,

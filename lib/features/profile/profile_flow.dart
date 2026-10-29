@@ -616,7 +616,6 @@ class _CareInviteState extends State<_CareInvite> {
   Map<String, Object?>? _link;
   final _name = TextEditingController();
   final _proId = TextEditingController();
-  final _phone = TextEditingController();
 
   String t(String k) => tr(widget.lang, k);
 
@@ -630,7 +629,6 @@ class _CareInviteState extends State<_CareInvite> {
   void dispose() {
     _name.dispose();
     _proId.dispose();
-    _phone.dispose();
     super.dispose();
   }
 
@@ -640,20 +638,31 @@ class _CareInviteState extends State<_CareInvite> {
     if (mounted) setState(() => _link = mine.isEmpty ? null : mine.last);
   }
 
-  bool get _valid =>
-      _name.text.trim().isNotEmpty &&
-      _proId.text.trim().isNotEmpty &&
-      normalizePhone(_phone.text) != null;
+  /// CG-AB23XY for a caregiver, DR-AB23XY for a doctor.
+  static final _careId = RegExp(r'^(CG|DR)-[A-HJKMNP-Z2-9]{6}$');
+
+  String get _typedId => _proId.text.trim().toUpperCase().replaceAll(' ', '');
+
+  bool get _idOk =>
+      _careId.hasMatch(_typedId) &&
+      _typedId.startsWith(widget.kind == 'doctor' ? 'DR-' : 'CG-');
+
+  bool get _valid => _name.text.trim().isNotEmpty && _idOk;
 
   Future<void> _save() async {
     await widget.db.addCareInvite(
       patientId: widget.patientId,
       kind: widget.kind,
       name: _name.text.trim(),
-      professionalId: _proId.text.trim(),
-      phone: normalizePhone(_phone.text),
+      professionalId: _typedId,
       by: widget.by,
     );
+    await _load();
+  }
+
+  Future<void> _enterAnother(String linkId) async {
+    await widget.db.deleteCareLink(linkId);
+    _proId.clear();
     await _load();
   }
 
@@ -693,11 +702,23 @@ class _CareInviteState extends State<_CareInvite> {
               const SizedBox(height: 8),
               Wrap(spacing: 8, children: [
                 Chip(
-                  avatar: const Icon(Icons.schedule, size: 20),
-                  label: Text(link['status'] == 'pending'
-                      ? t('invitePending')
-                      : t('status${'${link['status']}'[0].toUpperCase()}${'${link['status']}'.substring(1)}')),
+                  avatar: Icon(
+                      link['status'] == 'notfound'
+                          ? Icons.error_outline_rounded
+                          : Icons.schedule,
+                      size: 20),
+                  label: Text(link['status'] == 'notfound'
+                      ? t('careIdNotFound')
+                      : link['status'] == 'pending'
+                          ? t(link['server_link_id'] == null
+                              ? 'invitePending'
+                              : 'inviteSent')
+                          : t('status${'${link['status']}'[0].toUpperCase()}${'${link['status']}'.substring(1)}')),
                 ),
+                if (link['status'] == 'notfound')
+                  TextButton(
+                      onPressed: () => _enterAnother(link['id'] as String),
+                      child: Text(t('careIdChange'))),
                 if (isDoctor && link['verified'] == 1)
                   Chip(
                     avatar: const Icon(Icons.verified_rounded,
@@ -713,18 +734,23 @@ class _CareInviteState extends State<_CareInvite> {
                 decoration: InputDecoration(
                     labelText: t(isDoctor ? 'doctorName' : 'caregiverName')),
               ),
+              const SizedBox(height: 12),
               TextField(
+                key: ValueKey('careId_${widget.kind}'),
                 controller: _proId,
+                textCapitalization: TextCapitalization.characters,
+                autocorrect: false,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                    labelText: t(isDoctor ? 'doctorId' : 'caregiverId')),
-              ),
-              TextField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                    labelText: t('invitePhone'), prefixText: '+91 '),
+                  labelText: t('careIdField'),
+                  hintText: 'CG-AB23XY',
+                  helperText: t('careIdHelp'),
+                  helperMaxLines: 3,
+                  errorText: _proId.text.trim().isNotEmpty && !_idOk
+                      ? t('invalidCareId')
+                      : null,
+                  errorMaxLines: 3,
+                ),
               ),
               const SizedBox(height: 12),
               FilledButton(

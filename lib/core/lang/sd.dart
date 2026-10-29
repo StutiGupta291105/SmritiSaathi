@@ -4,6 +4,18 @@ import '../lang_data.dart';
 const LangData kLangSd = LangData(
   strings: {
     "appName": "سمرتي ساٿي",
+    "inviteSent": "دعوت موڪلي وئي. هن جي قبوليت جو انتظار آهي.",
+    "careIdLabel": "توهان جو Care ID",
+    "careIdShare": "جنهن جي توهان سنڀال ڪندا آهيو کيس هي ID ڏيو. هو پنهنجي ايپ ۾ اهو داخل ڪري توهان کي سڏيندو.",
+    "careIdCopy": "ID ڪاپي ڪريو",
+    "careIdCopied": "ID ڪاپي ٿيو",
+    "rmRequests": "درخواستون",
+    "rmNoRequests": "هاڻي ڪا به درخواست ناهي. جڏهن ڪو توهان جي Care ID سان سڏيندو ته هتي ڏيکاريو ويندو.",
+    "careIdField": "سندس Care ID",
+    "careIdHelp": "کيس چئو ته پنهنجي ايپ ۾ درخواستون کولي پنهنجو Care ID توهان کي ڏئي.",
+    "invalidCareId": "هي Care ID ناهي. اهو CG-AB23XY يا DR-AB23XY جهڙو ٿئي ٿو.",
+    "careIdNotFound": "هي ID ڪنهن وٽ ناهي. جانچي ٻيهر ڪوشش ڪريو.",
+    "careIdChange": "ٻيو ID داخل ڪريو",
     "helpSupport": "مدد ۽ سهڪار",
     "aboutApp": "ايپ بابت",
     "emergencySos": "هنگامي SOS",

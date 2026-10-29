@@ -4,6 +4,18 @@ import '../lang_data.dart';
 const LangData kLangBrx = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "inviteSent": "हारिनाय खेवनाय जादों। बेयो फोनायनाय बाहागो थायो।",
+    "careIdLabel": "नोंथांनि Care ID",
+    "careIdShare": "नोंथाङा जायखौ गोहोनो थानाय, बेयाखौ बे ID होबो। बेया हाबाय एपाव बेखौ फिन्नानै नोंथांखौ हारिनो हागौ।",
+    "careIdCopy": "ID कपि खालाम",
+    "careIdCopied": "ID कपि जादों",
+    "rmRequests": "अनुरोध",
+    "rmNoRequests": "दिनै मोनसे अनुरोध नङा। मोनसे नोंथांनि Care ID आ हारिनायाव बेयो फेसे नांगौ।",
+    "careIdField": "बेनि Care ID",
+    "careIdHelp": "बेयाखौ ननि एपाव अनुरोध खेवनानै बेनि Care ID नोंखौ होनो फोरमाय।",
+    "invalidCareId": "बे Care ID नङा। बे CG-AB23XY नांथाय DR-AB23XY खोनो मोनो।",
+    "careIdNotFound": "बे ID मोनसेआव नङा। सायनानै फिन गोहो।",
+    "careIdChange": "गुबुन ID बाहाय",
     "helpSupport": "मदद आरो सहायक",
     "aboutApp": "एपखौ बारे",
     "emergencySos": "आपातकालीन SOS",

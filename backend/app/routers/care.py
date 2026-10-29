@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from .. import analytics, audit
@@ -20,7 +20,9 @@ router = APIRouter(prefix="/v1", tags=["care"])
 def _pending_for(db: Session, user: User) -> list[tuple[Link, Patient]]:
     rows = db.execute(
         select(Link, Patient).join(Patient, Patient.id == Link.patient_id).where(
-            Link.invitee_phone_hmac == user.phone_hmac,
+            or_(Link.invitee_phone_hmac == user.phone_hmac,
+                and_(Link.invitee_care_id.is_not(None),
+                     Link.invitee_care_id == user.care_id)),
             Link.member_role == user.role,
             Link.status == "pending",
         ).order_by(Link.created_at)

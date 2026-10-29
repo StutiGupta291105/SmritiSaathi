@@ -4,6 +4,18 @@ import '../lang_data.dart';
 const LangData kLangPa = LangData(
   strings: {
     "appName": "ਸਮ੍ਰਿਤੀ ਸਾਥੀ",
+    "inviteSent": "ਸੱਦਾ ਭੇਜਿਆ ਗਿਆ। ਉਹਨਾਂ ਦੇ ਸਵੀਕਾਰ ਕਰਨ ਦੀ ਉਡੀਕ ਹੈ।",
+    "careIdLabel": "ਤੁਹਾਡਾ Care ID",
+    "careIdShare": "ਜਿਸ ਦੀ ਤੁਸੀਂ ਸੰਭਾਲ ਕਰਦੇ ਹੋ ਉਸਨੂੰ ਇਹ ID ਦਿਓ। ਉਹ ਆਪਣੀ ਐਪ ਵਿੱਚ ਇਸਨੂੰ ਪਾ ਕੇ ਤੁਹਾਨੂੰ ਸੱਦਾ ਦੇਣਗੇ।",
+    "careIdCopy": "ID ਕਾਪੀ ਕਰੋ",
+    "careIdCopied": "ID ਕਾਪੀ ਹੋ ਗਿਆ",
+    "rmRequests": "ਬੇਨਤੀਆਂ",
+    "rmNoRequests": "ਹੁਣ ਕੋਈ ਬੇਨਤੀ ਨਹੀਂ। ਜਦੋਂ ਕੋਈ ਤੁਹਾਡੇ Care ID ਨਾਲ ਸੱਦਾ ਦੇਵੇਗਾ ਤਾਂ ਇੱਥੇ ਦਿਖੇਗਾ।",
+    "careIdField": "ਉਹਨਾਂ ਦਾ Care ID",
+    "careIdHelp": "ਉਹਨਾਂ ਨੂੰ ਕਹੋ ਕਿ ਆਪਣੀ ਐਪ ਵਿੱਚ ਬੇਨਤੀਆਂ ਖੋਲ੍ਹ ਕੇ ਆਪਣਾ Care ID ਤੁਹਾਨੂੰ ਦੇਣ।",
+    "invalidCareId": "ਇਹ Care ID ਨਹੀਂ ਹੈ। ਇਹ CG-AB23XY ਜਾਂ DR-AB23XY ਵਰਗਾ ਦਿਸਦਾ ਹੈ।",
+    "careIdNotFound": "ਇਹ ID ਕਿਸੇ ਕੋਲ ਨਹੀਂ। ਜਾਂਚ ਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "careIdChange": "ਹੋਰ ID ਪਾਓ",
     "helpSupport": "ਮਦਦ ਅਤੇ ਸਹਾਇਤਾ",
     "aboutApp": "ਐਪ ਬਾਰੇ",
     "emergencySos": "ਐਮਰਜੈਂਸੀ SOS",

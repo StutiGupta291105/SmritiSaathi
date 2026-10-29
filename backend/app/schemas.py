@@ -36,6 +36,7 @@ class UserOut(BaseModel):
     id: str
     role: Role
     name: str
+    care_id: str | None = None  # caretakers and doctors only
 
 
 class TokenOut(BaseModel):
@@ -82,7 +83,8 @@ class ConsentsIn(BaseModel):
 
 class InviteIn(BaseModel):
     role: LinkRole
-    phone: str = Field(max_length=24)
+    phone: str = Field(default="", max_length=24)
+    care_id: str = Field(default="", max_length=16)  # the invitee's care ID; use this or phone
     name: str = Field(min_length=1, max_length=120)
     professional_id: str = Field(default="", max_length=64)
 

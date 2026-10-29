@@ -4,6 +4,18 @@ import '../lang_data.dart';
 const LangData kLangDoi = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "inviteSent": "न्योता भेजेआ गेआ। उंदे कबूल करने दी उडीक ऐ।",
+    "careIdLabel": "तुंदा Care ID",
+    "careIdShare": "जिसदी तुस देखभाल करदे ओ उसी एह् ID देओ। ओह अपने ऐप च इसी पाइयै तुसेंगी न्योता देग।",
+    "careIdCopy": "ID कॉपी करो",
+    "careIdCopied": "ID कॉपी होई गेआ",
+    "rmRequests": "अनुरोध",
+    "rmNoRequests": "हून कोई अनुरोध नेईं। जिसले कोई तुंदे Care ID कन्नै न्योता देग तां एत्थें दिक्खेग।",
+    "careIdField": "उंदा Care ID",
+    "careIdHelp": "उसी आखो जे अपने ऐप च अनुरोध खोलियै अपना Care ID तुसेंगी देऐ।",
+    "invalidCareId": "एह् Care ID नेईं ऐ। एह् CG-AB23XY जां DR-AB23XY आंगर लगदा ऐ।",
+    "careIdNotFound": "एह् ID कुसै कोल नेईं ऐ। जांची करियै फरी कोशश करो।",
+    "careIdChange": "होर ID पाओ",
     "helpSupport": "मदद ते सहायता",
     "aboutApp": "ऐप दे बारे च",
     "emergencySos": "आपातकालीन SOS",

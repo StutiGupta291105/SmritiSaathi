@@ -4,6 +4,18 @@ import '../lang_data.dart';
 const LangData kLangMr = LangData(
   strings: {
     "appName": "स्मृती साथी",
+    "inviteSent": "आमंत्रण पाठवले. त्यांच्या स्वीकाराची प्रतीक्षा आहे.",
+    "careIdLabel": "तुमचा Care ID",
+    "careIdShare": "तुम्ही ज्यांची काळजी घेता त्यांना हा ID द्या. ते त्यांच्या अ‍ॅपमध्ये तो टाकून तुम्हाला आमंत्रित करतील.",
+    "careIdCopy": "ID कॉपी करा",
+    "careIdCopied": "ID कॉपी झाला",
+    "rmRequests": "विनंत्या",
+    "rmNoRequests": "सध्या कोणतीही विनंती नाही. कोणी तुमच्या Care ID ने आमंत्रित केल्यास ती इथे दिसेल.",
+    "careIdField": "त्यांचा Care ID",
+    "careIdHelp": "त्यांना सांगा की त्यांच्या अ‍ॅपमध्ये विनंत्या उघडून त्यांचा Care ID तुम्हाला द्यावा.",
+    "invalidCareId": "हा Care ID नाही. तो CG-AB23XY किंवा DR-AB23XY सारखा दिसतो.",
+    "careIdNotFound": "हा ID कोणाकडे नाही. तपासून पुन्हा प्रयत्न करा.",
+    "careIdChange": "दुसरा ID टाका",
     "helpSupport": "मदत आणि सहाय्य",
     "aboutApp": "अ‍ॅपविषयी",
     "emergencySos": "आपत्कालीन SOS",

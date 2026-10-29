@@ -19,12 +19,18 @@ class ApiException implements Exception {
 
 /// The signed-in server account.
 class ServerUser {
-  const ServerUser(this.id, this.role, this.name);
+  const ServerUser(this.id, this.role, this.name, [this.careId]);
   final String id, role, name;
 
-  Map<String, Object?> toJson() => {'id': id, 'role': role, 'name': name};
-  factory ServerUser.fromJson(Map<String, dynamic> j) =>
-      ServerUser(j['id'] as String, j['role'] as String, j['name'] as String);
+  /// What a patient types to invite a caretaker or doctor; null for patients
+  /// and for sessions saved before IDs existed.
+  final String? careId;
+
+  Map<String, Object?> toJson() =>
+      {'id': id, 'role': role, 'name': name, 'care_id': careId};
+  factory ServerUser.fromJson(Map<String, dynamic> j) => ServerUser(
+      j['id'] as String, j['role'] as String, j['name'] as String,
+      j['care_id'] as String?);
 }
 
 /// Where the tokens and the signed-in user are kept. The platform keystore in
@@ -252,16 +258,26 @@ class ApiClient {
   Future<Map<String, dynamic>> createInvite(
     String patientId, {
     required String role,
-    required String phoneE164,
+    String phoneE164 = '',
+    String careId = '',
     required String name,
     String professionalId = '',
   }) =>
       _raw('POST', '/v1/patients/$patientId/invites', body: {
         'role': role,
-        'phone': phoneE164,
+        if (careId.isNotEmpty) 'care_id': careId else 'phone': phoneE164,
         'name': name,
         'professional_id': professionalId,
       });
+
+  /// The signed-in account as the server sees it (includes the care ID).
+  Future<ServerUser> me() async {
+    final j = await _raw('GET', '/v1/auth/me');
+    final u = ServerUser.fromJson(j);
+    final raw = await _tokens.read(_kUser);
+    if (raw != null) await _tokens.write(_kUser, jsonEncode(u.toJson()));
+    return u;
+  }
 
   Future<List<Map<String, dynamic>>> links(String patientId) async {
     final j = await _raw('GET', '/v1/patients/$patientId/links');

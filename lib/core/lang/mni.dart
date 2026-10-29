@@ -4,6 +4,18 @@ import '../lang_data.dart';
 const LangData kLangMni = LangData(
   strings: {
     "appName": "ꯁ꯭ꯃꯔꯤꯇꯤ ꯁꯥꯊꯤ",
+    "inviteSent": "ꯀꯧꯔꯀꯄꯥ ꯊꯥꯗꯣꯛꯂꯦ꯫ ꯃꯍꯥꯛꯅꯥ ꯌꯥꯕꯥ ꯉꯥꯏꯗꯨꯅꯥ ꯌꯦꯡꯂꯤ꯫",
+    "careIdLabel": "ꯅꯍꯥꯛꯀꯤ Care ID",
+    "careIdShare": "ꯅꯍꯥꯛꯅꯥ ꯌꯦꯡꯁꯤꯅꯕꯤꯔꯤꯕꯥ ꯃꯤꯗꯥ ꯃꯁꯤ ID ꯄꯤꯌꯨ꯫ ꯃꯍꯥꯛꯅꯥ ꯃꯍꯥꯛꯀꯤ ꯑꯦꯞꯇꯥ ꯀꯥꯡꯕꯤꯗꯨꯅꯥ ꯅꯍꯥꯀꯄꯨ ꯀꯧꯒꯅꯤ꯫",
+    "careIdCopy": "ID ꯀꯣꯄꯤ ꯇꯧꯕ",
+    "careIdCopied": "ID ꯀꯣꯄꯤ ꯇꯧꯈ꯭ꯔꯦ",
+    "rmRequests": "ꯍꯥꯌꯖꯕꯁꯤꯡ",
+    "rmNoRequests": "ꯍꯧꯖꯤꯛ ꯍꯥꯌꯖꯕꯥ ꯑꯃꯠꯇꯥ ꯂꯩꯇꯦ꯫ ꯀꯅꯥꯒꯨꯝꯕꯥ ꯅꯍꯥꯛꯀꯤ Care ID ꯅꯥ ꯀꯧꯔꯀꯄꯥ ꯃꯇꯃꯗꯥ ꯃꯁꯤꯗꯥ ꯎꯕꯥ ꯐꯪꯒꯅꯤ꯫",
+    "careIdField": "ꯃꯍꯥꯛꯀꯤ Care ID",
+    "careIdHelp": "ꯃꯍꯥꯀꯄꯨ ꯃꯍꯥꯛꯀꯤ ꯑꯦꯞꯇꯥ ꯍꯥꯌꯖꯕꯁꯤꯡ ꯍꯥꯡꯗꯣꯛꯇꯨꯅꯥ ꯃꯍꯥꯛꯀꯤ Care ID ꯅꯍꯥꯀꯄꯨ ꯄꯤꯅꯕꯥ ꯍꯥꯌꯌꯨ꯫",
+    "invalidCareId": "ꯃꯁꯤ Care ID ꯅꯠꯇꯦ꯫ ꯃꯁꯤ CG-AB23XY ꯅꯠꯇꯣꯛ DR-AB23XY ꯑꯣꯢꯕꯥ ꯃꯇꯧ ꯑꯣꯢ꯫",
+    "careIdNotFound": "ꯃꯁꯤ ID ꯀꯅꯥꯒꯨꯝꯕꯥ ꯑꯃꯠꯇꯗꯥ ꯂꯩꯇꯦ꯫ ꯍꯟꯅꯥ ꯌꯦꯡꯗꯨꯅꯥ ꯑꯃꯨꯛ ꯍꯟꯅꯥ ꯑꯣꯏꯅꯥ ꯍꯣꯠꯅꯕꯤꯌꯨ꯫",
+    "careIdChange": "ꯑꯇꯣꯞꯄꯥ ID ꯆꯟꯃꯨ",
     "helpSupport": "ꯃꯇꯦꯡ ꯑꯃꯁꯨꯡ ꯁꯍꯥꯌ",
     "aboutApp": "ꯑꯦꯞ ꯃꯔꯥꯡꯗꯥ",
     "emergencySos": "ꯑꯃꯨꯛ ꯍꯟꯅꯕ SOS",
