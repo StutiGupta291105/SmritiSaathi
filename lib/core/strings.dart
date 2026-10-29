@@ -175,7 +175,7 @@ const Map<String, Map<String, String>> _kCoreStrings = {
     'eraseNeedsInternet':
         'Your data is also stored online. Please connect to the internet to erase it everywhere.',
     'chatTitle': 'Talk to Smriti',
-    'chatNote': 'Smriti is a helper program on your phone. It is not a person or a doctor and cannot give medical advice.',
+    'chatNote': 'Smriti is a helper program on your phone. It is not a person, doctor or lawyer. It gives general information only, not medical or legal advice. Check important things with your doctor or family.',
     'chatHello': 'Hello! I am Smriti. Tap a button, or type something to talk with me.',
     'chatHint': 'Type a message...',
     'chatTapSpeak': 'Tap to speak',
@@ -609,7 +609,7 @@ const Map<String, Map<String, String>> _kCoreStrings = {
     'eraseNeedsInternet':
         'आपका डेटा ऑनलाइन भी सहेजा है। हर जगह से मिटाने के लिए कृपया इंटरनेट से जुड़ें।',
     'chatTitle': 'स्मृति से बात करें',
-    'chatNote': 'स्मृति आपके फ़ोन का एक सहायक प्रोग्राम है। यह कोई इंसान या डॉक्टर नहीं है और चिकित्सा सलाह नहीं दे सकता।',
+    'chatNote': 'स्मृति आपके फ़ोन का एक सहायक प्रोग्राम है। यह इंसान, डॉक्टर या वकील नहीं है। यह केवल सामान्य जानकारी देता है, चिकित्सा या कानूनी सलाह नहीं। ज़रूरी बातें अपने डॉक्टर या परिवार से पूछ लें।',
     'chatHello': 'नमस्ते! मैं स्मृति हूँ। कोई बटन दबाएँ, या कुछ लिखकर मुझसे बात करें।',
     'chatHint': 'संदेश लिखें...',
     'chatTapSpeak': 'बोलने के लिए छुएँ',

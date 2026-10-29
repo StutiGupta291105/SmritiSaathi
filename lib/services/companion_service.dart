@@ -65,7 +65,7 @@ class CompanionService {
     required String text,
   }) async {
     if (isEmergencyText(text, lang)) {
-      return CompanionReply(emergencyText(lang), emergency: true);
+      return CompanionReply(emergencyTextFor(text, lang), emergency: true);
     }
     if (!await onlineAllowed(patientId)) {
       return CompanionReply(tr(lang, 'chatOfflineHelp'));

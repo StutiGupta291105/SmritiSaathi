@@ -50,9 +50,14 @@ def chat(patient_id: str, body: ChatIn, request: Request,
         raise HTTPException(422, "no_message")
 
     # Fixed safety reply, before any model and not counted against the limit.
-    if companion.is_emergency(turns[-1].content, lang):
+    found = companion.emergency_language(turns[-1].content, lang)
+    if found:
+        # In the language they wrote it in when that is another Indian language;
+        # English words are answered in the app's language, as before.
+        if found == "en":
+            found = lang
         audit.record(db, user.id, "companion_emergency_reply", f"patient={p.id}")
-        return ChatOut(reply=companion.EMERGENCY_REPLY.get(lang, companion.EMERGENCY_REPLY["en"]), emergency=True)
+        return ChatOut(reply=companion.EMERGENCY_REPLY.get(found, companion.EMERGENCY_REPLY["en"]), emergency=True)
 
     s = request.app.state.settings
     today = date.today().isoformat()
@@ -61,7 +66,7 @@ def chat(patient_id: str, body: ChatIn, request: Request,
         raise HTTPException(429, "daily_limit")
 
     system = companion.build_system(lang, body.first_name, body.now_text,
-                                    [t.model_dump() for t in body.today])
+                                    [t.model_dump() for t in body.today], s.companion_style)
     try:
         reply = request.app.state.companion.reply(
             system, [{"role": t.role, "content": t.content} for t in turns])

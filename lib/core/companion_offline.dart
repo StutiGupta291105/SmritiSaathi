@@ -56,13 +56,30 @@ const _nice = {
   ],
 };
 
-bool isEmergencyText(String text, String lang) {
+/// The language of the emergency words in [text], or null. Every language is
+/// checked, because people write in a language other than the app's; the app's
+/// own language and English are tried first.
+String? emergencyLanguage(String text, String lang) {
   final low = text.toLowerCase();
-  final words = [...?emergencyWords[lang], ...emergencyWords['en']!];
-  return words.any(low.contains);
+  for (final code in {lang, 'en', ...emergencyWords.keys}) {
+    if ((emergencyWords[code] ?? const <String>[]).any(low.contains)) {
+      return code;
+    }
+  }
+  return null;
 }
 
+bool isEmergencyText(String text, String lang) =>
+    emergencyLanguage(text, lang) != null;
+
 String emergencyText(String lang) => emergencyReply[lang] ?? emergencyReply['en']!;
+
+/// The fixed reply, in the language the person wrote in when that is another
+/// Indian language; English words are answered in the app's language.
+String emergencyTextFor(String text, String lang) {
+  final found = emergencyLanguage(text, lang);
+  return emergencyText(found == null || found == 'en' ? lang : found);
+}
 
 String _hhmm(int h, int m) =>
     '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';

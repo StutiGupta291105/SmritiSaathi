@@ -34,7 +34,7 @@ void main() {
   testWidgets('greets, answers the day button, and shows the helper note', (t) async {
     await t.pumpWidget(app());
     await t.pump();
-    expect(find.textContaining('not a person or a doctor'), findsOneWidget);
+    expect(find.textContaining('not a person, doctor or lawyer'), findsOneWidget);
     expect(find.textContaining('I am Smriti'), findsOneWidget);
     await t.tap(find.text('What day is it?'));
     await t.pump();

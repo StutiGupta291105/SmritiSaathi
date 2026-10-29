@@ -223,3 +223,34 @@ def test_every_language_has_safety_texts():
         assert "112" in sd.EMERGENCY_REPLY[code] or "११२" in sd.EMERGENCY_REPLY[code] \
             or any(d in sd.EMERGENCY_REPLY[code] for d in "১১২ ౧౧౨ ૧૧૨ ೧೧೨ ൧൧൨ ୧୧୨ ੧੧੨ ᱑᱑᱒ ꯱꯱꯲ ١١٢".split()), \
             f"{code}: reply must name the emergency number 112"
+
+
+def test_emergency_words_in_another_language_than_the_app_are_caught_and_answered_in_it():
+    from app.companion import emergency_language
+    # app set to English, the person writes Hindi
+    assert emergency_language("मुझे सीने में दर्द है", "en") == "hi"
+    assert emergency_language("what a lovely day", "en") is None
+    assert emergency_language("i fell down", "hi") == "en"
+
+
+def test_assistant_prompt_is_multilingual_and_medically_and_legally_careful():
+    s = build_system("ta", "Asha", "Mon 9:00", [], "assistant")
+    low = s.lower()
+    assert "Tamil" in s and "language the person writes in" in s
+    assert "Never diagnose" in s and "Never prescribe" in s
+    assert "112" in s and "legal advice" in low and "OTP" in s
+    assert "not a person, doctor, nurse or lawyer" in s
+
+
+def test_companion_style_stays_available_and_stricter():
+    s = build_system("en", "Asha", "Mon 9:00", [], "companion")
+    assert "cannot advise" in s and "legal" not in s.lower()
+
+
+def test_a_server_without_an_api_key_still_starts_and_answers_gently(monkeypatch):
+    from app.companion import UnavailableCompanion, get_provider
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    p = get_provider("anthropic", "claude-haiku-5-5")
+    assert isinstance(p, UnavailableCompanion)
+    with pytest.raises(CompanionUnavailable):
+        p.reply("s", [{"role": "user", "content": "hi"}])

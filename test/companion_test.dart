@@ -55,6 +55,10 @@ void main() {
       expect(isEmergencyText('মই পৰি গৈছো', 'as'), isTrue);
       expect(isEmergencyText('i fell down', 'hi'), isTrue);
       expect(isEmergencyText('Tell me about Diwali', 'en'), isFalse);
+      // written in another language than the app is set to
+      expect(isEmergencyText('मेरे सीने में दर्द है', 'en'), isTrue);
+      expect(emergencyTextFor('মই পৰি গৈছো', 'en'), emergencyText('as'));
+      expect(emergencyTextFor('i fell down', 'hi'), emergencyText('hi'));
       expect(emergencyText('en'), contains('112'));
       for (final l in ['en', 'hi', 'bn', 'as']) {
         expect(emergencyReply[l], isNotEmpty);

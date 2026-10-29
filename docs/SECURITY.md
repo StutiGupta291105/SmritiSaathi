@@ -61,9 +61,18 @@ end).
 
 ## Talk to Smriti (AI companion): what to know before turning it on
 
+- **Two styles** (`SMRITI_COMPANION_STYLE`): `assistant` (the default) is a basic AI
+  helper that replies in the language the person writes in (all 23 supported
+  languages, including Indian languages typed in English letters), keeps them company,
+  and gives general health information and general rights and legal information in a
+  warm, respectful way. It never diagnoses, never prescribes or changes a dose, says
+  clearly that it is a program and not a doctor or lawyer, points to a doctor for
+  anything new or lasting, and sends serious signs to 112. `companion` is the earlier,
+  stricter chat-only style (no medical or legal topics).
 - **Off by default.** The server provider is `dev` (a fixed reply). Set
   `SMRITI_COMPANION_PROVIDER=anthropic`, `ANTHROPIC_API_KEY` and, if you want a
-  cheaper model, `SMRITI_COMPANION_MODEL`. The default model is the most capable
+  cheaper model, `SMRITI_COMPANION_MODEL` (`render.yaml` already uses a small model).
+  Without a key the server still starts and the app uses its on-device helper. The default model is the most capable
   one, which is the most expensive; measure cost per conversation before launch.
 - **Data leaves India.** What the person types goes from our server to Anthropic's
   API, which may process it outside India. The consent text says so and is its own
@@ -75,12 +84,12 @@ end).
   with no content. Reminder text is never sent; only the kind and time of today's
   reminders, the first name and the date.
 - **Emergencies never depend on the model.** Words such as chest pain, a fall or
-  wanting to die are matched in code (English plus Hindi, Bengali, Assamese), on the
+  wanting to die are matched in code in every supported language, whichever language the app is set to, on the
   phone first and again on the server, and answered with fixed text pointing to 112
   and family. The word lists are short and will miss phrasings: have clinicians and
   native speakers extend them, and test them.
 - **The model is steered by a prompt, not guaranteed.** It is told never to
-  diagnose, give medical advice, quiz memory, or ask for personal details, and to
+  diagnose, prescribe, quiz memory, or ask for personal details, and to
   warn about requests for money or OTPs. Review real (consented, ideally
   consented-for-review) transcripts in a pilot before wider use; we do not keep any,
   so decide how a pilot would collect them.

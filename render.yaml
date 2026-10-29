@@ -24,6 +24,15 @@ services:
         value: "50"
       - key: SMRITI_OTP_PER_HOUR_IP
         value: "200"
+      # Talk to Smriti: a real AI needs your Anthropic API key. Paste it in the
+      # Render dashboard (Environment > ANTHROPIC_API_KEY); without it the app
+      # uses its small on-device helper. A small model keeps the cost low.
+      - key: SMRITI_COMPANION_PROVIDER
+        value: anthropic
+      - key: SMRITI_COMPANION_MODEL
+        value: claude-haiku-5-5
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: SMRITI_SECRET_KEY
         generateValue: true
       - key: SMRITI_PHONE_HMAC_KEY

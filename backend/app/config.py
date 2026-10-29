@@ -30,6 +30,7 @@ class Settings:
     companion_provider: str = "dev"            # "dev" or "anthropic"
     companion_model: str = "claude-opus-5-5"   # any Claude model id; cheaper ones cost less
     companion_daily_limit: int = 40            # answered messages per patient per day
+    companion_style: str = "assistant"         # "assistant" (general helper) or "companion" (chat only)
     trust_proxy: bool = False  # true only behind a proxy you control (X-Forwarded-For)
 
     @property
@@ -70,6 +71,7 @@ def load_settings() -> Settings:
         companion_provider=g("COMPANION_PROVIDER", d.companion_provider),
         companion_model=g("COMPANION_MODEL", d.companion_model),
         companion_daily_limit=g("COMPANION_DAILY_LIMIT", d.companion_daily_limit),
+        companion_style=g("COMPANION_STYLE", d.companion_style),
         trust_proxy=g("TRUST_PROXY", d.trust_proxy),
     )
     if s.is_prod:
