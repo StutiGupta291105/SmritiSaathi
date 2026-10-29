@@ -847,14 +847,18 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
           Expanded(
               child: Text(t('lastPlayed'),
                   style: const TextStyle(fontSize: 13, color: Palette.muted))),
-          Text(
-              lastDt == null
-                  ? t('never')
-                  : agoText(widget.lang, lastDt, DateTime.now()),
-              style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Palette.brandDeep)),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+                lastDt == null
+                    ? t('never')
+                    : agoText(widget.lang, lastDt, DateTime.now()),
+                textAlign: TextAlign.end,
+                style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Palette.brandDeep)),
+          ),
         ]),
       ),
       const SizedBox(height: 12),

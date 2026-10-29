@@ -69,6 +69,13 @@ const Map<String, String> kLanguageEnglish = {
   'sa': 'Sanskrit',
 };
 
+/// English and Hindi were written with the app; every other language is a draft
+/// that a native speaker should review before real use. The picker says so.
+const Set<String> kDraftLanguages = {
+  'bn', 'te', 'mr', 'ta', 'ur', 'gu', 'kn', 'ml', 'or', 'pa', 'as', 'mai', 'sat',
+  'ks', 'ne', 'kok', 'mni', 'brx', 'doi', 'sd', 'sa',
+};
+
 /// Written right to left (Perso-Arabic script).
 const Set<String> kRtl = {'ur', 'ks', 'sd'};
 

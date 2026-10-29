@@ -11,6 +11,7 @@ import 'package:http/testing.dart';
 import 'package:smriti_assist/features/remote/remote_home.dart';
 import 'package:smriti_assist/services/api_client.dart';
 import 'package:smriti_assist/core/reminder_schedule.dart';
+import 'package:smriti_assist/core/languages.dart';
 import 'package:smriti_assist/core/responsive.dart';
 import 'package:smriti_assist/core/theme.dart';
 import 'package:smriti_assist/data/app_database.dart';
@@ -180,7 +181,9 @@ void main() {
         name: 'Dada Ramchandra Prasad', lang: l, onRestore: () async => true, onStartFresh: () {}),
   };
 
-  for (final lang in ['en', 'hi', 'bn']) {
+  // Scripts and lengths that stress layouts: Devanagari, Bengali, long Tamil and
+  // Malayalam words, right-to-left Urdu, and the Ol Chiki script of Santali.
+  for (final lang in ['en', 'hi', 'bn', 'ta', 'ml', 'ur', 'sat']) {
     for (final entry in screens.entries) {
       for (final env in _envs) {
         testWidgets('${entry.key} / $lang / ${env.name}', (t) async {
@@ -200,7 +203,9 @@ void main() {
           await t.pumpWidget(MaterialApp(
             theme: buildTheme(),
             debugShowCheckedModeBanner: false,
-            builder: (c, child) => ResponsiveScope(child: child!),
+            builder: (c, child) => Directionality(
+                textDirection: isRtl(lang) ? TextDirection.rtl : TextDirection.ltr,
+                child: ResponsiveScope(child: child!)),
             home: entry.value(lang),
           ));
           await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));

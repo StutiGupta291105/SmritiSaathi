@@ -635,11 +635,13 @@ class _CareInviteState extends State<_CareInvite> {
                   size: 44,
                   circle: true),
               const SizedBox(width: 12),
-              Text(t(isDoctor ? 'roleDoctor' : 'roleCaretaker'),
-                  style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Palette.brandDeep)),
+              Expanded(
+                child: Text(t(isDoctor ? 'roleDoctor' : 'roleCaretaker'),
+                    style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Palette.brandDeep)),
+              ),
             ]),
             const SizedBox(height: 12),
             if (link != null) ...[

@@ -71,7 +71,10 @@ Future<String?> showLanguagePicker(BuildContext context,
                             Text(kLanguages[code]!,
                                 style: const TextStyle(
                                     fontSize: 17, fontWeight: FontWeight.w600)),
-                            Text(kLanguageEnglish[code]!,
+                            Text(
+                                kDraftLanguages.contains(code)
+                                    ? '${kLanguageEnglish[code]!} · draft translation'
+                                    : kLanguageEnglish[code]!,
                                 style: const TextStyle(
                                     fontSize: 13, color: Palette.muted)),
                           ],
