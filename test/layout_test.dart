@@ -59,11 +59,11 @@ void main() {
 
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    final inter = FontLoader('Inter');
+    final font = FontLoader('Nunito');
     for (final w in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
-      inter.addFont(rootBundle.load('assets/fonts/Inter-$w.otf'));
+      font.addFont(rootBundle.load('assets/fonts/Nunito-$w.ttf'));
     }
-    await inter.load();
+    await font.load();
     sqfliteFfiInit();
     final raw = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
         options: OpenDatabaseOptions(

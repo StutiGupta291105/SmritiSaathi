@@ -351,7 +351,7 @@ class AllowRow extends StatelessWidget {
                         minimumSize: const Size(0, 42),
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         textStyle: const TextStyle(
-                            fontFamily: 'Inter',
+                            fontFamily: 'Nunito',
                             fontSize: 15,
                             fontWeight: FontWeight.w600),
                       ),

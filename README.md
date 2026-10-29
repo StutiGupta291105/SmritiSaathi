@@ -229,7 +229,7 @@ Fonts are written for a 390 dp phone and scaled by `lib/core/responsive.dart`: a
 Follows the second design sheet: teal-green brand (`#1B7F63`, headings
 `#15503F`, action buttons `#2FA864`) on a warm cream background, white rounded
 cards with a soft shadow, pastel tiles with a stronger icon colour of the same
-hue, and Inter lettering. The font is bundled in `assets/fonts` (SIL Open Font
+hue, and Nunito lettering. The font is bundled in `assets/fonts` (SIL Open Font
 License, see `OFL.txt`), so it works offline. Colours live in
 `lib/core/theme.dart`, shared pieces (cards, pill tabs, icon badges, brand mark,
 painted scenic header) in `lib/core/ui.dart`.
