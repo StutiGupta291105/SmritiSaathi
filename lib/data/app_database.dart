@@ -987,6 +987,14 @@ class AppDatabase {
       _db.update('care_links', {'status': status},
           where: 'id = ?', whereArgs: [linkId]);
 
+  /// The patient ended the link (changed their caregiver or doctor). Whoever it
+  /// was no longer sees anything; the row stays as the record of it.
+  Future<void> endCareLink(String linkId, String by) async {
+    await _db.update('care_links', {'status': 'revoked'},
+        where: 'id = ?', whereArgs: [linkId]);
+    await audit(by, 'care_link_ended', 'link=$linkId');
+  }
+
   Future<void> deleteCareLink(String linkId) =>
       _db.delete('care_links', where: 'id = ?', whereArgs: [linkId]);
 

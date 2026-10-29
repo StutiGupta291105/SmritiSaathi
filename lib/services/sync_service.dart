@@ -124,7 +124,12 @@ class SyncService {
 /// What the screens can ask of the server without knowing about HTTP.
 /// Null in builds that have no API address.
 class ServerHooks {
-  const ServerHooks({required this.syncNow, required this.eraseRemote});
+  const ServerHooks({required this.syncNow, required this.eraseRemote, this.endLink});
+
+  /// Ends a link on the server so that person no longer sees anything. True
+  /// when it is gone (also when it was already), false when it could not be
+  /// reached. Null in tests that do not need it.
+  final Future<bool> Function(String serverLinkId)? endLink;
 
   /// Sends pending changes now (e.g. right after a consent was changed).
   final Future<void> Function() syncNow;
@@ -138,6 +143,14 @@ class ServerHooks {
 ServerHooks serverHooks(AppDatabase db, ApiClient api, Future<void> Function() sync) =>
     ServerHooks(
       syncNow: sync,
+      endLink: (serverLinkId) async {
+        try {
+          await api.revokeLink(serverLinkId);
+          return true;
+        } on ApiException catch (e) {
+          return e.status == 404; // already gone
+        }
+      },
       eraseRemote: (patientId) async {
         final serverId =
             (await db.patientById(patientId))?['server_patient_id'] as String?;

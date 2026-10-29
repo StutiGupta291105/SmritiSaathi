@@ -10,6 +10,7 @@ import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
+import '../../services/sync_service.dart' show ServerHooks;
 import '../reminders/reminder_style.dart';
 import '../reminders/reminders_screen.dart';
 import 'consent_gate.dart';
@@ -41,11 +42,20 @@ class ProfileFlow extends StatefulWidget {
     required this.notifier,
     required this.patient,
     required this.onDone,
+    this.editStage,
+    this.hooks,
   });
   final AppDatabase db;
   final ReminderNotifier notifier;
   final Map<String, Object?> patient;
   final VoidCallback onDone;
+
+  /// Opened from Settings to change one section later: only that page is shown,
+  /// with its own Save, and the setup progress is left alone.
+  final int? editStage;
+
+  /// Lets removing a caregiver or doctor reach the server too.
+  final ServerHooks? hooks;
 
   @override
   State<ProfileFlow> createState() => _ProfileFlowState();
@@ -54,7 +64,8 @@ class ProfileFlow extends StatefulWidget {
 class _ProfileFlowState extends State<ProfileFlow> {
   static const _steps = 5;
 
-  late int _stage = (widget.patient['setup_stage'] as int).clamp(0, _steps - 1);
+  late int _stage =
+      widget.editStage ?? (widget.patient['setup_stage'] as int).clamp(0, _steps - 1);
   late String _lang = widget.patient['language'] as String;
   late DateTime? _dob = widget.patient['dob'] == null
       ? null
@@ -116,6 +127,12 @@ class _ProfileFlowState extends State<ProfileFlow> {
         by: _name,
       );
     }
+    if (widget.editStage != null) {
+      if (_stage == 0) await widget.notifier.resync(patientId: _id, lang: _lang);
+      widget.onDone();
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
     if (_stage == _steps - 1) {
       await widget.db.setSetupStage(_id, _steps);
       await widget.notifier.resync(patientId: _id, lang: _lang);
@@ -132,6 +149,24 @@ class _ProfileFlowState extends State<ProfileFlow> {
     final titles = [
       'aboutYou', 'family', 'doctorDetails', 'caregiverDetails', 'routineTitle'
     ];
+    if (widget.editStage != null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(t(titles[_stage]))),
+        body: SafeArea(
+          child: Column(children: [
+            Expanded(child: pages[_stage]),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: FilledButton(
+                key: const ValueKey('profileNext'),
+                onPressed: _canNext ? _next : null,
+                child: Text(t('save')),
+              ),
+            ),
+          ]),
+        ),
+      );
+    }
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
@@ -373,6 +408,7 @@ class _ProfileFlowState extends State<ProfileFlow> {
             byName: _name,
             child: _CareInvite(
                 db: widget.db,
+                hooks: widget.hooks,
                 patientId: _id,
                 kind: kind,
                 lang: _lang,
@@ -601,11 +637,13 @@ class _FamilyDialogState extends State<_FamilyDialog> {
 class _CareInvite extends StatefulWidget {
   const _CareInvite(
       {required this.db,
+      this.hooks,
       required this.patientId,
       required this.kind,
       required this.lang,
       required this.by});
   final AppDatabase db;
+  final ServerHooks? hooks;
   final String patientId, kind, lang, by;
 
   @override
@@ -613,7 +651,8 @@ class _CareInvite extends StatefulWidget {
 }
 
 class _CareInviteState extends State<_CareInvite> {
-  Map<String, Object?>? _link;
+  List<Map<String, Object?>> _links = [];
+  bool _adding = false;
   final _name = TextEditingController();
   final _proId = TextEditingController();
 
@@ -634,8 +673,11 @@ class _CareInviteState extends State<_CareInvite> {
 
   Future<void> _load() async {
     final all = await widget.db.listCareLinks(widget.patientId);
-    final mine = all.where((l) => l['kind'] == widget.kind).toList();
-    if (mounted) setState(() => _link = mine.isEmpty ? null : mine.last);
+    // Removed ones are history, not shown.
+    final mine = all
+        .where((l) => l['kind'] == widget.kind && l['status'] != 'revoked')
+        .toList();
+    if (mounted) setState(() => _links = mine);
   }
 
   /// CG-AB23XY for a caregiver, DR-AB23XY for a doctor.
@@ -657,19 +699,96 @@ class _CareInviteState extends State<_CareInvite> {
       professionalId: _typedId,
       by: widget.by,
     );
+    _name.clear();
+    _proId.clear();
+    _adding = false;
     await _load();
   }
 
-  Future<void> _enterAnother(String linkId) async {
-    await widget.db.deleteCareLink(linkId);
-    _proId.clear();
+  Future<void> _remove(Map<String, Object?> link) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        content: Text(t('removeConfirm').replaceAll('{a}', '${link['name']}'),
+            style: const TextStyle(fontSize: 16)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(t('cancel'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(t('removePerson'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    // Someone who already has the invite on the server must be cut off there
+    // first; otherwise they would still see everything.
+    final serverId = link['server_link_id'] as String?;
+    if (serverId != null && widget.hooks?.endLink != null) {
+      final gone = await widget.hooks!.endLink!(serverId);
+      if (!gone) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(t('removeNeedsOnline'))));
+        }
+        return;
+      }
+    }
+    await widget.db.endCareLink(link['id'] as String, widget.by);
     await _load();
+  }
+
+  Widget _linkRow(Map<String, Object?> link, bool isDoctor) {
+    final status = '${link['status']}';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+            child: Text('${link['name']}  ·  ${link['professional_id']}',
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          ),
+          IconButton(
+            key: ValueKey('remove_${link['id']}'),
+            tooltip: t('removePerson'),
+            icon: const Icon(Icons.delete_outline_rounded, color: Palette.red),
+            onPressed: () => _remove(link),
+          ),
+        ]),
+        Wrap(spacing: 8, children: [
+          Chip(
+            avatar: Icon(
+                status == 'notfound'
+                    ? Icons.error_outline_rounded
+                    : status == 'accepted'
+                        ? Icons.check_circle_rounded
+                        : Icons.schedule,
+                size: 20),
+            label: Text(status == 'notfound'
+                ? t('careIdNotFound')
+                : status == 'pending'
+                    ? t(link['server_link_id'] == null
+                        ? 'invitePending'
+                        : 'inviteSent')
+                    : t('status${status[0].toUpperCase()}${status.substring(1)}')),
+          ),
+          if (isDoctor && link['verified'] == 1)
+            Chip(
+              avatar: const Icon(Icons.verified_rounded,
+                  size: 20, color: Palette.green),
+              label: Text(t('doctorVerified')),
+            ),
+        ]),
+      ]),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDoctor = widget.kind == 'doctor';
-    final link = _link;
+    final showForm = _links.isEmpty || _adding;
     return AppCard(
       child: Padding(
         padding: EdgeInsets.zero,
@@ -695,38 +814,15 @@ class _CareInviteState extends State<_CareInvite> {
               ),
             ]),
             const SizedBox(height: 12),
-            if (link != null) ...[
-              Text('${link['name']}  ·  ${link['professional_id']}',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Wrap(spacing: 8, children: [
-                Chip(
-                  avatar: Icon(
-                      link['status'] == 'notfound'
-                          ? Icons.error_outline_rounded
-                          : Icons.schedule,
-                      size: 20),
-                  label: Text(link['status'] == 'notfound'
-                      ? t('careIdNotFound')
-                      : link['status'] == 'pending'
-                          ? t(link['server_link_id'] == null
-                              ? 'invitePending'
-                              : 'inviteSent')
-                          : t('status${'${link['status']}'[0].toUpperCase()}${'${link['status']}'.substring(1)}')),
-                ),
-                if (link['status'] == 'notfound')
-                  TextButton(
-                      onPressed: () => _enterAnother(link['id'] as String),
-                      child: Text(t('careIdChange'))),
-                if (isDoctor && link['verified'] == 1)
-                  Chip(
-                    avatar: const Icon(Icons.verified_rounded,
-                        size: 20, color: Palette.green),
-                    label: Text(t('doctorVerified')),
-                  ),
-              ]),
-            ] else ...[
+            for (final l in _links) _linkRow(l, isDoctor),
+            if (!showForm)
+              OutlinedButton.icon(
+                key: ValueKey('addAnother_${widget.kind}'),
+                icon: const Icon(Icons.add_rounded),
+                label: Text(t(isDoctor ? 'addDoctor' : 'addCaregiver')),
+                onPressed: () => setState(() => _adding = true),
+              )
+            else ...[
               TextField(
                 controller: _name,
                 textCapitalization: TextCapitalization.words,
@@ -754,7 +850,12 @@ class _CareInviteState extends State<_CareInvite> {
               ),
               const SizedBox(height: 12),
               FilledButton(
-                  onPressed: _valid ? _save : null, child: Text(t('saveInvite'))),
+                  onPressed: _valid ? _save : null,
+                  child: Text(t('saveInvite'))),
+              if (_links.isNotEmpty)
+                TextButton(
+                    onPressed: () => setState(() => _adding = false),
+                    child: Text(t('cancel'))),
             ],
           ],
         ),

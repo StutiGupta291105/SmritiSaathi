@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangTe = LangData(
   strings: {
     "appName": "స్మృతి సాథీ",
+    "removePerson": "తొలగించండి",
+    "removeConfirm": "{a} ను తొలగించాలా? వారు ఇక మీ పురోగతిని చూడలేరు లేదా మీతో చాట్ చేయలేరు.",
+    "removeNeedsOnline": "వారిని తొలగించడానికి ఇంటర్నెట్ కావాలి.",
+    "addCaregiver": "సంరక్షకుడిని జోడించండి",
+    "addDoctor": "వైద్యుడిని జోడించండి",
+    "notAddedYet": "ఇంకా జోడించలేదు",
+    "editDetails": "సవరించు",
+    "manageProfile": "ప్రొఫైల్ నవీకరించండి",
     "talkToCaregiver": "సంరక్షకునితో మాట్లాడండి",
     "talkToDoctor": "వైద్యునితో మాట్లాడండి",
     "chatMessages": "సందేశాలు",

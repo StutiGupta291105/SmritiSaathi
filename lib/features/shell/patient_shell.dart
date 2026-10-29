@@ -114,7 +114,31 @@ class _PatientShellState extends State<PatientShell> {
     if (thread.isEmpty) {
       return _say(t(role == 'doctor' ? 'noDoctorYet' : 'noCaregiverYet'));
     }
-    final th = thread.first;
+    // Several caregivers (or doctors): let the person pick who to write to.
+    final th = thread.length == 1
+        ? thread.first
+        : await showModalBottomSheet<Map<String, dynamic>>(
+            context: context,
+            backgroundColor: Palette.cream,
+            builder: (_) => SafeArea(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                for (final x in thread)
+                  ListTile(
+                    key: ValueKey('pick_${x['link_id']}'),
+                    leading: const Icon(Icons.chat_bubble_rounded),
+                    title: Text('${x['member_name']}',
+                        style: const TextStyle(fontSize: 17)),
+                    trailing: ((x['unread'] as int?) ?? 0) > 0
+                        ? Text('${x['unread']}',
+                            style: const TextStyle(
+                                color: Palette.red, fontWeight: FontWeight.w700))
+                        : null,
+                    onTap: () => Navigator.pop(context, x),
+                  ),
+              ]),
+            ),
+          );
+    if (th == null || !mounted) return;
     await Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => MessagesScreen(
         api: widget.api!,

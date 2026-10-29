@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangBrx = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "removePerson": "हटा",
+    "removeConfirm": "{a} खौ हटानो? बेयो दिनैफ्राय नोंथांनि जोनोथायखौ नायनो नाजागौ आरो नोंथाङै चेट खालामनो नाजागौ।",
+    "removeNeedsOnline": "बेयाखौ हटानो इन्टारनेट नांगौ।",
+    "addCaregiver": "गोहोनोग्राहा फिन",
+    "addDoctor": "डाक्टर फिन",
+    "notAddedYet": "दिनै तागौ फिनजाखै",
+    "editDetails": "सुजा",
+    "manageProfile": "प्रोफाइल अपडेट खालाम",
     "talkToCaregiver": "गोहोनोग्राहा नाजाबाय खोन्थाय",
     "talkToDoctor": "डाक्टर नाजाबाय खोन्थाय",
     "chatMessages": "खबर",

@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangKs = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "removePerson": "ہٹٲیو",
+    "removeConfirm": "{a} ہٹٲیو؟ سُہ ٲسۍ نہ توہہِ ہُند پیش رفت وُچھتھ ہیکہِ تہٕ نہ توہہِ سٕتۍ چیٹ کٔرتھ۔",
+    "removeNeedsOnline": "تَمہِ ہٹاونہ خاطرٕ چھُ انٹرنیٹ ضروری۔",
+    "addCaregiver": "سنبھالن وول شامل کٔرو",
+    "addDoctor": "ڈاکٹر شامل کٔرو",
+    "notAddedYet": "ہُرِ چھُنا شامل کورمُت",
+    "editDetails": "بدلاو",
+    "manageProfile": "پروفائل اپڈیٹ کٔرو",
     "talkToCaregiver": "سنبھالن وول سان گَپ کٔرو",
     "talkToDoctor": "ڈاکٹر سان گَپ کٔرو",
     "chatMessages": "پیغام",

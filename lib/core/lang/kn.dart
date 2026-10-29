@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangKn = LangData(
   strings: {
     "appName": "ಸ್ಮೃತಿ ಸಾಥಿ",
+    "removePerson": "ತೆಗೆದುಹಾಕಿ",
+    "removeConfirm": "{a} ಅವರನ್ನು ತೆಗೆಯಬೇಕೇ? ಅವರು ಇನ್ನು ನಿಮ್ಮ ಪ್ರಗತಿ ನೋಡಲಾರರು ಅಥವಾ ನಿಮ್ಮೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಲಾರರು.",
+    "removeNeedsOnline": "ಅವರನ್ನು ತೆಗೆಯಲು ಇಂಟರ್ನೆಟ್ ಬೇಕು.",
+    "addCaregiver": "ಆರೈಕೆದಾರರನ್ನು ಸೇರಿಸಿ",
+    "addDoctor": "ವೈದ್ಯರನ್ನು ಸೇರಿಸಿ",
+    "notAddedYet": "ಇನ್ನೂ ಸೇರಿಸಿಲ್ಲ",
+    "editDetails": "ಸಂಪಾದಿಸಿ",
+    "manageProfile": "ಪ್ರೊಫೈಲ್ ನವೀಕರಿಸಿ",
     "talkToCaregiver": "ಆರೈಕೆದಾರರೊಂದಿಗೆ ಮಾತನಾಡಿ",
     "talkToDoctor": "ವೈದ್ಯರೊಂದಿಗೆ ಮಾತನಾಡಿ",
     "chatMessages": "ಸಂದೇಶಗಳು",

@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangUr = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "removePerson": "ہٹائیں",
+    "removeConfirm": "{a} کو ہٹائیں؟ وہ اب آپ کی پیش رفت نہیں دیکھ سکیں گے اور نہ آپ سے چیٹ کر سکیں گے۔",
+    "removeNeedsOnline": "انہیں ہٹانے کے لیے انٹرنیٹ درکار ہے۔",
+    "addCaregiver": "نگہداشت کرنے والا شامل کریں",
+    "addDoctor": "ڈاکٹر شامل کریں",
+    "notAddedYet": "ابھی شامل نہیں کیا",
+    "editDetails": "تبدیل کریں",
+    "manageProfile": "پروفائل اپڈیٹ کریں",
     "talkToCaregiver": "نگہداشت کرنے والے سے بات کریں",
     "talkToDoctor": "ڈاکٹر سے بات کریں",
     "chatMessages": "پیغامات",

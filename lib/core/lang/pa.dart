@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangPa = LangData(
   strings: {
     "appName": "ਸਮ੍ਰਿਤੀ ਸਾਥੀ",
+    "removePerson": "ਹਟਾਓ",
+    "removeConfirm": "{a} ਨੂੰ ਹਟਾਉਣਾ ਹੈ? ਉਹ ਹੁਣ ਤੁਹਾਡੀ ਤਰੱਕੀ ਨਹੀਂ ਦੇਖ ਸਕਣਗੇ ਜਾਂ ਤੁਹਾਡੇ ਨਾਲ ਚੈਟ ਨਹੀਂ ਕਰ ਸਕਣਗੇ।",
+    "removeNeedsOnline": "ਉਹਨਾਂ ਨੂੰ ਹਟਾਉਣ ਲਈ ਇੰਟਰਨੈੱਟ ਚਾਹੀਦਾ ਹੈ।",
+    "addCaregiver": "ਸੰਭਾਲ ਕਰਨ ਵਾਲਾ ਜੋੜੋ",
+    "addDoctor": "ਡਾਕਟਰ ਜੋੜੋ",
+    "notAddedYet": "ਅਜੇ ਜੋੜਿਆ ਨਹੀਂ",
+    "editDetails": "ਬਦਲੋ",
+    "manageProfile": "ਪ੍ਰੋਫਾਈਲ ਅੱਪਡੇਟ ਕਰੋ",
     "talkToCaregiver": "ਸੰਭਾਲ ਕਰਨ ਵਾਲੇ ਨਾਲ ਗੱਲ ਕਰੋ",
     "talkToDoctor": "ਡਾਕਟਰ ਨਾਲ ਗੱਲ ਕਰੋ",
     "chatMessages": "ਸੁਨੇਹੇ",

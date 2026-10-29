@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangGu = LangData(
   strings: {
     "appName": "સ્મૃતિ સાથી",
+    "removePerson": "દૂર કરો",
+    "removeConfirm": "{a} ને દૂર કરવા? તેઓ હવે તમારી પ્રગતિ જોઈ શકશે નહીં કે તમારી સાથે ચેટ કરી શકશે નહીં.",
+    "removeNeedsOnline": "તેમને દૂર કરવા ઇન્ટરનેટ જોઈએ.",
+    "addCaregiver": "સંભાળ રાખનાર ઉમેરો",
+    "addDoctor": "ડૉક્ટર ઉમેરો",
+    "notAddedYet": "હજી ઉમેર્યા નથી",
+    "editDetails": "ફેરફાર",
+    "manageProfile": "પ્રોફાઇલ અપડેટ કરો",
     "talkToCaregiver": "સંભાળ રાખનાર સાથે વાત કરો",
     "talkToDoctor": "ડૉક્ટર સાથે વાત કરો",
     "chatMessages": "સંદેશા",

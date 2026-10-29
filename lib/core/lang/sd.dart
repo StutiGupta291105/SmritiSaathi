@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangSd = LangData(
   strings: {
     "appName": "سمرتي ساٿي",
+    "removePerson": "هٽايو",
+    "removeConfirm": "{a} کي هٽايو؟ هو هاڻي توهان جي پيش رفت نه ڏسي سگهندو ۽ نه توهان سان چيٽ ڪري سگهندو.",
+    "removeNeedsOnline": "کيس هٽائڻ لاءِ انٽرنيٽ گهرجي.",
+    "addCaregiver": "سنڀاليندڙ شامل ڪريو",
+    "addDoctor": "ڊاڪٽر شامل ڪريو",
+    "notAddedYet": "اڃا شامل نه ڪيو ويو",
+    "editDetails": "تبديل ڪريو",
+    "manageProfile": "پروفائيل اپڊيٽ ڪريو",
     "talkToCaregiver": "سنڀاليندڙ سان ڳالهايو",
     "talkToDoctor": "ڊاڪٽر سان ڳالهايو",
     "chatMessages": "پيغام",

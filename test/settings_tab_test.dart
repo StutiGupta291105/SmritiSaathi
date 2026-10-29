@@ -84,12 +84,19 @@ void main() {
     await t.pump();
     await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await t.pumpAndSettle();
+    await t.binding.setSurfaceSize(const Size(390, 2600));
+    await t.pumpAndSettle();
     expect(find.text('Asha Devi'), findsWidgets);
     expect(find.text('+919876543210'), findsOneWidget);
     expect(find.text('asha@example.com'), findsOneWidget);
     expect(find.text('Guwahati'), findsOneWidget);
     expect(find.text('Assam'), findsOneWidget);
     expect(find.byKey(const ValueKey('languageRow')), findsOneWidget);
+    // every section of the profile can be changed later, including skipped ones
+    for (final k in [0, 1, 2, 3, 4]) {
+      expect(find.byKey(ValueKey('edit_$k')), findsOneWidget);
+    }
+    expect(find.text('Not added yet'), findsWidgets);
   });
 
   testWidgets('Help, About and SOS open', (t) async {

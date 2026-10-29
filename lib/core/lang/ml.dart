@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangMl = LangData(
   strings: {
     "appName": "സ്മൃതി സാഥി",
+    "removePerson": "നീക്കം ചെയ്യുക",
+    "removeConfirm": "{a} നെ നീക്കം ചെയ്യണോ? അവർക്ക് ഇനി നിങ്ങളുടെ പുരോഗതി കാണാനോ നിങ്ങളോട് ചാറ്റ് ചെയ്യാനോ കഴിയില്ല.",
+    "removeNeedsOnline": "അവരെ നീക്കം ചെയ്യാൻ ഇന്റർനെറ്റ് വേണം.",
+    "addCaregiver": "പരിചരണക്കാരനെ ചേർക്കുക",
+    "addDoctor": "ഡോക്ടറെ ചേർക്കുക",
+    "notAddedYet": "ഇതുവരെ ചേർത്തിട്ടില്ല",
+    "editDetails": "തിരുത്തുക",
+    "manageProfile": "പ്രൊഫൈൽ അപ്ഡേറ്റ് ചെയ്യുക",
     "talkToCaregiver": "പരിചരണക്കാരനോട് സംസാരിക്കുക",
     "talkToDoctor": "ഡോക്ടറോട് സംസാരിക്കുക",
     "chatMessages": "സന്ദേശങ്ങൾ",

@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangSa = LangData(
   strings: {
     "appName": "स्मृतिसाथी",
+    "removePerson": "अपनयतु",
+    "removeConfirm": "{a} अपनेतव्यः वा? सः इतः परं भवतः प्रगतिं द्रष्टुं भवता सह संवदितुं वा न शक्नोति।",
+    "removeNeedsOnline": "तम् अपनेतुम् अन्तर्जालम् अपेक्षते।",
+    "addCaregiver": "परिचारकं योजयतु",
+    "addDoctor": "वैद्यं योजयतु",
+    "notAddedYet": "अद्यावधि न योजितम्",
+    "editDetails": "सम्पादयतु",
+    "manageProfile": "प्रोफाइलं नवीकरोतु",
     "talkToCaregiver": "परिचारकेन सह संवादः",
     "talkToDoctor": "वैद्येन सह संवादः",
     "chatMessages": "सन्देशाः",

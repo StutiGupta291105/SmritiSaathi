@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangOr = LangData(
   strings: {
     "appName": "ସ୍ମୃତି ସାଥୀ",
+    "removePerson": "ହଟାନ୍ତୁ",
+    "removeConfirm": "{a} ଙ୍କୁ ହଟାଇବେ? ସେ ଆଉ ଆପଣଙ୍କ ପ୍ରଗତି ଦେଖିପାରିବେ ନାହିଁ କିମ୍ବା ଆପଣଙ୍କ ସହ ଚାଟ୍ କରିପାରିବେ ନାହିଁ।",
+    "removeNeedsOnline": "ତାଙ୍କୁ ହଟାଇବାକୁ ଇଣ୍ଟରନେଟ୍ ଦରକାର।",
+    "addCaregiver": "ଯତ୍ନକାରୀ ଯୋଡ଼ନ୍ତୁ",
+    "addDoctor": "ଡାକ୍ତର ଯୋଡ଼ନ୍ତୁ",
+    "notAddedYet": "ଏପର୍ଯ୍ୟନ୍ତ ଯୋଡ଼ାଯାଇନାହିଁ",
+    "editDetails": "ସମ୍ପାଦନ",
+    "manageProfile": "ପ୍ରୋଫାଇଲ୍ ଅପଡେଟ୍ କରନ୍ତୁ",
     "talkToCaregiver": "ଯତ୍ନକାରୀଙ୍କ ସହ କଥା ହୁଅନ୍ତୁ",
     "talkToDoctor": "ଡାକ୍ତରଙ୍କ ସହ କଥା ହୁଅନ୍ତୁ",
     "chatMessages": "ବାର୍ତ୍ତା",

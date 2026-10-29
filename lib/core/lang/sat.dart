@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangSat = LangData(
   strings: {
     "appName": "ᱥᱚᱢᱨᱤᱛᱤ ᱥᱟᱛᱷᱤ",
+    "removePerson": "ᱚᱪᱚᱜᱽ ᱢᱮ",
+    "removeConfirm": "{a} ᱫᱚ ᱚᱪᱚᱜᱽ ᱟᱢ? ᱩᱱᱤ ᱫᱚ ᱟᱢᱟᱜ ᱞᱟᱦᱟᱱᱛᱤ ᱧᱮᱞ ᱵᱟᱝ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱟᱨ ᱟᱢ ᱥᱟᱶᱛᱮ ᱪᱮᱴ ᱵᱟᱝ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ᱾",
+    "removeNeedsOnline": "ᱩᱱᱤᱭᱟᱹ ᱚᱪᱚᱜᱽ ᱞᱟᱹᱜᱤᱫ ᱤᱱᱴᱟᱨᱱᱮᱴ ᱞᱟᱹᱠᱛᱤ ᱛᱟᱦᱮᱱᱟ᱾",
+    "addCaregiver": "ᱥᱟᱸᱵᱷᱟᱞᱤᱭᱟᱹ ᱥᱮᱞᱮᱫ ᱢᱮ",
+    "addDoctor": "ᱰᱟᱠᱛᱟᱨ ᱥᱮᱞᱮᱫ ᱢᱮ",
+    "notAddedYet": "ᱱᱤᱛᱚᱜ ᱵᱟᱝ ᱥᱮᱞᱮᱫ ᱞᱮᱱᱟ",
+    "editDetails": "ᱥᱚᱫᱚᱨ ᱢᱮ",
+    "manageProfile": "ᱯᱨᱚᱯᱷᱟᱭᱤᱞ ᱱᱟᱶᱟ ᱢᱮ",
     "talkToCaregiver": "ᱥᱟᱸᱵᱷᱟᱞᱤᱭᱟᱹ ᱥᱟᱶᱛᱮ ᱨᱚᱲ ᱢᱮ",
     "talkToDoctor": "ᱰᱟᱠᱛᱟᱨ ᱥᱟᱶᱛᱮ ᱨᱚᱲ ᱢᱮ",
     "chatMessages": "ᱠᱷᱚᱵᱚᱨ",

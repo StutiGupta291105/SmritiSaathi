@@ -14,6 +14,7 @@ import '../../services/sync_service.dart';
 import '../caregiver/caregiver_area.dart';
 import '../privacy/privacy_screen.dart';
 import '../profile/photo_picker.dart' show Avatar;
+import '../profile/profile_flow.dart';
 
 const String kFooterLine = 'MDoNER Digital Health';
 const String kAppVersion = '0.1.0';
@@ -176,6 +177,8 @@ class ProfileDetailsScreen extends StatefulWidget {
 class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   Map<String, Object?>? _p;
   List<Map<String, Object?>> _family = const [];
+  List<Map<String, Object?>> _links = const [];
+  int _reminders = 0;
 
   @override
   void initState() {
@@ -186,9 +189,13 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   Future<void> _load() async {
     final p = await widget.db.patientById(widget.patientId);
     final f = await widget.db.listFamily(widget.patientId);
+    final l = await widget.db.listCareLinks(widget.patientId);
+    final r = await widget.db.listReminders(widget.patientId);
     if (mounted) setState(() {
       _p = p;
       _family = f;
+      _links = l.where((x) => x['status'] != 'revoked').toList();
+      _reminders = r.length;
     });
   }
 
@@ -249,6 +256,55 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           ),
         );
 
+    String linkSummary(String kind) {
+      final mine = _links.where((x) => x['kind'] == kind).toList();
+      if (mine.isEmpty) return t('notAddedYet');
+      return mine.map((x) => '${x['name']}').join(', ');
+    }
+
+    Widget editRow(int stage, IconData icon, Color fg, Color bg, String label,
+            String summary) =>
+        InkWell(
+          key: ValueKey('edit_$stage'),
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            await Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => ProfileFlow(
+                db: widget.db,
+                notifier: widget.notifier,
+                hooks: widget.hooks,
+                patient: p,
+                editStage: stage,
+                onDone: () {},
+              ),
+            ));
+            await _changed();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(children: [
+              IconBadge(icon: icon, fg: fg, bg: bg, size: 44, circle: true),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
+                      Text(summary,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 13.5, color: Palette.muted)),
+                    ]),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 28, color: Palette.muted),
+            ]),
+          ),
+        );
+
     return Scaffold(
       appBar: AppBar(title: Text(t('tabProfile'))),
       body: SafeArea(
@@ -283,6 +339,33 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 item(t('cityTown'), text('city')),
                 divider,
                 item(t('stateLabel'), text('state')),
+              ]),
+            ),
+            const SizedBox(height: 16),
+            Text(t('manageProfile'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Palette.brandDeep)),
+            const SizedBox(height: 8),
+            AppCard(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              child: Column(children: [
+                editRow(0, Icons.badge_outlined, Palette.green, Palette.tileGreen,
+                    t('aboutYou'), t('editDetails')),
+                divider,
+                editRow(1, Icons.groups_rounded, Palette.orange, Palette.tileOrange,
+                    t('family'), _family.isEmpty ? t('notAddedYet') : '${_family.length}'),
+                divider,
+                editRow(2, Icons.medical_services_rounded, Palette.purple,
+                    Palette.tilePurple, t('doctorDetails'), linkSummary('doctor')),
+                divider,
+                editRow(3, Icons.volunteer_activism_rounded, Palette.green,
+                    Palette.tileGreen, t('caregiverDetails'), linkSummary('caregiver')),
+                divider,
+                editRow(4, Icons.checklist_rounded, Palette.blue, Palette.tileBlue,
+                    t('routineTitle'),
+                    _reminders == 0 ? t('notAddedYet') : '$_reminders'),
               ]),
             ),
             const SizedBox(height: 16),

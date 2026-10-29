@@ -4,6 +4,14 @@ import '../lang_data.dart';
 const LangData kLangKok = LangData(
   strings: {
     "appName": "स्मृती साथी",
+    "removePerson": "काडून उडय",
+    "removeConfirm": "{a} क काडून उडोवंक? ते आतां तुमची प्रगती पळोवंक वा तुमचे कडेन चॅट करूंक शकचे ना.",
+    "removeNeedsOnline": "तांकां काडून उडोवपाक इंटरनेट जाय.",
+    "addCaregiver": "सांबाळपी जोडात",
+    "addDoctor": "डॉक्टर जोडात",
+    "notAddedYet": "अजून जोडूंक ना",
+    "editDetails": "बदलात",
+    "manageProfile": "प्रोफायल अपडेट करात",
     "talkToCaregiver": "सांबाळपी कडेन उलोवचें",
     "talkToDoctor": "डॉक्टराकडेन उलोवचें",
     "chatMessages": "संदेश",
