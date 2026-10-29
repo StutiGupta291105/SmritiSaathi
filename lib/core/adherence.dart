@@ -21,6 +21,9 @@ bool _sameDay(DateTime a, DateTime b) =>
 
 bool occursOn(Reminder r, DateTime day) {
   if (!r.active) return false;
+  if (r.onDate != null && r.kind == ReminderKind.birthday) {
+    return r.onDate!.month == day.month && r.onDate!.day == day.day;
+  }
   if (r.onDate != null) return _sameDay(r.onDate!, day);
   return r.runsOn(day);
 }

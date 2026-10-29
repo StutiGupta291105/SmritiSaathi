@@ -1,24 +1,39 @@
-import 'dart:io' show Platform;
-
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 
+import '../../core/languages.dart';
 import '../../core/profile.dart';
-import '../../core/language_picker.dart';
+import '../../core/reminder_schedule.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
+import '../reminders/reminder_style.dart';
 import '../reminders/reminders_screen.dart';
 import 'consent_gate.dart';
 import 'photo_picker.dart';
 
-/// Profile completion after the first login. Five steps; the step reached is
+/// States and union territories of India, as shown in the State list.
+const kIndianStates = [
+  'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam',
+  'Bihar', 'Chandigarh', 'Chhattisgarh',
+  'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat',
+  'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+  'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab',
+  'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
+  'Uttarakhand', 'West Bengal',
+];
+
+bool looksLikeEmail(String v) =>
+    RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$').hasMatch(v.trim());
+
+/// Profile completion after the first login, in five pages. The page reached is
 /// saved so the flow resumes if the app is closed:
-/// 0 about you, 1 family, 2 care team, 3 daily routine, 4 permissions.
+/// 0 about you (one form), 1 family members, 2 doctor, 3 caregiver, 4 routine
+/// and reminders, then Save.
 class ProfileFlow extends StatefulWidget {
   const ProfileFlow({
     super.key,
@@ -48,11 +63,38 @@ class _ProfileFlowState extends State<ProfileFlow> {
   bool _photoChanged = false;
   bool _photoRemoved = false;
 
+  late final _nameCtl = TextEditingController(
+      text: widget.patient['display_name'] as String);
+  late final _emailCtl =
+      TextEditingController(text: widget.patient['email'] as String? ?? '');
+  late final _cityCtl =
+      TextEditingController(text: widget.patient['city'] as String? ?? '');
+  late final _phoneCtl = TextEditingController(text: widget.patient['phone'] as String? ?? '');
+  late String? _state = kIndianStates.contains(widget.patient['state'])
+      ? widget.patient['state'] as String
+      : null;
+
   String get _id => widget.patient['id'] as String;
-  String get _name => widget.patient['display_name'] as String;
+  String get _name => _nameCtl.text.trim().isEmpty
+      ? widget.patient['display_name'] as String
+      : _nameCtl.text.trim();
   String t(String k) => tr(_lang, k);
 
-  bool get _canNext => _stage != 0 || _dob != null;
+  @override
+  void dispose() {
+    _nameCtl.dispose();
+    _emailCtl.dispose();
+    _cityCtl.dispose();
+    _phoneCtl.dispose();
+    super.dispose();
+  }
+
+  bool get _emailOk =>
+      _emailCtl.text.trim().isEmpty || looksLikeEmail(_emailCtl.text);
+
+  bool get _canNext =>
+      _stage != 0 ||
+      (_dob != null && _nameCtl.text.trim().isNotEmpty && _emailOk);
 
   Future<void> _go(int stage) async {
     await widget.db.setSetupStage(_id, stage);
@@ -63,6 +105,10 @@ class _ProfileFlowState extends State<ProfileFlow> {
     if (_stage == 0) {
       await widget.db.updateProfileBasics(
         patientId: _id,
+        displayName: _nameCtl.text,
+        email: _emailCtl.text,
+        city: _cityCtl.text,
+        state: _state ?? '',
         dob: _dob,
         photo: _photoChanged ? _photo : null,
         clearPhoto: _photoRemoved,
@@ -82,93 +128,100 @@ class _ProfileFlowState extends State<ProfileFlow> {
   @override
   Widget build(BuildContext context) {
     final last = _stage == _steps - 1;
-    // Little room (small phone or very large text): drop the big title and
-    // keep the step line and progress bar, so the content stays usable.
-
-    final pages = [_aboutYou(), _family(), _careTeam(), _routine(), _permissions()];
-    final titles = ['aboutYou', 'family', 'careTeam', 'routineTitle', 'permTitle'];
+    final pages = [_aboutYou(), _family(), _doctor(), _caregiver(), _routine()];
+    final titles = [
+      'aboutYou', 'family', 'doctorDetails', 'caregiverDetails', 'routineTitle'
+    ];
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
+          // Little room (small phone or very large text): drop the big title
+          // and keep the step line and progress bar.
           final tight =
               box.maxHeight / MediaQuery.textScalerOf(context).scale(1) < 600;
           return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!tight) ...[
-                    ScreenTitle(t('profileTitle')),
-                    const SizedBox(height: 4),
-                  ],
-                  Text(
-                      tight
-                          ? '${t('profileTitle')}  ·  ${_stage + 1}/$_steps  ·  ${t(titles[_stage])}'
-                          : '${_stage + 1}/$_steps  ·  ${t(titles[_stage])}',
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Palette.muted)),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: (_stage + 1) / _steps,
-                      minHeight: 8,
-                      backgroundColor: Palette.line,
-                      color: Palette.action,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(child: pages[_stage]),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Row(
-                children: [
-                  if (_stage > 0)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _go(_stage - 1),
-                        child: Text(t('back')),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!tight) ...[
+                      ScreenTitle(t('profileTitle')),
+                      const SizedBox(height: 4),
+                    ],
+                    Text(
+                        tight
+                            ? '${t('profileTitle')}  ·  ${_stage + 1}/$_steps  ·  ${t(titles[_stage])}'
+                            : '${_stage + 1}/$_steps  ·  ${t(titles[_stage])}',
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Palette.muted)),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: (_stage + 1) / _steps,
+                        minHeight: 8,
+                        backgroundColor: Palette.line,
+                        color: Palette.action,
                       ),
                     ),
-                  if (_stage > 0) const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: _canNext ? _next : null,
-                      child: Text(last ? t('finishSetup') : t('next')),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        );
+              Expanded(child: pages[_stage]),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Row(
+                  children: [
+                    if (_stage > 0)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _go(_stage - 1),
+                          child: Text(t('back')),
+                        ),
+                      ),
+                    if (_stage > 0) const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        key: const ValueKey('profileNext'),
+                        onPressed: _canNext ? _next : null,
+                        child: Text(last ? t('save') : t('next')),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
         }),
       ),
     );
   }
 
-  // ---- step 0: about you ------------------------------------------------
+  // ---- page 0: about you (one form) -------------------------------------
+
+  Widget _label(String text) => Padding(
+        padding: const EdgeInsets.only(top: 16, bottom: 6),
+        child: Text(text, style: kTitleMedium),
+      );
 
   Widget _aboutYou() {
     final age = _dob == null ? null : ageFromDob(_dob!, DateTime.now());
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Center(child: Avatar(photo: _photo, radius: 60)),
+        Center(child: Avatar(photo: _photo, radius: 56)),
         const SizedBox(height: 8),
         Center(
           child: Wrap(
             spacing: 8,
             children: [
               OutlinedButton.icon(
-                icon: const Icon(Icons.add_a_photo),
+                icon: const Icon(Icons.add_a_photo_rounded),
                 label: Text('${t('addPhoto')} ${t('optional')}'),
                 onPressed: () async {
                   final bytes = await pickPhoto(context, _lang);
@@ -193,15 +246,35 @@ class _ProfileFlowState extends State<ProfileFlow> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        Text(t('dob'), style: kTitleMedium),
-        const SizedBox(height: 8),
+        _label(t('yourName')),
+        TextField(
+          key: const ValueKey('profileName'),
+          controller: _nameCtl,
+          textCapitalization: TextCapitalization.words,
+          onChanged: (_) => setState(() {}),
+        ),
+        _label(t('phoneNumber')),
+        TextField(
+          key: const ValueKey('profilePhone'),
+          controller: _phoneCtl,
+          readOnly: true,
+          enabled: false,
+        ),
+        _label('${t('email')} ${t('optional')}'),
+        TextField(
+          key: const ValueKey('profileEmail'),
+          controller: _emailCtl,
+          keyboardType: TextInputType.emailAddress,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+              errorText: _emailOk ? null : t('invalidEmail')),
+        ),
+        _label(t('dob')),
         OutlinedButton.icon(
           icon: const Icon(Icons.cake_rounded),
-          label: Text(
-              _dob == null
-                  ? t('pickDob')
-                  : MaterialLocalizations.of(context).formatMediumDate(_dob!)),
+          label: Text(_dob == null
+              ? t('pickDob')
+              : MaterialLocalizations.of(context).formatMediumDate(_dob!)),
           onPressed: () async {
             final now = DateTime.now();
             final picked = await showDatePicker(
@@ -215,24 +288,53 @@ class _ProfileFlowState extends State<ProfileFlow> {
         ),
         if (age != null)
           Padding(
-            padding: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.only(top: 8),
             child: Text('${t('age')}: $age ${t('years')}',
-                style: kHeadlineSmall
-                    .copyWith(color: Palette.brand)),
+                style: kHeadlineSmall.copyWith(color: Palette.brand)),
           ),
-        const SizedBox(height: 24),
-        Text(t('preferredLanguage'),
-            style: kTitleMedium),
-        const SizedBox(height: 8),
-        LanguageRow(
-          lang: _lang,
-          onChanged: (code) => setState(() => _lang = code),
+        _label('${t('cityTown')} ${t('optional')}'),
+        TextField(
+          key: const ValueKey('profileCity'),
+          controller: _cityCtl,
+          textCapitalization: TextCapitalization.words,
+        ),
+        _label('${t('stateLabel')} ${t('optional')}'),
+        DropdownButtonFormField<String>(
+          key: const ValueKey('profileState'),
+          initialValue: _state,
+          isExpanded: true,
+          borderRadius: BorderRadius.circular(16),
+          items: [
+            for (final s in kIndianStates)
+              DropdownMenuItem(
+                  value: s, child: Text(s, overflow: TextOverflow.ellipsis)),
+          ],
+          onChanged: (v) => setState(() => _state = v),
+        ),
+        _label(t('preferredLanguage')),
+        DropdownButtonFormField<String>(
+          key: const ValueKey('profileLanguage'),
+          initialValue: _lang,
+          isExpanded: true,
+          borderRadius: BorderRadius.circular(16),
+          items: [
+            for (final c in kLanguageOrder)
+              DropdownMenuItem(
+                value: c,
+                child: Text(
+                    kLanguages[c] == kLanguageEnglish[c]
+                        ? kLanguages[c]!
+                        : '${kLanguages[c]}  ·  ${kLanguageEnglish[c]}',
+                    overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: (v) => setState(() => _lang = v ?? _lang),
         ),
       ],
     );
   }
 
-  // ---- step 1: family ---------------------------------------------------
+  // ---- page 1: family ---------------------------------------------------
 
   Widget _family() => ListView(
         padding: const EdgeInsets.all(20),
@@ -253,113 +355,53 @@ class _ProfileFlowState extends State<ProfileFlow> {
         ],
       );
 
-  // ---- step 2: care team ------------------------------------------------
+  // ---- pages 2 and 3: doctor and caregiver ------------------------------
 
-  Widget _careTeam() => ListView(
+  Widget _invitePage(String kind) => ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Text(t('careTeamHelp'),
               style: const TextStyle(fontSize: 15, color: Palette.muted)),
           const SizedBox(height: 12),
-          for (final kind in const ['doctor', 'caregiver'])
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: ConsentGate(
+          ConsentGate(
+            db: widget.db,
+            patientId: _id,
+            purpose: kind == 'doctor' ? 'doctor_share' : 'caregiver_share',
+            purposeTextKey:
+                kind == 'doctor' ? 'purposeDoctor' : 'purposeCaregiverShare',
+            lang: _lang,
+            byName: _name,
+            child: _CareInvite(
                 db: widget.db,
                 patientId: _id,
-                purpose: kind == 'doctor' ? 'doctor_share' : 'caregiver_share',
-                purposeTextKey:
-                    kind == 'doctor' ? 'purposeDoctor' : 'purposeCaregiverShare',
+                kind: kind,
                 lang: _lang,
-                byName: _name,
-                child: _CareInvite(
-                    db: widget.db,
-                    patientId: _id,
-                    kind: kind,
-                    lang: _lang,
-                    by: _name),
-              ),
-            ),
+                by: _name),
+          ),
+          const SizedBox(height: 12),
           Text(t('inviteNote'),
-              style: const TextStyle(fontSize: 15, color: Palette.muted)),
+              style: const TextStyle(fontSize: 13.5, color: Palette.muted)),
         ],
       );
 
-  // ---- step 3: daily routine --------------------------------------------
+  Widget _doctor() => _invitePage('doctor');
+  Widget _caregiver() => _invitePage('caregiver');
 
-  Widget _routine() => LayoutBuilder(
-        builder: (context, box) => Column(
-          children: [
-            // The help text scrolls if it is long, so it can never push the
-            // reminders list off a small screen.
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: box.maxHeight * 0.3),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Text(t('routineHelp'),
-                      style: const TextStyle(
-                          fontSize: 15, color: Palette.muted)),
-                ),
-              ),
-            ),
-            Expanded(
-              child: ConsentGate(
-                db: widget.db,
-                patientId: _id,
-                purpose: 'reminders',
-                purposeTextKey: 'purposeReminders',
-                lang: _lang,
-                byName: _name,
-                child: RemindersScreen(
-                  db: widget.db,
-                  notifier: widget.notifier,
-                  patientId: _id,
-                  language: _lang,
-                  embedded: true,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+  // ---- page 4: routine and reminders ------------------------------------
 
-  // ---- step 4: permissions ----------------------------------------------
-
-  Widget _permissions() => ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          _PermissionCard(
-            icon: Icons.call_rounded,
-            fg: Palette.sky,
-            bg: Palette.tileSky,
-            title: t('permPhone'),
-            why: t('permPhoneWhy'),
+  Widget _routine() => ConsentGate(
+        db: widget.db,
+        patientId: _id,
+        purpose: 'reminders',
+        purposeTextKey: 'purposeReminders',
+        lang: _lang,
+        byName: _name,
+        child: _RoutineSetup(
+            db: widget.db,
+            notifier: widget.notifier,
+            patientId: _id,
             lang: _lang,
-            permission: Permission.phone,
-          ),
-          _PermissionCard(
-            icon: Icons.location_on_rounded,
-            fg: Palette.orange,
-            bg: Palette.tileOrange,
-            title: t('permLocation'),
-            why: t('permLocationWhy'),
-            lang: _lang,
-            permission: Permission.locationWhenInUse,
-            onGranted: () => widget.db.hasConsent(_id, 'location').then((has) {
-              if (!has) {
-                return widget.db.recordConsent(
-                  patientId: _id,
-                  purposes: {'location': true},
-                  givenByName: _name,
-                  givenByRelation: 'self_or_guardian',
-                  noticeVersion: 'v2',
-                );
-              }
-            }),
-          ),
-        ],
+            by: _name),
       );
 }
 
@@ -695,69 +737,157 @@ class _CareInviteState extends State<_CareInvite> {
   }
 }
 
-// ---- permission card ------------------------------------------------------
 
-class _PermissionCard extends StatefulWidget {
-  const _PermissionCard({
-    required this.icon,
-    required this.fg,
-    required this.bg,
-    required this.title,
-    required this.why,
+// ---- routine and reminders ------------------------------------------------
+
+/// Daily routine (repeats every day) and reminders for dates (birthdays,
+/// appointments, events). Both can be changed later under Reminders.
+class _RoutineSetup extends StatefulWidget {
+  const _RoutineSetup({
+    required this.db,
+    required this.notifier,
+    required this.patientId,
     required this.lang,
-    required this.permission,
-    this.onGranted,
+    required this.by,
   });
-  final IconData icon;
-  final Color fg, bg;
-  final String title, why, lang;
-  final Permission permission;
-  final Future<void> Function()? onGranted;
+  final AppDatabase db;
+  final ReminderNotifier notifier;
+  final String patientId, lang, by;
 
   @override
-  State<_PermissionCard> createState() => _PermissionCardState();
+  State<_RoutineSetup> createState() => _RoutineSetupState();
 }
 
-class _PermissionCardState extends State<_PermissionCard> {
-  PermissionStatus? _status;
+class _RoutineSetupState extends State<_RoutineSetup> {
+  List<Reminder> _items = [];
 
   String t(String k) => tr(widget.lang, k);
-
-  /// iOS has no 'phone' permission: a tel: link opens the dialer, which asks
-  /// the person to confirm the call itself. Showing a button that can never be
-  /// granted would only confuse.
-  bool get _notNeeded => Platform.isIOS && widget.permission == Permission.phone;
 
   @override
   void initState() {
     super.initState();
-    if (_notNeeded) return;
-    widget.permission.status.then((s) {
-      if (mounted) setState(() => _status = s);
-    });
+    _load();
   }
 
-  Future<void> _ask() async {
-    final s = await widget.permission.request();
-    if (s.isGranted) await widget.onGranted?.call();
-    if (mounted) setState(() => _status = s);
+  Future<void> _load() async {
+    final items = await widget.db.listReminders(widget.patientId);
+    if (mounted) setState(() => _items = items);
+  }
+
+  Future<void> _add(List<ReminderKind> kinds, String titleKey) async {
+    final r = await showAddReminderDialog(context,
+        language: widget.lang,
+        kinds: kinds,
+        title: t(titleKey),
+        defaultBy: widget.by);
+    if (r == null) return;
+    await widget.db.addReminder(
+      patientId: widget.patientId,
+      kind: r.kind,
+      label: r.label,
+      hour: r.time.hour,
+      minute: r.time.minute,
+      onDate: r.date,
+      createdBy: r.by,
+    );
+    await widget.notifier
+        .resync(patientId: widget.patientId, lang: widget.lang);
+    await _load();
+  }
+
+  Future<void> _delete(Reminder r) async {
+    await widget.db.deleteReminder(widget.patientId, r.id, widget.by);
+    await widget.notifier
+        .resync(patientId: widget.patientId, lang: widget.lang);
+    await _load();
+  }
+
+  Widget _row(Reminder r) {
+    final style = kindStyle(r.kind);
+    final time = TimeOfDay(hour: r.hour, minute: r.minute).format(context);
+    final when = r.onDate == null
+        ? '$time · ${t('everyDay')}'
+        : '${MaterialLocalizations.of(context).formatMediumDate(r.onDate!)} · $time';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+        child: Row(children: [
+          IconBadge(
+              icon: style.icon, fg: style.fg, bg: style.bg, size: 44, circle: true),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(r.label.isEmpty ? t('kind_${r.kind.name}') : r.label,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Palette.brandDeep)),
+                Text(
+                    r.label.isEmpty
+                        ? when
+                        : '${t('kind_${r.kind.name}')} · $when',
+                    style: const TextStyle(
+                        fontSize: 13.5, color: Palette.muted)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: t('delete'),
+            icon: const Icon(Icons.delete_outline_rounded, color: Palette.muted),
+            onPressed: () => _delete(r),
+          ),
+        ]),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final granted = _notNeeded || (_status?.isGranted ?? false);
-    final blocked = _status != null && _status!.isPermanentlyDenied;
-    return AllowRow(
-      keyName: widget.permission.toString(),
-      icon: widget.icon,
-      fg: widget.fg,
-      bg: widget.bg,
-      title: widget.title,
-      detail: blocked ? '${widget.why}\n${t('notAllowed')}' : widget.why,
-      allowLabel: t('allow'),
-      allowedLabel: t('allowed'),
-      allowed: granted,
-      onAllow: blocked ? openAppSettings : _ask,
+    final daily = _items.where((r) => !kDatedKinds.contains(r.kind)).toList();
+    final dated = _items.where((r) => kDatedKinds.contains(r.kind)).toList();
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(t('dailyRoutine'), style: kTitleLarge),
+        const SizedBox(height: 4),
+        Text(t('routineHelp'),
+            style: const TextStyle(fontSize: 14, color: Palette.muted)),
+        const SizedBox(height: 10),
+        for (final r in daily) _row(r),
+        OutlinedButton.icon(
+          key: const ValueKey('addRoutine'),
+          icon: const Icon(Icons.add_rounded),
+          label: Text(t('addDailyRoutine')),
+          onPressed: () => _add(const [
+            ReminderKind.medicine,
+            ReminderKind.hydration,
+            ReminderKind.activity,
+          ], 'addDailyRoutine'),
+        ),
+        const SizedBox(height: 24),
+        Text(t('datesReminders'), style: kTitleLarge),
+        const SizedBox(height: 4),
+        Text(t('datesHelp'),
+            style: const TextStyle(fontSize: 14, color: Palette.muted)),
+        const SizedBox(height: 10),
+        for (final r in dated) _row(r),
+        OutlinedButton.icon(
+          key: const ValueKey('addDateReminder'),
+          icon: const Icon(Icons.add_rounded),
+          label: Text(t('addDateReminder')),
+          onPressed: () => _add(const [
+            ReminderKind.birthday,
+            ReminderKind.appointment,
+            ReminderKind.event,
+          ], 'addDateReminder'),
+        ),
+        const SizedBox(height: 16),
+        Text(t('routineLaterNote'),
+            style: const TextStyle(fontSize: 13.5, color: Palette.muted)),
+      ],
     );
   }
 }

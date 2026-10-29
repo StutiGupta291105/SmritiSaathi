@@ -1,7 +1,8 @@
-enum ReminderKind { medicine, hydration, activity, appointment }
+enum ReminderKind { medicine, hydration, activity, appointment, birthday, event }
 
 /// A reminder. Weekly reminders repeat on [daysMask] (bit 0 = Monday ...
-/// bit 6 = Sunday); one-off reminders (appointments) set [onDate] instead.
+/// bit 6 = Sunday); dated reminders (appointments, events) set [onDate] and
+/// happen once; a birthday also sets [onDate] but repeats every year.
 class Reminder {
   const Reminder({
     required this.id,
@@ -36,6 +37,14 @@ class Reminder {
 /// Next [count] fire times strictly after [from], in local time.
 List<DateTime> nextOccurrences(Reminder r, DateTime from, {int count = 1}) {
   if (!r.active || count <= 0) return const [];
+  if (r.onDate != null && r.kind == ReminderKind.birthday) {
+    final d = r.onDate!;
+    var at = DateTime(from.year, d.month, d.day, r.hour, r.minute);
+    if (!at.isAfter(from)) {
+      at = DateTime(from.year + 1, d.month, d.day, r.hour, r.minute);
+    }
+    return [at];
+  }
   if (r.onDate != null) {
     final at = DateTime(
         r.onDate!.year, r.onDate!.month, r.onDate!.day, r.hour, r.minute);

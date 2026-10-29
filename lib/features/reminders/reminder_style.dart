@@ -20,4 +20,8 @@ KindStyle kindStyle(ReminderKind k) => switch (k) {
           Icons.directions_walk_rounded, Palette.orange, Palette.tileOrange),
       ReminderKind.appointment => const KindStyle(
           Icons.event_rounded, Palette.purple, Palette.tilePurple),
+      ReminderKind.birthday => const KindStyle(
+          Icons.cake_rounded, Color(0xFFD6457A), Color(0xFFFCE4EE)),
+      ReminderKind.event => const KindStyle(
+          Icons.celebration_rounded, Palette.green, Palette.tileGreen),
     };

@@ -79,7 +79,7 @@ void main() {
     expect(text, isNot(contains('+91'))); // no phone numbers in a summary
   });
 
-  test('reminder type is unused here but kind enum still compiles', () {
-    expect(ReminderKind.values.length, 4);
+  test('reminder kinds: four daily or one-off kinds plus birthday and event', () {
+    expect(ReminderKind.values.map((k) => k.name), ['medicine', 'hydration', 'activity', 'appointment', 'birthday', 'event']);
   });
 }

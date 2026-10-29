@@ -27,7 +27,7 @@ MAX_REPLY_TOKENS = 1024  # adaptive thinking shares this budget; replies stay sh
 
 
 
-_KINDS = {"medicine", "hydration", "activity", "appointment"}
+_KINDS = {"medicine", "hydration", "activity", "appointment", "birthday", "event"}
 
 
 class CompanionUnavailable(Exception):

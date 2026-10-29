@@ -68,10 +68,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
   }
 
   Future<void> _add() async {
-    final result = await showDialog<_NewReminder>(
-      context: context,
-      builder: (_) => _AddReminderDialog(language: widget.language),
-    );
+    final result =
+        await showAddReminderDialog(context, language: widget.language);
     if (result == null) return;
     await widget.db.addReminder(
       patientId: widget.patientId,
@@ -279,8 +277,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
   }
 }
 
-class _NewReminder {
-  _NewReminder(this.kind, this.label, this.time, this.date, this.by);
+class NewReminder {
+  NewReminder(this.kind, this.label, this.time, this.date, this.by);
   final ReminderKind kind;
   final String label;
   final TimeOfDay time;
@@ -288,20 +286,54 @@ class _NewReminder {
   final String by;
 }
 
+/// Kinds that happen on a particular date rather than every day.
+const kDatedKinds = {
+  ReminderKind.appointment,
+  ReminderKind.birthday,
+  ReminderKind.event,
+};
+
+/// Asks for one reminder. [kinds] limits the choices (the profile flow shows
+/// daily routines and dated reminders separately); [defaultBy] pre-fills who is
+/// making the change.
+Future<NewReminder?> showAddReminderDialog(
+  BuildContext context, {
+  required String language,
+  List<ReminderKind>? kinds,
+  String? title,
+  String defaultBy = '',
+}) =>
+    showDialog<NewReminder>(
+      context: context,
+      builder: (_) => _AddReminderDialog(
+          language: language,
+          kinds: kinds ?? ReminderKind.values,
+          title: title,
+          defaultBy: defaultBy),
+    );
+
 class _AddReminderDialog extends StatefulWidget {
-  const _AddReminderDialog({required this.language});
+  const _AddReminderDialog({
+    required this.language,
+    required this.kinds,
+    this.title,
+    this.defaultBy = '',
+  });
   final String language;
+  final List<ReminderKind> kinds;
+  final String? title;
+  final String defaultBy;
 
   @override
   State<_AddReminderDialog> createState() => _AddReminderDialogState();
 }
 
 class _AddReminderDialogState extends State<_AddReminderDialog> {
-  ReminderKind _kind = ReminderKind.medicine;
+  late ReminderKind _kind = widget.kinds.first;
   TimeOfDay _time = const TimeOfDay(hour: 9, minute: 0);
   DateTime? _date;
   final _label = TextEditingController();
-  final _by = TextEditingController();
+  late final _by = TextEditingController(text: widget.defaultBy);
 
   String t(String k) => tr(widget.language, k);
 
@@ -314,25 +346,27 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isAppointment = _kind == ReminderKind.appointment;
+    final dated = kDatedKinds.contains(_kind);
     return AlertDialog(
-      title: Text(t('addReminder')),
+      title: Text(widget.title ?? t('addReminder')),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            DropdownButton<ReminderKind>(
-              value: _kind,
-              isExpanded: true,
-              items: [
-                for (final k in ReminderKind.values)
-                  DropdownMenuItem(value: k, child: Text(t('kind_${k.name}'))),
-              ],
-              onChanged: (k) => setState(() {
-                _kind = k!;
-                if (k != ReminderKind.appointment) _date = null;
-              }),
-            ),
+            if (widget.kinds.length > 1)
+              DropdownButton<ReminderKind>(
+                value: _kind,
+                isExpanded: true,
+                items: [
+                  for (final k in widget.kinds)
+                    DropdownMenuItem(
+                        value: k, child: Text(t('kind_${k.name}'))),
+                ],
+                onChanged: (k) => setState(() {
+                  _kind = k!;
+                  if (!kDatedKinds.contains(k)) _date = null;
+                }),
+              ),
             TextField(
                 controller: _label,
                 decoration: InputDecoration(labelText: t('reminderLabel'))),
@@ -346,7 +380,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                 if (picked != null) setState(() => _time = picked);
               },
             ),
-            if (isAppointment)
+            if (dated)
               OutlinedButton.icon(
                 icon: const Icon(Icons.calendar_today),
                 label: Text(_date == null
@@ -354,11 +388,14 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                     : MaterialLocalizations.of(context).formatMediumDate(_date!)),
                 onPressed: () async {
                   final now = DateTime.now();
+                  final birthday = _kind == ReminderKind.birthday;
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: now,
-                    firstDate: now,
-                    lastDate: now.add(const Duration(days: 730)),
+                    // A birthday is a date in the past that comes round each year.
+                    firstDate: birthday ? DateTime(1900) : now,
+                    lastDate:
+                        birthday ? now : now.add(const Duration(days: 1095)),
                   );
                   if (picked != null) setState(() => _date = picked);
                 },
@@ -379,11 +416,11 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
         TextButton(
             onPressed: () => Navigator.pop(context), child: Text(t('cancel'))),
         FilledButton(
-          onPressed: (_by.text.trim().isEmpty || (isAppointment && _date == null))
+          onPressed: (_by.text.trim().isEmpty || (dated && _date == null))
               ? null
               : () => Navigator.pop(
                   context,
-                  _NewReminder(_kind, _label.text.trim(), _time, _date,
+                  NewReminder(_kind, _label.text.trim(), _time, _date,
                       _by.text.trim())),
           child: Text(t('save')),
         ),

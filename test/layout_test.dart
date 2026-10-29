@@ -148,16 +148,19 @@ void main() {
         onLangChanged: (_) {}, onLoggedIn: () {}, initialSignUp: true, onBack: () {}),
     'profile about you': (l) => ProfileFlow(
         db: db, notifier: ReminderNotifier(db), onDone: () {},
-        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 0}),
+        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'phone': '+919876543210', 'email': null, 'city': null, 'state': null, 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 0}),
     'profile family': (l) => ProfileFlow(
         db: db, notifier: ReminderNotifier(db), onDone: () {},
-        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 1}),
-    'profile care team': (l) => ProfileFlow(
+        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'phone': '+919876543210', 'email': null, 'city': null, 'state': null, 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 1}),
+    'profile doctor': (l) => ProfileFlow(
         db: db, notifier: ReminderNotifier(db), onDone: () {},
-        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 2}),
+        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'phone': '+919876543210', 'email': null, 'city': null, 'state': null, 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 2}),
+    'profile caregiver': (l) => ProfileFlow(
+        db: db, notifier: ReminderNotifier(db), onDone: () {},
+        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'phone': '+919876543210', 'email': null, 'city': null, 'state': null, 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 3}),
     'profile routine': (l) => ProfileFlow(
         db: db, notifier: ReminderNotifier(db), onDone: () {},
-        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 3}),
+        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'phone': '+919876543210', 'email': null, 'city': null, 'state': null, 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 4}),
     'home': (l) => Scaffold(
         body: SafeArea(
             child: HomeTab(

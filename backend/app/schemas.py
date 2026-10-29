@@ -120,7 +120,7 @@ class SessionIn(BaseModel):
 
 class ScheduleIn(BaseModel):
     id: str = Field(max_length=36)
-    kind: Literal["medicine", "hydration", "activity", "appointment"]
+    kind: Literal["medicine", "hydration", "activity", "appointment", "birthday", "event"]
     hour: int = Field(ge=0, le=23)
     minute: int = Field(ge=0, le=59)
     days_mask: int = Field(default=127, ge=0, le=127)

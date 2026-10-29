@@ -80,7 +80,7 @@ class AppDatabase {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 6;
+  static const schemaVersion = 7;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -100,6 +100,9 @@ class AppDatabase {
         caregiver_pin_salt TEXT,
         server_patient_id TEXT,
         server_baseline INTEGER,
+        email TEXT,
+        city TEXT,
+        state TEXT,
         created_at TEXT NOT NULL
       )''');
     await _createAccountTables(db);
@@ -203,6 +206,13 @@ class AppDatabase {
       // a doctor's registration.
       await _addColumn(db, 'patients', 'server_baseline INTEGER');
       await _addColumn(db, 'care_links', 'verified INTEGER NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 7) {
+      // Profile details from the single-form profile page. Kept on the phone;
+      // they are not part of what is synced to the server.
+      await _addColumn(db, 'patients', 'email TEXT');
+      await _addColumn(db, 'patients', 'city TEXT');
+      await _addColumn(db, 'patients', 'state TEXT');
     }
   }
 
@@ -431,9 +441,19 @@ class AppDatabase {
     List<int>? photo,
     bool clearPhoto = false,
     String? language,
+    String? displayName,
+    String? email,
+    String? city,
+    String? state,
     required String by,
   }) async {
     final values = <String, Object?>{};
+    if (displayName != null && displayName.trim().isNotEmpty) {
+      values['display_name'] = displayName.trim();
+    }
+    if (email != null) values['email'] = email.trim().isEmpty ? null : email.trim();
+    if (city != null) values['city'] = city.trim().isEmpty ? null : city.trim();
+    if (state != null) values['state'] = state.trim().isEmpty ? null : state.trim();
     if (dob != null) values['dob'] = dob.toIso8601String().substring(0, 10);
     if (photo != null) values['photo'] = Uint8List.fromList(photo);
     if (clearPhoto) values['photo'] = null;
@@ -447,7 +467,7 @@ class AppDatabase {
   }
 
   /// Setup progress, so the profile flow resumes after the app is closed.
-  /// 0 about you, 1 family, 2 care team, 3 routine, 4 permissions, 5 done.
+  /// 0 about you, 1 family, 2 doctor, 3 caregiver, 4 routine, 5 done.
   Future<void> setSetupStage(String patientId, int stage) => _db.update(
       'patients', {'setup_stage': stage},
       where: 'id = ?', whereArgs: [patientId]);
