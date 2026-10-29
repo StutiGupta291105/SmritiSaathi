@@ -5,6 +5,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from .. import audit
+from ..config import FIXED_TEST_OTP
 from ..db import utcnow
 from ..deps import current_user, get_db, ip_hash, settings_of
 from ..models import OtpChallenge, RefreshToken, User, new_id
@@ -48,7 +49,8 @@ def otp_request(body: OtpRequest, request: Request, db: Session = Depends(get_db
     if by_phone >= s.otp_requests_per_hour_phone or by_ip >= s.otp_requests_per_hour_ip:
         raise HTTPException(429, "too_many_requests")
 
-    cid, code = new_id(), new_otp()
+    cid = new_id()
+    code = FIXED_TEST_OTP if s.sms_provider == "test" else new_otp()
     db.add(OtpChallenge(
         id=cid, phone_hmac=ph, phone_last4=phone[-4:], role=body.role,
         code_hash=otp_hash(code, cid, s),

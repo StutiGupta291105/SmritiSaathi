@@ -8,6 +8,9 @@ _DEV_SECRET = "dev-only-secret-change-me-dev-only-secret"
 _DEV_PHONE_KEY = "dev-only-phone-key-change-me-dev-only"
 
 
+FIXED_TEST_OTP = "123456"  # only with SMRITI_SMS_PROVIDER=test, which prod refuses
+
+
 @dataclass(frozen=True)
 class Settings:
     env: str = "dev"
@@ -22,7 +25,7 @@ class Settings:
     refresh_ttl_days: int = 30
     requests_per_minute_ip: int = 120
     max_body_bytes: int = 1_000_000
-    sms_provider: str = "dev"
+    sms_provider: str = "dev"                  # "dev", "test" (fixed code, never in prod) or a real one
     push_provider: str = "dev"                 # "dev" or "fcm"
     companion_provider: str = "dev"            # "dev" or "anthropic"
     companion_model: str = "claude-opus-5-5"   # any Claude model id; cheaper ones cost less
@@ -44,9 +47,14 @@ def load_settings() -> Settings:
         return type(default)(raw)
 
     d = Settings()
+    db_url = g("DATABASE_URL", d.database_url)
+    # Hosts such as Render hand out plain postgres:// or postgresql:// URLs.
+    for plain in ("postgres://", "postgresql://"):
+        if db_url.startswith(plain):
+            db_url = "postgresql+psycopg://" + db_url[len(plain):]
     s = Settings(
         env=g("ENV", d.env),
-        database_url=g("DATABASE_URL", d.database_url),
+        database_url=db_url,
         secret_key=g("SECRET_KEY", d.secret_key),
         phone_hmac_key=g("PHONE_HMAC_KEY", d.phone_hmac_key),
         otp_ttl_seconds=g("OTP_TTL_SECONDS", d.otp_ttl_seconds),
@@ -70,7 +78,7 @@ def load_settings() -> Settings:
             problems.append("SMRITI_SECRET_KEY must be set (32+ characters)")
         if s.phone_hmac_key == _DEV_PHONE_KEY or len(s.phone_hmac_key) < 32:
             problems.append("SMRITI_PHONE_HMAC_KEY must be set (32+ characters)")
-        if s.sms_provider == "dev":
+        if s.sms_provider in ("dev", "test"):
             problems.append("SMRITI_SMS_PROVIDER must be a real provider in prod")
         if s.database_url.startswith("sqlite"):
             problems.append("SMRITI_DATABASE_URL must be PostgreSQL in prod")

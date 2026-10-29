@@ -173,3 +173,32 @@ def test_production_accepts_a_safe_configuration(monkeypatch):
     monkeypatch.setenv("SMRITI_SMS_PROVIDER", "msg91")
     monkeypatch.setenv("SMRITI_DATABASE_URL", "postgresql+psycopg://u:p@h/db")
     assert load_settings().is_prod
+
+
+def test_production_refuses_the_test_sms_provider(monkeypatch):
+    monkeypatch.setenv("SMRITI_ENV", "prod")
+    monkeypatch.setenv("SMRITI_SECRET_KEY", "k" * 40)
+    monkeypatch.setenv("SMRITI_PHONE_HMAC_KEY", "p" * 40)
+    monkeypatch.setenv("SMRITI_SMS_PROVIDER", "test")
+    monkeypatch.setenv("SMRITI_DATABASE_URL", "postgresql+psycopg://u:p@h/db")
+    with pytest.raises(RuntimeError, match="SMS_PROVIDER"):
+        load_settings()
+
+
+def test_host_style_database_urls_are_accepted(monkeypatch):
+    for plain in ("postgres://u:p@h/db", "postgresql://u:p@h/db"):
+        monkeypatch.setenv("SMRITI_DATABASE_URL", plain)
+        assert load_settings().database_url == "postgresql+psycopg://u:p@h/db"
+
+
+def test_test_provider_uses_the_fixed_code_and_sends_nothing(tmp_path):
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+    s = Settings(sms_provider="test", database_url=f"sqlite:///{tmp_path}/t.db")
+    c = TestClient(create_app(s))
+    r = c.post("/v1/auth/otp/request", json={"phone": PHONE, "role": "patient"})
+    assert r.status_code == 200, r.text
+    v = c.post("/v1/auth/otp/verify", json={
+        "challenge_id": r.json()["challenge_id"], "code": "123456",
+        "name": "Test Person", "mode": "signup"})
+    assert v.status_code == 200, v.text

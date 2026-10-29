@@ -1,0 +1,39 @@
+# One-click test server on Render (https://render.com): a web service built from
+# backend/Dockerfile plus a free PostgreSQL database.
+#
+# TEST ONLY. The login code is always 123456 (SMRITI_SMS_PROVIDER=test), so use
+# made-up names and numbers. Real use needs a real SMS provider and
+# SMRITI_ENV=prod; see docs/DEPLOYMENT.md.
+services:
+  - type: web
+    name: smriti-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: singapore          # closest Render region to India
+    healthCheckPath: /healthz
+    envVars:
+      - key: SMRITI_ENV
+        value: dev
+      - key: SMRITI_SMS_PROVIDER
+        value: test
+      - key: SMRITI_TRUST_PROXY
+        value: "true"
+      - key: SMRITI_OTP_PER_HOUR_PHONE
+        value: "50"
+      - key: SMRITI_OTP_PER_HOUR_IP
+        value: "200"
+      - key: SMRITI_SECRET_KEY
+        generateValue: true
+      - key: SMRITI_PHONE_HMAC_KEY
+        generateValue: true
+      - key: SMRITI_DATABASE_URL
+        fromDatabase:
+          name: smriti-db
+          property: connectionString
+
+databases:
+  - name: smriti-db
+    plan: free
+    region: singapore

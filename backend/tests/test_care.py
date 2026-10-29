@@ -455,7 +455,8 @@ def test_my_patients_carries_dashboard_fields(env):
 
 def test_reminder_times_are_visible_to_a_consented_caretaker_but_never_the_text(env):
     a, pid = env.make_patient(consents=("gameplay", "reminders", "sync"))
-    today = now().date().isoformat()
+    # the server's "today" is the patient's local day (IST by default), not UTC
+    today = (now() + timedelta(minutes=330)).date().isoformat()
     env.client.post(f"/v1/patients/{pid}/sync", headers=a.headers, json={
         "schedules": [
             {"id": "r1", "kind": "medicine", "hour": 9, "minute": 0, "days_mask": 127,

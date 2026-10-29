@@ -24,7 +24,18 @@ class DevSmsProvider:
         self.outbox.append((phone, message))
 
 
+class TestSmsProvider:
+    """A shared test server with no SMS service: sends nothing, and the login
+    code is always the fixed test code. Anyone who knows a phone number could log
+    in as it, so use it with made-up data only. Production refuses to start with it."""
+
+    def send(self, phone: str, message: str) -> None:
+        return None
+
+
 def get_provider(s: Settings) -> SmsProvider:
     if s.sms_provider == "dev":
         return DevSmsProvider()
+    if s.sms_provider == "test":
+        return TestSmsProvider()
     raise RuntimeError(f"Unknown SMS provider: {s.sms_provider}")

@@ -1,3 +1,19 @@
+# Quick test server on Render (free, for trying the caregiver app)
+
+**Test only.** `render.yaml` runs the API with `SMRITI_SMS_PROVIDER=test`: no SMS is
+sent and every login code is `123456`, so anyone who knows a phone number could log
+in as it. Use made-up names and numbers. Production refuses to start with this
+setting. The free plan sleeps after 15 minutes without traffic (the first request
+afterwards takes about a minute) and the free database expires after 30 days.
+
+1. Sign in at https://render.com with GitHub and allow it to see the repository.
+2. New > Blueprint, pick the repository and the branch with `render.yaml`, Apply.
+3. Wait until `smriti-api` shows Live. Open `https://<name>.onrender.com/healthz`; it
+   should answer `{"status":"ok"}`.
+4. In GitHub: repository Settings > Secrets and variables > Actions > Variables >
+   New repository variable `API_BASE_URL` = that address (no trailing slash).
+5. Run the Build Android APK workflow and install the new APK on both phones.
+
 # Deployment guide (reference: AWS Mumbai, ap-south-1)
 
 Nothing is deployed yet. This is a reference layout; any Indian region of any
