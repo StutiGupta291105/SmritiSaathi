@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -666,9 +668,15 @@ class _PermissionCardState extends State<_PermissionCard> {
 
   String t(String k) => tr(widget.lang, k);
 
+  /// iOS has no 'phone' permission: a tel: link opens the dialer, which asks
+  /// the person to confirm the call itself. Showing a button that can never be
+  /// granted would only confuse.
+  bool get _notNeeded => Platform.isIOS && widget.permission == Permission.phone;
+
   @override
   void initState() {
     super.initState();
+    if (_notNeeded) return;
     widget.permission.status.then((s) {
       if (mounted) setState(() => _status = s);
     });
@@ -682,7 +690,7 @@ class _PermissionCardState extends State<_PermissionCard> {
 
   @override
   Widget build(BuildContext context) {
-    final granted = _status?.isGranted ?? false;
+    final granted = _notNeeded || (_status?.isGranted ?? false);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

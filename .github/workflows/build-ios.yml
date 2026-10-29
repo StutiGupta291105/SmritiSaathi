@@ -1,0 +1,44 @@
+name: Build iOS (unsigned)
+
+# Builds the iOS app on a Mac runner WITHOUT code signing, to prove it compiles.
+# The result cannot be installed on a phone. To publish you need an Apple
+# Developer account, a distribution certificate and a provisioning profile; see
+# docs/RELEASE.md. This workflow has not been run yet: expect to fix small
+# things on the first run.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.7"
+          channel: stable
+          cache: true
+      - name: Generate iOS project
+        run: flutter create . --project-name smriti_assist --platforms ios
+      - name: Remove the generated sample test
+        run: rm -f test/widget_test.dart
+      - name: Apply iOS settings
+        run: python3 .github/scripts/patch_ios.py project
+      - run: flutter pub get
+      - name: Generate the iOS app icon from the logo
+        run: dart run flutter_launcher_icons -f flutter_launcher_icons-ios.yaml
+      - run: flutter test
+      - name: Create the Podfile (no build yet)
+        run: flutter build ios --config-only --no-codesign
+      - name: Apply Podfile settings
+        run: python3 .github/scripts/patch_ios.py podfile
+      - name: Build
+        run: flutter build ios --release --no-codesign --dart-define=API_BASE_URL=${{ vars.API_BASE_URL }}
+      - name: Zip the app
+        run: cd build/ios/iphoneos && zip -qr "$GITHUB_WORKSPACE/smriti-sathi-ios-unsigned.zip" Runner.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smriti-sathi-ios-unsigned
+          path: smriti-sathi-ios-unsigned.zip
+          if-no-files-found: error

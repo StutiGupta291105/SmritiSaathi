@@ -193,6 +193,17 @@ address the app stays the offline test build (fixed code 123456, no server).
 | Talk to Smriti: AI chat through the server | done and off by default; own consent; read the companion section of `docs/SECURITY.md` (data can leave India, cost, safety limits) before turning it on |
 | Push notifications to caretakers and doctors | server done and tested with a fake provider; the Firebase provider is untested live and the app does not register for push yet |
 
+## Phase 5
+
+| Item | Status |
+|---|---|
+| Doctor "registration checked" badge in the care-team step | done |
+| Starting level kept in step both ways (a caretaker's online change reaches the patient's phone; a change on the phone is sent; needs the sync consent) | done and tested, including against a real server |
+| App registers its push token on sign-in and forgets it on sign-out | done, but the shipped build has no token source until you add Firebase (`lib/services/push_service.dart`) |
+| iOS: project patches (permission texts, notification delegate, permission macros), unsigned build workflow, App Store icon | patches verified on a generated project; **the workflow has not been run on a Mac runner yet** |
+| iOS: the "phone" permission card no longer shows a button that can never be granted | done |
+| Store listing draft, privacy-form mapping, release checklist | `docs/RELEASE.md` |
+
 ### Testing Phase 4
 
 - `flutter test` (157 tests) and `cd backend && python -m pytest` (94 tests) run in CI.
