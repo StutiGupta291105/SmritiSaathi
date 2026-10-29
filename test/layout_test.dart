@@ -17,6 +17,7 @@ import 'package:smriti_assist/data/app_database.dart';
 import 'package:smriti_assist/data/session_store.dart';
 import 'package:smriti_assist/features/auth/auth_screen.dart';
 import 'package:smriti_assist/features/onboarding/onboarding_screen.dart';
+import 'package:smriti_assist/features/profile/profile_flow.dart';
 import 'package:smriti_assist/features/auth/welcome_screen.dart';
 import 'package:smriti_assist/features/companion/chat_screen.dart';
 import 'package:smriti_assist/features/games/attention_game.dart';
@@ -144,6 +145,18 @@ void main() {
     'auth': (l) => AuthScreen(
         db: db, otp: DevOtpService(), session: const SessionStore(), lang: l,
         onLangChanged: (_) {}, onLoggedIn: () {}, initialSignUp: true, onBack: () {}),
+    'profile about you': (l) => ProfileFlow(
+        db: db, notifier: ReminderNotifier(db), onDone: () {},
+        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 0}),
+    'profile family': (l) => ProfileFlow(
+        db: db, notifier: ReminderNotifier(db), onDone: () {},
+        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 1}),
+    'profile care team': (l) => ProfileFlow(
+        db: db, notifier: ReminderNotifier(db), onDone: () {},
+        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 2}),
+    'profile routine': (l) => ProfileFlow(
+        db: db, notifier: ReminderNotifier(db), onDone: () {},
+        patient: {'id': pid, 'display_name': 'Dada Ramchandra Prasad', 'language': l, 'dob': '1948-03-02', 'photo': null, 'setup_stage': 3}),
     'home': (l) => Scaffold(
         body: SafeArea(
             child: HomeTab(

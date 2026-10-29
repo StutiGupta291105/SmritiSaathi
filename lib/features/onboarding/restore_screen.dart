@@ -62,18 +62,18 @@ class _RestoreScreenState extends State<RestoreScreen> {
                     color: Palette.brandDeep)),
             const SizedBox(height: 12),
             Text(t('rsBody'),
-                textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
+                textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 8),
             Text(t('rsNote'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Palette.muted)),
+                style: const TextStyle(fontSize: 13.5, color: Palette.muted)),
             if (_failed)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Text(t('errOffline'),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                        color: Palette.red, fontSize: 18, fontWeight: FontWeight.w600)),
+                        color: Palette.red, fontSize: 16, fontWeight: FontWeight.w600)),
               ),
             const SizedBox(height: 24),
             FilledButton(
@@ -81,7 +81,7 @@ class _RestoreScreenState extends State<RestoreScreen> {
             const SizedBox(height: 8),
             TextButton(
                 onPressed: _busy ? null : widget.onStartFresh,
-                child: Text(t('rsFresh'), style: const TextStyle(fontSize: 18))),
+                child: Text(t('rsFresh'), style: const TextStyle(fontSize: 16))),
           ],
         ),
       ),

@@ -125,7 +125,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                 padding: const EdgeInsets.all(24),
                 child: Text(t('remindersOff'),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 18)),
+                    style: const TextStyle(fontSize: 16)),
               ),
             )
           : Column(

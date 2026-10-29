@@ -71,71 +71,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _row(String key, IconData icon, Color fg, Color bg, String title,
-      String detail,
-      {bool required = false}) {
-    final on = _purposes[key] == true;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: AppCard(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        child: Row(children: [
-          IconBadge(icon: icon, fg: fg, bg: bg, size: 48, circle: true),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: Palette.brandDeep)),
-                if (required)
-                  Text(t('permRequired'),
-                      style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: Palette.orange)),
-                const SizedBox(height: 2),
-                Text(detail,
-                    style: const TextStyle(
-                        fontSize: 13.5, height: 1.3, color: Palette.muted)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          on
-              ? Semantics(
-                  button: true,
-                  label: '$title: ${t('permAllowed')}',
-                  child: InkResponse(
-                    key: ValueKey('allowed_$key'),
-                    onTap: () => setState(() => _purposes[key] = false),
-                    child: const Icon(Icons.check_circle_rounded,
-                        size: 44, color: Palette.action),
-                  ),
-                )
-              : ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 104),
-                  child: FilledButton(
-                    key: ValueKey('allow_$key'),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 42),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      textStyle: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600),
-                    ),
-                    onPressed: () => setState(() => _purposes[key] = true),
-                    child: Text(t('allow'),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-                ),
-        ]),
-      ),
-    );
-  }
+          String detail,
+          {bool required = false}) =>
+      AllowRow(
+        keyName: key,
+        icon: icon,
+        fg: fg,
+        bg: bg,
+        title: title,
+        detail: detail,
+        tag: required ? t('permRequired') : null,
+        allowLabel: t('allow'),
+        allowedLabel: t('permAllowed'),
+        allowed: _purposes[key] == true,
+        onAllow: () => setState(() => _purposes[key] = true),
+        onUndo: () => setState(() => _purposes[key] = false),
+      );
 
   @override
   Widget build(BuildContext context) {

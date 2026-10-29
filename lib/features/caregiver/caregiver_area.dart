@@ -140,15 +140,13 @@ class _PinScreenState extends State<_PinScreen> {
                 const SizedBox(height: 12),
                 Text(creating ? t('pinCreateTitle') : t('pinEnter'),
                     textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w700)),
+                    style: kHeadlineSmall
+                        .copyWith(fontWeight: FontWeight.w700)),
                 if (creating)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(t('pinCreateHelp'),
-                        style: const TextStyle(fontSize: 18)),
+                        style: const TextStyle(fontSize: 16)),
                   ),
                 const SizedBox(height: 12),
                 _pinField(_pin, creating ? t('pinCreateTitle') : t('pinEnter')),
@@ -162,7 +160,7 @@ class _PinScreenState extends State<_PinScreen> {
                     child: Text(t(_errorKey!),
                         style: TextStyle(
                             color: Theme.of(context).colorScheme.error,
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600)),
                   ),
                 const SizedBox(height: 16),
@@ -333,7 +331,6 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
   }
 
   Widget _body(_DashData d) {
-    final theme = Theme.of(context);
     final now = DateTime.now();
     final allTimes = d.sessions.map((s) => s.endedAt).toList();
     final inRange = sessionsInRange(d.sessions, now, _range);
@@ -349,7 +346,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
     Widget section(String key) => Padding(
           padding: const EdgeInsets.only(top: 24, bottom: 8),
           child: Text(t(key),
-              style: theme.textTheme.titleLarge?.copyWith(
+              style: kTitleLarge.copyWith(
                   fontWeight: FontWeight.w700, color: Palette.brandDeep)),
         );
 
@@ -363,13 +360,13 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
             child: Text(
               '${d.patient['display_name']}'
               '${dob == null ? '' : ', ${ageFromDob(dob, now)} ${t('years')}'}',
-              style: theme.textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: kHeadlineSmall
+                  .copyWith(fontWeight: FontWeight.w700),
             ),
           ),
         ]),
         const SizedBox(height: 8),
-        Text(t('dashNote'), style: const TextStyle(fontSize: 16)),
+        Text(t('dashNote'), style: const TextStyle(fontSize: 15)),
 
         section('alertsTitle'),
         if (d.alerts.isEmpty)
@@ -377,7 +374,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
             color: Palette.tileGreen,
             child: ListTile(
               leading: const Icon(Icons.check_circle, color: Palette.brand),
-              title: Text(t('noAlerts'), style: const TextStyle(fontSize: 18)),
+              title: Text(t('noAlerts'), style: const TextStyle(fontSize: 16)),
             ),
           )
         else ...[
@@ -394,7 +391,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
                     color: Palette.brand),
                 title: Text(
                     trf(widget.lang, 'alert_${a.kind.name}', a: a.a, b: a.b),
-                    style: const TextStyle(fontSize: 18)),
+                    style: const TextStyle(fontSize: 16)),
                 trailing: switch (a.kind) {
                   AlertKind.suggestRaiseBaseline => TextButton(
                       onPressed: () => _changeLevel(baseline,
@@ -408,7 +405,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
                 },
               ),
             ),
-          Text(t('alertHelp'), style: const TextStyle(fontSize: 15)),
+          Text(t('alertHelp'), style: const TextStyle(fontSize: 14.5)),
         ],
 
         section('overviewTitle'),
@@ -427,7 +424,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
           padding: const EdgeInsets.only(top: 4),
           child: Text(
               '${t('lastPlayed')}: ${d.sessions.isEmpty ? t('never') : MaterialLocalizations.of(context).formatMediumDate(d.sessions.last.endedAt)}',
-              style: const TextStyle(fontSize: 18)),
+              style: const TextStyle(fontSize: 16)),
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -475,7 +472,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
                 children: [
                   Text(
                       '${t(_games[g.game] ?? g.game)} · ${trf(widget.lang, 'sessionsCount', a: g.sessions)} · ${(g.accuracy * 100).round()}%',
-                      style: const TextStyle(fontSize: 18)),
+                      style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 4),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
@@ -495,12 +492,12 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (d.week.expected == 0)
-                  Text(t('noneAdded'), style: const TextStyle(fontSize: 18))
+                  Text(t('noneAdded'), style: const TextStyle(fontSize: 16))
                 else ...[
                   Text(
                       trf(widget.lang, 'adherenceLine',
                           a: d.week.done, b: d.week.expected),
-                      style: const TextStyle(fontSize: 18)),
+                      style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 6),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
@@ -509,7 +506,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
                   ),
                 ],
                 const SizedBox(height: 8),
-                Text(t('adherenceNote'), style: const TextStyle(fontSize: 14)),
+                Text(t('adherenceNote'), style: const TextStyle(fontSize: 13.5)),
               ],
             ),
           ),
@@ -523,7 +520,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('${t('startingLevel')}: ${trf(widget.lang, 'levelWord', a: baseline)}',
-                    style: const TextStyle(fontSize: 18)),
+                    style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 8),
                 OutlinedButton(
                     onPressed: () => _changeLevel(baseline),
@@ -531,16 +528,16 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
                 const Divider(height: 28),
                 Text(t('modelTitle'),
                     style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
+                        fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
                 for (final e in _games.entries)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Text(_modelLine(e.value, d.models[e.key]!, baseline),
-                        style: const TextStyle(fontSize: 17)),
+                        style: const TextStyle(fontSize: 16)),
                   ),
                 const SizedBox(height: 6),
-                Text(t('modelBody'), style: const TextStyle(fontSize: 15)),
+                Text(t('modelBody'), style: const TextStyle(fontSize: 14.5)),
               ],
             ),
           ),
@@ -568,13 +565,13 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
 
         section('familyAndTeam'),
         if (d.family.isEmpty && d.links.isEmpty)
-          Text(t('noneAdded'), style: const TextStyle(fontSize: 18)),
+          Text(t('noneAdded'), style: const TextStyle(fontSize: 16)),
         for (final m in d.family)
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Avatar(photo: m['photo'] as List<int>?),
             title: Text(m['name'] as String,
-                style: const TextStyle(fontSize: 18)),
+                style: const TextStyle(fontSize: 16)),
             subtitle: Text(t('rel_${m['relation']}')),
           ),
         for (final l in d.links)
@@ -583,7 +580,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
             leading: Icon(l['kind'] == 'doctor'
                 ? Icons.medical_services
                 : Icons.volunteer_activism),
-            title: Text('${l['name']}', style: const TextStyle(fontSize: 18)),
+            title: Text('${l['name']}', style: const TextStyle(fontSize: 16)),
             subtitle: Text(
                 '${t(l['kind'] == 'doctor' ? 'roleDoctor' : 'roleCaretaker')} · ${t(_statusKey('${l['status']}'))}'),
           ),
@@ -609,13 +606,11 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Column(children: [
               Text(value,
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.w800)),
+                  style: kHeadlineMedium
+                      .copyWith(fontWeight: FontWeight.w800)),
               Text(label,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15)),
+                  style: const TextStyle(fontSize: 14.5)),
             ]),
           ),
         ),

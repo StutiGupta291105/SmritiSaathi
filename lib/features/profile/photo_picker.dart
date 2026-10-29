@@ -19,13 +19,13 @@ Future<Uint8List?> pickPhoto(BuildContext context, String lang) async {
           ListTile(
             leading: const Icon(Icons.photo_camera, size: 32),
             title: Text(tr(lang, 'fromCamera'),
-                style: const TextStyle(fontSize: 20)),
+                style: const TextStyle(fontSize: 17)),
             onTap: () => Navigator.pop(context, ImageSource.camera),
           ),
           ListTile(
             leading: const Icon(Icons.photo_library, size: 32),
             title: Text(tr(lang, 'fromGallery'),
-                style: const TextStyle(fontSize: 20)),
+                style: const TextStyle(fontSize: 17)),
             onTap: () => Navigator.pop(context, ImageSource.gallery),
           ),
         ],

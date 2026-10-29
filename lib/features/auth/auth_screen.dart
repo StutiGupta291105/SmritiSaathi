@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/profile.dart';
 import '../../core/languages.dart';
 import '../../core/strings.dart';
+import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../data/session_store.dart';
@@ -155,7 +156,7 @@ class _AuthScreenState extends State<AuthScreen> {
           TextButton(
             onPressed: () => widget.onLangChanged(nextLanguage(widget.lang)),
             child: Text(kLanguages[nextLanguage(widget.lang)]!,
-                style: const TextStyle(fontSize: 18)),
+                style: const TextStyle(fontSize: 16)),
           ),
         ],
       ),
@@ -171,14 +172,14 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(t('otpTestMode'),
-                      style: const TextStyle(fontSize: 16)),
+                      style: const TextStyle(fontSize: 15)),
                 ),
               ),
             const SizedBox(height: 8),
             Text(_signUp ? t('createAccount') : t('login'),
                 textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+                style: kHeadlineSmall
+                    .copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               key: const ValueKey('roleDropdown'),
@@ -205,7 +206,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   controller: _name,
                   enabled: !waitingForOtp,
                   textCapitalization: TextCapitalization.words,
-                  style: const TextStyle(fontSize: 20),
+                  style: const TextStyle(fontSize: 17),
                   decoration: InputDecoration(
                       labelText: t('yourName'),
                       ),
@@ -215,7 +216,7 @@ class _AuthScreenState extends State<AuthScreen> {
               controller: _phone,
               enabled: !waitingForOtp,
               keyboardType: TextInputType.phone,
-              style: const TextStyle(fontSize: 20),
+              style: const TextStyle(fontSize: 17),
               decoration: InputDecoration(
                   labelText: t('phoneNumber'),
                   prefixText: '+91 ',
@@ -224,7 +225,7 @@ class _AuthScreenState extends State<AuthScreen> {
             const SizedBox(height: 12),
             if (waitingForOtp) ...[
               Text('${t('otpSentTo')} ${maskPhone(_e164!)}',
-                  style: theme.textTheme.titleMedium),
+                  style: kTitleMedium),
               const SizedBox(height: 8),
               TextField(
                 controller: _code,
@@ -241,7 +242,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: Text(t(_errorKey!),
                     style: TextStyle(
                         color: theme.colorScheme.error,
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600)),
               ),
             const SizedBox(height: 8),
@@ -257,13 +258,13 @@ class _AuthScreenState extends State<AuthScreen> {
                   _errorKey = null;
                 }),
                 child: Text(t('changeNumber'),
-                    style: const TextStyle(fontSize: 18)),
+                    style: const TextStyle(fontSize: 16)),
               ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: _switchMode,
               child: Text(_signUp ? t('haveAccount') : t('noAccountYet'),
-                  style: const TextStyle(fontSize: 18)),
+                  style: const TextStyle(fontSize: 16)),
             ),
           ],
         ),

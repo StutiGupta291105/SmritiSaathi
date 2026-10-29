@@ -270,3 +270,97 @@ class ScreenTitle extends StatelessWidget {
         ],
       );
 }
+
+
+/// One permission: icon, title, short explanation and an Allow button that
+/// turns into a green round tick once allowed (tap the tick to take it back).
+class AllowRow extends StatelessWidget {
+  const AllowRow({
+    super.key,
+    required this.keyName,
+    required this.icon,
+    required this.fg,
+    required this.bg,
+    required this.title,
+    required this.detail,
+    required this.allowLabel,
+    required this.allowedLabel,
+    required this.allowed,
+    required this.onAllow,
+    this.onUndo,
+    this.tag,
+  });
+
+  /// Suffix for the widget keys `allow_<keyName>` / `allowed_<keyName>`.
+  final String keyName;
+  final IconData icon;
+  final Color fg, bg;
+  final String title, detail, allowLabel, allowedLabel;
+  final String? tag;
+  final bool allowed;
+  final VoidCallback onAllow;
+  final VoidCallback? onUndo;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: AppCard(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            IconBadge(icon: icon, fg: fg, bg: bg, size: 48, circle: true),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Palette.brandDeep)),
+                  if (tag != null)
+                    Text(tag!,
+                        style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: Palette.orange)),
+                  const SizedBox(height: 2),
+                  Text(detail,
+                      style: const TextStyle(
+                          fontSize: 13.5, height: 1.3, color: Palette.muted)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            allowed
+                ? Semantics(
+                    button: onUndo != null,
+                    label: '$title: $allowedLabel',
+                    child: InkResponse(
+                      key: ValueKey('allowed_$keyName'),
+                      onTap: onUndo,
+                      child: const Icon(Icons.check_circle_rounded,
+                          size: 44, color: Palette.action),
+                    ),
+                  )
+                : ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 104),
+                    child: FilledButton(
+                      key: ValueKey('allow_$keyName'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 42),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        textStyle: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      onPressed: onAllow,
+                      child: Text(allowLabel,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+          ]),
+        ),
+      );
+}

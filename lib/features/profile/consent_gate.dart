@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/strings.dart';
+import '../../core/theme.dart';
+import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../onboarding/onboarding_screen.dart' show kNoticeVersion;
 
@@ -64,19 +66,19 @@ class _ConsentGateState extends State<ConsentGate> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_granted!) return widget.child;
-    return Card(
-      color: Colors.amber.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(tr(widget.lang, widget.purposeTextKey),
-                style: const TextStyle(fontSize: 20)),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: _allow, child: Text(tr(widget.lang, 'allow'))),
-          ],
-        ),
+    return AppCard(
+      color: Palette.tileOrange,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(tr(widget.lang, widget.purposeTextKey),
+              style: const TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w600,
+                  color: Palette.brandDeep)),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: _allow, child: Text(tr(widget.lang, 'allow'))),
+        ],
       ),
     );
   }

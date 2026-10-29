@@ -135,3 +135,13 @@ ThemeData buildTheme() {
   );
   return base;
 }
+
+/// Text styles for headings outside the dashboard screens, same scale.
+const TextStyle kHeadlineMedium = TextStyle(
+    fontSize: 26, fontWeight: FontWeight.w700, color: Palette.brandDeep);
+const TextStyle kHeadlineSmall = TextStyle(
+    fontSize: 22, fontWeight: FontWeight.w700, color: Palette.brandDeep);
+const TextStyle kTitleLarge = TextStyle(
+    fontSize: 18, fontWeight: FontWeight.w700, color: Palette.brandDeep);
+const TextStyle kTitleMedium = TextStyle(
+    fontSize: 16, fontWeight: FontWeight.w600, color: Palette.brandDeep);

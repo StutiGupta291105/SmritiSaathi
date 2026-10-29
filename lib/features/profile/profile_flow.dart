@@ -9,6 +9,7 @@ import '../../core/profile.dart';
 import '../../core/languages.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
 import '../reminders/reminders_screen.dart';
@@ -80,43 +81,59 @@ class _ProfileFlowState extends State<ProfileFlow> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final last = _stage == _steps - 1;
+    // Little room (small phone or very large text): drop the big title and
+    // keep the step line and progress bar, so the content stays usable.
+
     final pages = [_aboutYou(), _family(), _careTeam(), _routine(), _permissions()];
     final titles = ['aboutYou', 'family', 'careTeam', 'routineTitle', 'permTitle'];
     return Scaffold(
-      appBar: AppBar(
-        title: Text(t('profileTitle')),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(6),
-          child: LinearProgressIndicator(value: (_stage + 1) / _steps),
-        ),
-      ),
       body: SafeArea(
-        child: Column(
+        child: LayoutBuilder(builder: (context, box) {
+          final tight =
+              box.maxHeight / MediaQuery.textScalerOf(context).scale(1) < 600;
+          return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('${_stage + 1}/$_steps  ${t(titles[_stage])}',
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w700)),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!tight) ...[
+                    ScreenTitle(t('profileTitle')),
+                    const SizedBox(height: 4),
+                  ],
+                  Text(
+                      tight
+                          ? '${t('profileTitle')}  ·  ${_stage + 1}/$_steps  ·  ${t(titles[_stage])}'
+                          : '${_stage + 1}/$_steps  ·  ${t(titles[_stage])}',
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Palette.muted)),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: (_stage + 1) / _steps,
+                      minHeight: 8,
+                      backgroundColor: Palette.line,
+                      color: Palette.action,
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(child: pages[_stage]),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
               child: Row(
                 children: [
                   if (_stage > 0)
                     Expanded(
                       child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(64)),
                         onPressed: () => _go(_stage - 1),
-                        child: Text(t('back'),
-                            style: const TextStyle(fontSize: 20)),
+                        child: Text(t('back')),
                       ),
                     ),
                   if (_stage > 0) const SizedBox(width: 12),
@@ -131,7 +148,8 @@ class _ProfileFlowState extends State<ProfileFlow> {
               ),
             ),
           ],
-        ),
+        );
+        }),
       ),
     );
   }
@@ -139,7 +157,6 @@ class _ProfileFlowState extends State<ProfileFlow> {
   // ---- step 0: about you ------------------------------------------------
 
   Widget _aboutYou() {
-    final theme = Theme.of(context);
     final age = _dob == null ? null : ageFromDob(_dob!, DateTime.now());
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -177,16 +194,14 @@ class _ProfileFlowState extends State<ProfileFlow> {
           ),
         ),
         const SizedBox(height: 24),
-        Text(t('dob'), style: theme.textTheme.titleMedium),
+        Text(t('dob'), style: kTitleMedium),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          icon: const Icon(Icons.cake),
-          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(60)),
+          icon: const Icon(Icons.cake_rounded),
           label: Text(
               _dob == null
                   ? t('pickDob')
-                  : MaterialLocalizations.of(context).formatMediumDate(_dob!),
-              style: const TextStyle(fontSize: 20)),
+                  : MaterialLocalizations.of(context).formatMediumDate(_dob!)),
           onPressed: () async {
             final now = DateTime.now();
             final picked = await showDatePicker(
@@ -202,18 +217,19 @@ class _ProfileFlowState extends State<ProfileFlow> {
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Text('${t('age')}: $age ${t('years')}',
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(color: Palette.brand, fontWeight: FontWeight.w700)),
+                style: kHeadlineSmall
+                    .copyWith(color: Palette.brand)),
           ),
         const SizedBox(height: 24),
-        Text(t('preferredLanguage'), style: theme.textTheme.titleMedium),
+        Text(t('preferredLanguage'),
+            style: kTitleMedium),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           children: [
             for (final e in kLanguages.entries)
               ChoiceChip(
-                label: Text(e.value, style: const TextStyle(fontSize: 20)),
+                label: Text(e.value, style: const TextStyle(fontSize: 15)),
                 selected: _lang == e.key,
                 onSelected: (_) => setState(() => _lang = e.key),
               ),
@@ -228,7 +244,8 @@ class _ProfileFlowState extends State<ProfileFlow> {
   Widget _family() => ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text(t('familyHelp'), style: const TextStyle(fontSize: 18)),
+          Text(t('familyHelp'),
+              style: const TextStyle(fontSize: 15, color: Palette.muted)),
           const SizedBox(height: 12),
           ConsentGate(
             db: widget.db,
@@ -248,7 +265,8 @@ class _ProfileFlowState extends State<ProfileFlow> {
   Widget _careTeam() => ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text(t('careTeamHelp'), style: const TextStyle(fontSize: 18)),
+          Text(t('careTeamHelp'),
+              style: const TextStyle(fontSize: 15, color: Palette.muted)),
           const SizedBox(height: 12),
           for (final kind in const ['doctor', 'caregiver'])
             Padding(
@@ -269,36 +287,49 @@ class _ProfileFlowState extends State<ProfileFlow> {
                     by: _name),
               ),
             ),
-          Text(t('inviteNote'), style: const TextStyle(fontSize: 16)),
+          Text(t('inviteNote'),
+              style: const TextStyle(fontSize: 15, color: Palette.muted)),
         ],
       );
 
   // ---- step 3: daily routine --------------------------------------------
 
-  Widget _routine() => Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(t('routineHelp'), style: const TextStyle(fontSize: 18)),
-          ),
-          Expanded(
-            child: ConsentGate(
-              db: widget.db,
-              patientId: _id,
-              purpose: 'reminders',
-              purposeTextKey: 'purposeReminders',
-              lang: _lang,
-              byName: _name,
-              child: RemindersScreen(
-                db: widget.db,
-                notifier: widget.notifier,
-                patientId: _id,
-                language: _lang,
-                embedded: true,
+  Widget _routine() => LayoutBuilder(
+        builder: (context, box) => Column(
+          children: [
+            // The help text scrolls if it is long, so it can never push the
+            // reminders list off a small screen.
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: box.maxHeight * 0.3),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Text(t('routineHelp'),
+                      style: const TextStyle(
+                          fontSize: 15, color: Palette.muted)),
+                ),
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: ConsentGate(
+                db: widget.db,
+                patientId: _id,
+                purpose: 'reminders',
+                purposeTextKey: 'purposeReminders',
+                lang: _lang,
+                byName: _name,
+                child: RemindersScreen(
+                  db: widget.db,
+                  notifier: widget.notifier,
+                  patientId: _id,
+                  language: _lang,
+                  embedded: true,
+                ),
+              ),
+            ),
+          ],
+        ),
       );
 
   // ---- step 4: permissions ----------------------------------------------
@@ -307,15 +338,18 @@ class _ProfileFlowState extends State<ProfileFlow> {
         padding: const EdgeInsets.all(20),
         children: [
           _PermissionCard(
-            icon: Icons.call,
+            icon: Icons.call_rounded,
+            fg: Palette.sky,
+            bg: Palette.tileSky,
             title: t('permPhone'),
             why: t('permPhoneWhy'),
             lang: _lang,
             permission: Permission.phone,
           ),
-          const SizedBox(height: 16),
           _PermissionCard(
-            icon: Icons.location_on,
+            icon: Icons.location_on_rounded,
+            fg: Palette.orange,
+            bg: Palette.tileOrange,
             title: t('permLocation'),
             why: t('permLocationWhy'),
             lang: _lang,
@@ -387,30 +421,45 @@ class _FamilyListState extends State<_FamilyList> {
     return Column(
       children: [
         for (final m in _members)
-          Card(
-            child: ListTile(
-              leading: Avatar(photo: m['photo'] as List<int>?),
-              title: Text(m['name'] as String,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-              subtitle: Text(
-                  '${t('rel_${m['relation']}')} · ${m['phone']}',
-                  style: const TextStyle(fontSize: 16)),
-              trailing: IconButton(
-                tooltip: t('delete'),
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () async {
-                  await widget.db.deleteFamilyMember(
-                      widget.patientId, m['id'] as String, widget.by);
-                  await _load();
-                },
-              ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: AppCard(
+              padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+              child: Row(children: [
+                Avatar(photo: m['photo'] as List<int>?, radius: 24),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(m['name'] as String,
+                          style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: Palette.brandDeep)),
+                      Text('${t('rel_${m['relation']}')} · ${m['phone']}',
+                          style: const TextStyle(
+                              fontSize: 13.5, color: Palette.muted)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: t('delete'),
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: Palette.muted),
+                  onPressed: () async {
+                    await widget.db.deleteFamilyMember(
+                        widget.patientId, m['id'] as String, widget.by);
+                    await _load();
+                  },
+                ),
+              ]),
             ),
           ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(60)),
-          icon: const Icon(Icons.person_add),
-          label: Text(t('addFamily'), style: const TextStyle(fontSize: 20)),
+          icon: const Icon(Icons.person_add_rounded),
+          label: Text(t('addFamily')),
           onPressed: _add,
         ),
       ],
@@ -576,27 +625,35 @@ class _CareInviteState extends State<_CareInvite> {
   @override
   Widget build(BuildContext context) {
     final isDoctor = widget.kind == 'doctor';
-    final theme = Theme.of(context);
     final link = _link;
-    return Card(
+    return AppCard(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Icon(isDoctor ? Icons.medical_services : Icons.volunteer_activism,
-                  color: Palette.brand),
-              const SizedBox(width: 8),
+              IconBadge(
+                  icon: isDoctor
+                      ? Icons.medical_services_rounded
+                      : Icons.volunteer_activism_rounded,
+                  fg: isDoctor ? Palette.purple : Palette.green,
+                  bg: isDoctor ? Palette.tilePurple : Palette.tileGreen,
+                  size: 44,
+                  circle: true),
+              const SizedBox(width: 12),
               Text(t(isDoctor ? 'roleDoctor' : 'roleCaretaker'),
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w700)),
+                  style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: Palette.brandDeep)),
             ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             if (link != null) ...[
               Text('${link['name']}  ·  ${link['professional_id']}',
-                  style: const TextStyle(fontSize: 20)),
-              const SizedBox(height: 6),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
               Wrap(spacing: 8, children: [
                 Chip(
                   avatar: const Icon(Icons.schedule, size: 20),
@@ -648,6 +705,8 @@ class _CareInviteState extends State<_CareInvite> {
 class _PermissionCard extends StatefulWidget {
   const _PermissionCard({
     required this.icon,
+    required this.fg,
+    required this.bg,
     required this.title,
     required this.why,
     required this.lang,
@@ -655,6 +714,7 @@ class _PermissionCard extends StatefulWidget {
     this.onGranted,
   });
   final IconData icon;
+  final Color fg, bg;
   final String title, why, lang;
   final Permission permission;
   final Future<void> Function()? onGranted;
@@ -691,44 +751,18 @@ class _PermissionCardState extends State<_PermissionCard> {
   @override
   Widget build(BuildContext context) {
     final granted = _notNeeded || (_status?.isGranted ?? false);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Icon(widget.icon, size: 32, color: Palette.brand),
-              const SizedBox(width: 10),
-              Text(widget.title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-            ]),
-            const SizedBox(height: 8),
-            Text(widget.why, style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 12),
-            if (granted)
-              Chip(
-                  avatar: const Icon(Icons.check_circle, color: Colors.green),
-                  label: Text(t('allowed')))
-            else ...[
-              if (_status != null && _status!.isPermanentlyDenied)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(t('notAllowed')),
-                ),
-              FilledButton(
-                onPressed: _status!= null && _status!.isPermanentlyDenied
-                    ? openAppSettings
-                    : _ask,
-                child: Text(t('allow')),
-              ),
-            ],
-          ],
-        ),
-      ),
+    final blocked = _status != null && _status!.isPermanentlyDenied;
+    return AllowRow(
+      keyName: widget.permission.toString(),
+      icon: widget.icon,
+      fg: widget.fg,
+      bg: widget.bg,
+      title: widget.title,
+      detail: blocked ? '${widget.why}\n${t('notAllowed')}' : widget.why,
+      allowLabel: t('allow'),
+      allowedLabel: t('allowed'),
+      allowed: granted,
+      onAllow: blocked ? openAppSettings : _ask,
     );
   }
 }
