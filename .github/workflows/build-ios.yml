@@ -7,6 +7,15 @@ name: Build iOS (unsigned)
 # things on the first run.
 on:
   workflow_dispatch:
+  # GitHub only lets you press "Run workflow" for a workflow file that is on the
+  # default branch. Until this is merged there, it runs on its own when the iOS
+  # files change on this branch.
+  push:
+    branches: [ccr-316518a1-15q6r0]
+    paths:
+      - .github/workflows/build-ios.yml
+      - .github/scripts/patch_ios.py
+      - flutter_launcher_icons-ios.yaml
 
 jobs:
   build:
