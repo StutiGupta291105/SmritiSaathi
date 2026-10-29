@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import delete, select, update
@@ -228,6 +228,58 @@ def export(patient_id: str, user: User = Depends(current_user),
         "sessions": rows(GameSession, GameSession.patient_id == p.id),
         "reminder_schedules": rows(ReminderSchedule, ReminderSchedule.patient_id == p.id),
         "reminder_marks": rows(ReminderMark, ReminderMark.patient_id == p.id),
+    }
+
+
+SNAPSHOT_MAX_SESSIONS = 2000
+SNAPSHOT_MARK_DAYS = 400
+
+
+@router.get("/{patient_id}/snapshot")
+def snapshot(patient_id: str, user: User = Depends(current_user),
+             db: Session = Depends(get_db)):
+    """What a new phone needs to carry on: profile, the full consent history (so
+    the current state and its record are both restored), game history, reminder
+    timing and done marks. Only the patient may read it. Photos, family contacts,
+    reminder text and the caregiver PIN were never sent, so they are not here."""
+    p = patient_for_owner(db, user, patient_id)
+    consents = db.execute(select(Consent).where(Consent.patient_id == p.id)
+                          .order_by(Consent.id)).scalars().all()
+    sessions = db.execute(select(GameSession).where(GameSession.patient_id == p.id)
+                          .order_by(GameSession.ended_at.desc())
+                          .limit(SNAPSHOT_MAX_SESSIONS)).scalars().all()
+    since = (utcnow() - timedelta(days=SNAPSHOT_MARK_DAYS)).date().isoformat()
+    marks = db.execute(select(ReminderMark).where(
+        ReminderMark.patient_id == p.id, ReminderMark.day >= since)).scalars().all()
+    schedules = db.execute(select(ReminderSchedule).where(
+        ReminderSchedule.patient_id == p.id)).scalars().all()
+    links = db.execute(select(Link).where(Link.patient_id == p.id)).scalars().all()
+    audit.record(db, user.id, "patient_snapshot_read", f"patient={p.id}")
+
+    def iso(d: datetime) -> str:
+        return d.isoformat()
+
+    return {
+        "patient": _out(p).model_dump(),
+        "consents": [{"purpose": c.purpose, "granted": c.granted,
+                      "given_by_name": c.given_by_name,
+                      "given_by_relation": c.given_by_relation,
+                      "notice_version": c.notice_version, "created_at": iso(c.created_at)}
+                     for c in consents],
+        "sessions": [{"id": x.id, "game": x.game, "started_at": iso(x.started_at),
+                      "ended_at": iso(x.ended_at), "start_level": x.start_level,
+                      "end_level": x.end_level, "trials": x.trials,
+                      "correct": x.correct, "level_stats": x.level_stats}
+                     for x in reversed(sessions)],
+        "schedules": [{"id": r.id, "kind": r.kind, "hour": r.hour, "minute": r.minute,
+                       "days_mask": r.days_mask, "on_date": r.on_date,
+                       "active": r.active, "created_at": iso(r.created_at)}
+                      for r in schedules],
+        "marks": [{"reminder_id": m.reminder_id, "day": m.day,
+                   "marked_at": iso(m.marked_at)} for m in marks],
+        "links": [{"id": l.id, "kind": l.member_role, "name": l.invitee_name,
+                   "professional_id": l.professional_id, "status": l.status}
+                  for l in links],
     }
 
 

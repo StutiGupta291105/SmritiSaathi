@@ -806,4 +806,107 @@ void main() {
       await v4.close();
     });
   });
+
+  group('restore on a new phone', () {
+    final snap = {
+      'patient': {
+        'id': 'srv-1',
+        'display_name': 'Asha',
+        'language': 'hi',
+        'baseline_level': 3,
+        'tz_offset_minutes': 330
+      },
+      'consents': [
+        {
+          'purpose': 'gameplay',
+          'granted': true,
+          'given_by_name': 'Asha',
+          'given_by_relation': 'self',
+          'notice_version': 'v2',
+          'created_at': '2026-03-01T00:00:00Z'
+        },
+        {
+          'purpose': 'sync',
+          'granted': true,
+          'given_by_name': 'Asha',
+          'given_by_relation': 'self',
+          'notice_version': 'v2',
+          'created_at': '2026-03-01T00:00:00Z'
+        },
+        {
+          'purpose': 'reminders',
+          'granted': true,
+          'given_by_name': 'Asha',
+          'given_by_relation': 'self',
+          'notice_version': 'v2',
+          'created_at': '2026-03-01T00:00:00Z'
+        }
+      ],
+      'sessions': [
+        {
+          'id': 's1',
+          'game': 'attention',
+          'started_at': '2026-03-02T10:00:00Z',
+          'ended_at': '2026-03-02T10:05:00Z',
+          'start_level': 2,
+          'end_level': 3,
+          'trials': 10,
+          'correct': 8,
+          'level_stats': null
+        }
+      ],
+      'schedules': [
+        {
+          'id': 'r1',
+          'kind': 'medicine',
+          'hour': 9,
+          'minute': 0,
+          'days_mask': 127,
+          'on_date': null,
+          'active': true,
+          'created_at': '2026-03-01T00:00:00Z'
+        }
+      ],
+      'marks': [
+        {'reminder_id': 'r1', 'day': '2026-03-02', 'marked_at': '2026-03-02T09:05:00Z'}
+      ],
+      'links': [
+        {
+          'id': 'l1',
+          'kind': 'caretaker',
+          'name': 'Ravi',
+          'professional_id': '',
+          'status': 'accepted'
+        }
+      ],
+    };
+
+    test('rebuilds the patient, history and consent state as already synced',
+        () async {
+      final acc = await db.createAccount(phone: _phone, role: 'patient', name: 'Asha');
+      final id = await db.restoreFromSnapshot(
+          accountId: acc, phone: _phone, snapshot: snap);
+      final p = (await db.patientById(id))!;
+      expect([p['display_name'], p['language'], p['baseline_level'], p['setup_stage']],
+          ['Asha', 'hi', 3, 0]);
+      expect(p['server_patient_id'], 'srv-1');
+      expect(await db.hasConsent(id, 'gameplay'), isTrue);
+      expect(await db.hasConsent(id, 'family_contacts'), isFalse);
+      expect(await db.unsyncedConsents(id), isEmpty);
+      expect(await db.unsyncedSessions(id), isEmpty);
+      expect((await db.sessionTimes(id)).length, 1);
+      final r = (await db.listReminders(id)).single;
+      expect([r.hour, r.active], [9, true]);
+      expect((await db.listCareLinks(id)).single['status'], 'accepted');
+      expect(await db.verifyAuditChain(), isTrue);
+    });
+
+    test('restored data is not uploaded again', () async {
+      final acc = await db.createAccount(phone: _phone, role: 'patient', name: 'Asha');
+      final id = await db.restoreFromSnapshot(
+          accountId: acc, phone: _phone, snapshot: snap);
+      expect((await db.unsentInvites(id)), isEmpty);
+      expect((await db.syncBatch(id)).sessions, isEmpty);
+    });
+  });
 }

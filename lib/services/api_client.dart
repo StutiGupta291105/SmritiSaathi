@@ -240,6 +240,9 @@ class ApiClient {
 
   Future<Map<String, dynamic>> myPatient() => _raw('GET', '/v1/patients/me');
 
+  Future<Map<String, dynamic>> snapshot(String patientId) =>
+      _raw('GET', '/v1/patients/$patientId/snapshot');
+
   Future<void> addConsents(String patientId, List<Map<String, Object?>> items) =>
       _raw('POST', '/v1/patients/$patientId/consents', body: {'consents': items});
 

@@ -22,6 +22,7 @@ void main() {
   late Map<String, Object?> lastSync;
   late Object? lastConsents;
   var offline = false;
+  var existing = false;
 
   SyncService make({int linkStatus = 200}) => SyncService(
       db,
@@ -33,6 +34,8 @@ void main() {
             calls.add('${r.method} ${r.url.path}');
             final body = r.body.isEmpty ? null : jsonDecode(r.body);
             final p = r.url.path;
+            if (p == '/v1/patients' && existing) return _j(409, {'detail': 'patient_exists'});
+            if (p == '/v1/patients/me') return _j(200, {'id': 'srv-old'});
             if (p == '/v1/patients') return _j(201, {'id': 'srv-p'});
             if (p.endsWith('/consents')) {
               lastConsents = body;
@@ -83,6 +86,7 @@ void main() {
         noticeVersion: 'v2');
     calls = [];
     offline = false;
+    existing = false;
   });
 
   tearDown(() => raw.close());
@@ -153,6 +157,14 @@ void main() {
     await make().run(pid);
     expect(calls.any((c) => c.endsWith('/consents')), isTrue);
     expect(calls.any((c) => c.endsWith('/sync')), isFalse);
+  });
+
+  test('a patient that already exists on the server is adopted', () async {
+    existing = true;
+    expect(await make().run(pid), SyncOutcome.done);
+    expect((await raw.query('patients')).single['server_patient_id'], 'srv-old');
+    expect(calls.any((c) => c.contains('/srv-old/sync') || c.contains('/srv-old/consents')),
+        isTrue);
   });
 
   test('offline leaves everything queued', () async {

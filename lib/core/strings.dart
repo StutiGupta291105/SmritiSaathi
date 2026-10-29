@@ -133,6 +133,12 @@ const Map<String, Map<String, String>> kStrings = {
     'rmDays': '{a} days',
     'rmGames': 'Games played',
     'rmStreak': 'Days in a row',
+    'rsWelcomeBack': 'Welcome back',
+    'rsBody': 'We found your progress saved online. Restore it on this phone?',
+    'rsNote':
+        'Game history, reminder times and your consent choices come back. Photos, family contacts, reminder text and the caregiver PIN stay only on your old phone, so you will set those up again.',
+    'rsRestore': 'Restore my progress',
+    'rsFresh': 'Start fresh instead',
     'errOffline': 'No internet connection. Please connect and try again.',
     'errOtpFailed': 'Something went wrong. Please try again.',
     'errNoAccount':
@@ -433,6 +439,12 @@ const Map<String, Map<String, String>> kStrings = {
     'rmDays': '{a} दिन',
     'rmGames': 'खेले गए खेल',
     'rmStreak': 'लगातार दिन',
+    'rsWelcomeBack': 'वापसी पर स्वागत है',
+    'rsBody': 'आपकी प्रगति ऑनलाइन सहेजी मिली। क्या इसे इस फ़ोन पर वापस लाएँ?',
+    'rsNote':
+        'खेल का इतिहास, याद दिलाने के समय और आपकी सहमति के विकल्प वापस आ जाते हैं। फ़ोटो, परिवार के संपर्क, याद दिलाने का पाठ और देखभालकर्ता PIN केवल पुराने फ़ोन पर रहते हैं, इसलिए इन्हें दोबारा सेट करना होगा।',
+    'rsRestore': 'मेरी प्रगति वापस लाएँ',
+    'rsFresh': 'नए सिरे से शुरू करें',
     'errOffline': 'इंटरनेट नहीं है। कृपया जुड़कर फिर कोशिश करें।',
     'errOtpFailed': 'कुछ गड़बड़ हो गई। कृपया फिर कोशिश करें।',
     'errNoAccount':

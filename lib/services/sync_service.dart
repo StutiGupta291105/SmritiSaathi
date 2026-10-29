@@ -21,12 +21,20 @@ class SyncService {
 
       var serverId = patient['server_patient_id'] as String?;
       if (serverId == null) {
-        final created = await api.createPatient(
-          displayName: patient['display_name'] as String,
-          language: patient['language'] as String,
-          baselineLevel: patient['baseline_level'] as int,
-          tzOffsetMinutes: DateTime.now().timeZoneOffset.inMinutes,
-        );
+        Map<String, dynamic> created;
+        try {
+          created = await api.createPatient(
+            displayName: patient['display_name'] as String,
+            language: patient['language'] as String,
+            baselineLevel: patient['baseline_level'] as int,
+            tzOffsetMinutes: DateTime.now().timeZoneOffset.inMinutes,
+          );
+        } on ApiException catch (e) {
+          // This login already has a patient on the server (reinstall, or a
+          // new phone where the person chose not to restore): carry on with it.
+          if (e.status != 409) rethrow;
+          created = await api.myPatient();
+        }
         serverId = created['id'] as String;
         await db.setServerPatientId(patientId, serverId);
       }

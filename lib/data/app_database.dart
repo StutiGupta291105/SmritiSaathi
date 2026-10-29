@@ -750,6 +750,107 @@ class AppDatabase {
     return rows.map((r) => r['end_level'] as int).toList().reversed.toList();
   }
 
+  // ---- restore on a new phone --------------------------------------------
+
+  static const _linkKindFromServer = {'caretaker': 'caregiver', 'doctor': 'doctor'};
+
+  /// Rebuilds a patient from the server's snapshot after sign-in on a new
+  /// phone. Everything in it was shared with consent before, so it is written
+  /// directly and marked as already synced. Photos, family, reminder text and
+  /// the caregiver PIN were never uploaded and have to be set up again, so the
+  /// profile flow starts from its first step. Returns the new local patient id.
+  Future<String> restoreFromSnapshot({
+    required String accountId,
+    required String phone,
+    required Map<String, dynamic> snapshot,
+  }) async {
+    final pt = snapshot['patient'] as Map<String, dynamic>;
+    final id = _uuid.v4();
+    List<Map<String, dynamic>> list(String k) =>
+        ((snapshot[k] as List?) ?? const []).cast<Map<String, dynamic>>();
+
+    await _db.transaction((txn) async {
+      await txn.insert('patients', {
+        'id': id,
+        'account_id': accountId,
+        'phone': phone,
+        'display_name': pt['display_name'],
+        'language': pt['language'],
+        'baseline_level': pt['baseline_level'],
+        'setup_stage': 0,
+        'server_patient_id': pt['id'],
+        'created_at': _now(),
+      });
+      for (final c in list('consents')) {
+        await txn.insert('consents', {
+          'id': _uuid.v4(),
+          'patient_id': id,
+          'purpose': c['purpose'],
+          'granted': c['granted'] == true ? 1 : 0,
+          'given_by_name': c['given_by_name'],
+          'given_by_relation': c['given_by_relation'],
+          'notice_version': c['notice_version'],
+          'synced': 1,
+          'created_at': c['created_at'],
+        });
+      }
+      for (final s in list('sessions')) {
+        await txn.insert('sessions', {
+          'id': s['id'],
+          'patient_id': id,
+          'game': s['game'],
+          'started_at': s['started_at'],
+          'ended_at': s['ended_at'],
+          'start_level': s['start_level'],
+          'end_level': s['end_level'],
+          'trials': s['trials'],
+          'correct': s['correct'],
+          'level_stats': s['level_stats'],
+          'synced': 1,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+      for (final r in list('schedules')) {
+        await txn.insert('reminders', {
+          'id': r['id'],
+          'patient_id': id,
+          'kind': r['kind'],
+          'label': '', // reminder text never left the phone
+          'hour': r['hour'],
+          'minute': r['minute'],
+          'days_mask': r['days_mask'],
+          'on_date': r['on_date'],
+          'active': r['active'] == true ? 1 : 0,
+          'created_by': 'restore',
+          'created_at': r['created_at'],
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+      for (final m in list('marks')) {
+        await txn.insert('reminder_log', {
+          'id': _uuid.v4(),
+          'patient_id': id,
+          'reminder_id': m['reminder_id'],
+          'day': m['day'],
+          'marked_at': m['marked_at'],
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+      for (final l in list('links')) {
+        await txn.insert('care_links', {
+          'id': _uuid.v4(),
+          'patient_id': id,
+          'kind': _linkKindFromServer[l['kind']] ?? 'caregiver',
+          'name': l['name'],
+          'professional_id': l['professional_id'] ?? '',
+          'server_link_id': l['id'],
+          'status': l['status'],
+          'created_at': _now(),
+        });
+      }
+    });
+    await audit('restore', 'patient_restored',
+        'patient=$id sessions=${list('sessions').length} reminders=${list('schedules').length}');
+    return id;
+  }
+
   // ---- link to the server ------------------------------------------------
   // The app is offline-first: everything is saved here first. These methods
   // track what the server already has, so nothing is sent twice and nothing is

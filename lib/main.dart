@@ -7,6 +7,7 @@ import 'data/session_store.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/auth/welcome_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
+import 'features/onboarding/restore_screen.dart';
 import 'features/profile/profile_flow.dart';
 import 'features/remote/remote_home.dart';
 import 'features/shell/patient_shell.dart';
@@ -148,6 +149,8 @@ class Root extends StatefulWidget {
 
 class _RootState extends State<Root> with WidgetsBindingObserver {
   ServerUser? _serverUser;
+  Map<String, dynamic>? _restoreOffer; // server already has this person's data
+  bool _skipRestore = false;
   bool _syncing = false;
   Map<String, Object?>? _account;
   Map<String, Object?>? _patient;
@@ -207,15 +210,42 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
       }
     }
     final serverUser = await widget.api?.currentUser();
+    Map<String, dynamic>? offer;
+    if (account != null &&
+        account['role'] == 'patient' &&
+        patient == null &&
+        serverUser != null &&
+        !_skipRestore) {
+      try {
+        offer = await widget.api!.myPatient();
+      } on ApiException {
+        offer = null; // none on the server, or not reachable: start normally
+      }
+    }
     if (mounted) {
       setState(() {
         _account = account;
         _patient = patient;
         _serverUser = serverUser;
+        _restoreOffer = offer;
         _loading = false;
       });
       _sync();
     }
+  }
+
+  Future<bool> _restore(Map<String, Object?> account, String serverPatientId) async {
+    try {
+      final snap = await widget.api!.snapshot(serverPatientId);
+      await widget.db.restoreFromSnapshot(
+          accountId: account['id'] as String,
+          phone: account['phone'] as String,
+          snapshot: snap);
+    } on ApiException {
+      return false;
+    }
+    await _load();
+    return true;
   }
 
   Future<void> _logout() async {
@@ -276,6 +306,18 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
           lang: _lang, name: account['name'] as String, onLogout: _logout);
     }
     final patient = _patient;
+    final offer = _restoreOffer;
+    if (patient == null && offer != null) {
+      return RestoreScreen(
+        name: offer['display_name'] as String,
+        lang: offer['language'] as String,
+        onRestore: () => _restore(account, offer['id'] as String),
+        onStartFresh: () {
+          _skipRestore = true;
+          _load();
+        },
+      );
+    }
     if (patient == null) {
       return OnboardingScreen(
           db: widget.db, account: account, lang: _lang, onDone: _load);

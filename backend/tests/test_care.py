@@ -353,3 +353,36 @@ def test_audit_entries_hold_no_personal_data(env):
                              for e in db.execute(select(AuditEntry)).scalars())
     for secret in ("9876543210", "9811111111", "Asha", "Kumari", "Member"):
         assert secret not in text_dump
+
+
+# ---- snapshot for a new phone --------------------------------------------------
+
+def test_snapshot_returns_history_and_consent_log_for_the_owner_only(env):
+    a, pid = env.make_patient()
+    m = env.link_member(a, pid, "caretaker", CARER)
+    env.client.post(f"/v1/patients/{pid}/sync", headers=a.headers, json={
+        "sessions": [session_payload(1), session_payload(2, minutes_ago=10)],
+        "schedules": [{"id": "r1", "kind": "medicine", "hour": 9, "minute": 0,
+                       "days_mask": 127, "on_date": None, "active": True,
+                       "created_at": iso(now())}],
+        "marks": [{"reminder_id": "r1", "day": now().date().isoformat(),
+                   "marked_at": iso(now())}]})
+    snap = env.client.get(f"/v1/patients/{pid}/snapshot", headers=a.headers).json()
+    assert snap["patient"]["id"] == pid
+    assert [s["id"] for s in snap["sessions"]] == ["s-1", "s-2"]  # oldest first
+    assert snap["schedules"][0]["hour"] == 9 and len(snap["marks"]) == 1
+    assert snap["consents"] and snap["links"][0]["kind"] == "caretaker"
+    assert "9876543210" not in str(snap) and "label" not in str(snap["schedules"])
+    # a linked caretaker is not the patient
+    assert env.client.get(f"/v1/patients/{pid}/snapshot",
+                          headers=m.headers).status_code in (403, 404)
+
+
+def test_snapshot_is_audited(env):
+    a, pid = env.make_patient()
+    env.client.get(f"/v1/patients/{pid}/snapshot", headers=a.headers)
+    from sqlalchemy import text as _t
+    with env.app.state.engine.connect() as conn:
+        n = conn.execute(_t("select count(*) from audit_log "
+                            "where action='patient_snapshot_read'")).scalar()
+    assert n == 1
