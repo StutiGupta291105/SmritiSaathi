@@ -347,16 +347,32 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
   @override
   Widget build(BuildContext context) {
     final dated = kDatedKinds.contains(_kind);
+    Widget field(String label, Widget child) => Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: kTitleMedium.copyWith(fontSize: 15, height: 1.25)),
+              const SizedBox(height: 6),
+              child,
+            ],
+          ),
+        );
     return AlertDialog(
-      title: Text(widget.title ?? t('addReminder')),
-      content: SingleChildScrollView(
+      title: Text(widget.title ?? t('addReminder'), style: kTitleLarge),
+      scrollable: true,
+      content: SizedBox(
+        width: double.maxFinite,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.kinds.length > 1)
-              DropdownButton<ReminderKind>(
-                value: _kind,
+              DropdownButtonFormField<ReminderKind>(
+                initialValue: _kind,
                 isExpanded: true,
+                borderRadius: BorderRadius.circular(16),
                 items: [
                   for (final k in widget.kinds)
                     DropdownMenuItem(
@@ -367,63 +383,90 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                   if (!kDatedKinds.contains(k)) _date = null;
                 }),
               ),
-            TextField(
-                controller: _label,
-                decoration: InputDecoration(labelText: t('reminderLabel'))),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.access_time),
-              label: Text('${t('pickTime')}: ${_time.format(context)}'),
-              onPressed: () async {
-                final picked =
-                    await showTimePicker(context: context, initialTime: _time);
-                if (picked != null) setState(() => _time = picked);
-              },
+            field(
+                t('reminderLabel'),
+                TextField(
+                    controller: _label,
+                    textCapitalization: TextCapitalization.sentences)),
+            field(
+              t('pickTime'),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.access_time),
+                label: Text(_time.format(context)),
+                onPressed: () async {
+                  final picked = await showTimePicker(
+                      context: context, initialTime: _time);
+                  if (picked != null) setState(() => _time = picked);
+                },
+              ),
             ),
             if (dated)
-              OutlinedButton.icon(
-                icon: const Icon(Icons.calendar_today),
-                label: Text(_date == null
-                    ? t('pickDate')
-                    : MaterialLocalizations.of(context).formatMediumDate(_date!)),
-                onPressed: () async {
-                  final now = DateTime.now();
-                  final birthday = _kind == ReminderKind.birthday;
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: now,
-                    // A birthday is a date in the past that comes round each year.
-                    firstDate: birthday ? DateTime(1900) : now,
-                    lastDate:
-                        birthday ? now : now.add(const Duration(days: 1095)),
-                  );
-                  if (picked != null) setState(() => _date = picked);
-                },
+              field(
+                t('pickDate'),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(_date == null
+                      ? t('pickDate')
+                      : MaterialLocalizations.of(context)
+                          .formatMediumDate(_date!)),
+                  onPressed: () async {
+                    final now = DateTime.now();
+                    final birthday = _kind == ReminderKind.birthday;
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: now,
+                      // A birthday is a date in the past that comes round each year.
+                      firstDate: birthday ? DateTime(1900) : now,
+                      lastDate:
+                          birthday ? now : now.add(const Duration(days: 1095)),
+                    );
+                    if (picked != null) setState(() => _date = picked);
+                  },
+                ),
               )
             else
               Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(t('everyDay')),
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(children: [
+                  const Icon(Icons.repeat_rounded,
+                      size: 18, color: Palette.muted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(t('everyDay'),
+                          style: const TextStyle(
+                              fontSize: 15, color: Palette.muted))),
+                ]),
               ),
-            TextField(
-                controller: _by,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(labelText: t('whoIsActing'))),
+            field(
+                t('whoIsActing'),
+                TextField(
+                    controller: _by,
+                    textCapitalization: TextCapitalization.words,
+                    onChanged: (_) => setState(() {}))),
           ],
         ),
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
       actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(context), child: Text(t('cancel'))),
-        FilledButton(
-          onPressed: (_by.text.trim().isEmpty || (dated && _date == null))
-              ? null
-              : () => Navigator.pop(
-                  context,
-                  NewReminder(_kind, _label.text.trim(), _time, _date,
-                      _by.text.trim())),
-          child: Text(t('save')),
-        ),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(t('cancel'))),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton(
+              onPressed: (_by.text.trim().isEmpty || (dated && _date == null))
+                  ? null
+                  : () => Navigator.pop(
+                      context,
+                      NewReminder(_kind, _label.text.trim(), _time, _date,
+                          _by.text.trim())),
+              child: Text(t('save')),
+            ),
+          ),
+        ]),
       ],
     );
   }
