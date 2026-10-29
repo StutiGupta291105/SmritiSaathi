@@ -15,6 +15,7 @@ import 'features/splash/splash_screen.dart';
 import 'core/config.dart';
 import 'services/api_client.dart';
 import 'services/otp_service.dart';
+import 'services/push_service.dart';
 import 'services/reminder_notifier.dart';
 import 'services/sync_service.dart';
 import 'services/voice.dart';
@@ -149,6 +150,8 @@ class Root extends StatefulWidget {
 
 class _RootState extends State<Root> with WidgetsBindingObserver {
   ServerUser? _serverUser;
+  late final PushRegistrar? _push =
+      widget.api == null ? null : PushRegistrar(widget.api!, const NoPush());
   Map<String, dynamic>? _restoreOffer; // server already has this person's data
   bool _skipRestore = false;
   bool _syncing = false;
@@ -231,6 +234,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
         _loading = false;
       });
       _sync();
+      if (serverUser != null) _push?.register();
     }
   }
 
@@ -252,6 +256,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     final id = _account?['id'] as String?;
     if (id != null) await widget.db.recordLogout(id);
     await widget.notifier.clear();
+    await _push?.unregister(); // while still signed in
     await widget.api?.logout();
     await widget.session.clear();
     _started = false;

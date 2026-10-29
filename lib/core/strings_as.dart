@@ -1,6 +1,7 @@
 /// Assamese UI text. Draft translation: have a native speaker review it
 /// (ideally someone who works with older adults) before real use.
 const Map<String, String> kStringsAs = {
+  'doctorVerified': 'পঞ্জীয়ন পৰীক্ষা কৰা হৈছে',
   'chatTitle': 'স্মৃতিৰ লগত কথা পাতক',
   'chatNote': 'স্মৃতি আপোনাৰ ফোনৰ এটা সহায়ক প্ৰগ্ৰাম। এইটো কোনো মানুহ বা চিকিৎসক নহয় আৰু চিকিৎসাৰ পৰামৰ্শ দিব নোৱাৰে।',
   'chatHello': 'নমস্কাৰ! মই স্মৃতি। এটা বুটাম টিপক, বা কিবা লিখি মোৰ লগত কথা পাতক।',

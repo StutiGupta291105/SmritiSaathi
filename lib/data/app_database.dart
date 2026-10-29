@@ -80,7 +80,7 @@ class AppDatabase {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 5;
+  static const schemaVersion = 6;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -99,6 +99,7 @@ class AppDatabase {
         caregiver_pin_hash TEXT,
         caregiver_pin_salt TEXT,
         server_patient_id TEXT,
+        server_baseline INTEGER,
         created_at TEXT NOT NULL
       )''');
     await _createAccountTables(db);
@@ -197,6 +198,12 @@ class AppDatabase {
       await _addColumn(db, 'care_links', 'phone TEXT');
       await _addColumn(db, 'care_links', 'server_link_id TEXT');
     }
+    if (oldVersion < 6) {
+      // Last starting level seen on the server, and whether an operator checked
+      // a doctor's registration.
+      await _addColumn(db, 'patients', 'server_baseline INTEGER');
+      await _addColumn(db, 'care_links', 'verified INTEGER NOT NULL DEFAULT 0');
+    }
   }
 
   static Future<void> _addColumn(Database db, String table, String def) async {
@@ -257,6 +264,7 @@ class AppDatabase {
         professional_id TEXT NOT NULL,
         phone TEXT,
         server_link_id TEXT,
+        verified INTEGER NOT NULL DEFAULT 0,
         status TEXT NOT NULL DEFAULT 'pending',
         created_at TEXT NOT NULL
       )''');
@@ -780,6 +788,7 @@ class AppDatabase {
         'baseline_level': pt['baseline_level'],
         'setup_stage': 0,
         'server_patient_id': pt['id'],
+        'server_baseline': pt['baseline_level'],
         'created_at': _now(),
       });
       for (final c in list('consents')) {
@@ -957,11 +966,27 @@ class AppDatabase {
       _db.update('care_links', {'server_link_id': serverLinkId},
           where: 'id = ?', whereArgs: [linkId]);
 
+  /// The starting level on the server changed (a caretaker set it). Recorded
+  /// like any other baseline change, attributed to the server.
+  Future<void> applyServerBaseline(String patientId, int level) async {
+    await setBaseline(
+        patientId: patientId,
+        newLevel: level,
+        caregiverName: 'caretaker (online)',
+        reason: 'changed online');
+    await setServerBaseline(patientId, level);
+  }
+
+  Future<void> setServerBaseline(String patientId, int level) =>
+      _db.update('patients', {'server_baseline': level},
+          where: 'id = ?', whereArgs: [patientId]);
+
   /// Applies the server's view of each invite (accepted, declined, revoked).
   Future<void> applyServerLinkStatuses(
       String patientId, List<Map<String, dynamic>> serverLinks) async {
     for (final l in serverLinks) {
-      await _db.update('care_links', {'status': l['status']},
+      await _db.update('care_links',
+          {'status': l['status'], 'verified': l['verified'] == true ? 1 : 0},
           where: 'server_link_id = ? AND patient_id = ?',
           whereArgs: [l['id'], patientId]);
     }

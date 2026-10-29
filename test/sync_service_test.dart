@@ -23,6 +23,7 @@ void main() {
   late Object? lastConsents;
   var offline = false;
   var existing = false;
+  var serverBaseline = 2;
 
   SyncService make({int linkStatus = 200}) => SyncService(
       db,
@@ -35,8 +36,12 @@ void main() {
             final body = r.body.isEmpty ? null : jsonDecode(r.body);
             final p = r.url.path;
             if (p == '/v1/patients' && existing) return _j(409, {'detail': 'patient_exists'});
-            if (p == '/v1/patients/me') return _j(200, {'id': 'srv-old'});
-            if (p == '/v1/patients') return _j(201, {'id': 'srv-p'});
+            if (p == '/v1/patients/me') return _j(200, {'id': 'srv-old', 'baseline_level': serverBaseline});
+            if (p.endsWith('/baseline')) {
+              serverBaseline = body['baseline_level'] as int;
+              return _j(200, {'id': 'srv-p', 'baseline_level': serverBaseline});
+            }
+            if (p == '/v1/patients') return _j(201, {'id': 'srv-p', 'baseline_level': serverBaseline});
             if (p.endsWith('/consents')) {
               lastConsents = body;
               return _j(200, {});
@@ -51,7 +56,7 @@ void main() {
             }
             if (p.endsWith('/links')) {
               return _j(linkStatus, [
-                {'id': 'srv-l', 'status': 'accepted'}
+                {'id': 'srv-l', 'status': 'accepted', 'verified': true}
               ]);
             }
             return _j(404, {'detail': 'x'});
@@ -87,6 +92,7 @@ void main() {
     calls = [];
     offline = false;
     existing = false;
+    serverBaseline = 2;
   });
 
   tearDown(() => raw.close());
@@ -121,6 +127,7 @@ void main() {
       'POST /v1/patients/srv-p/consents',
       'POST /v1/patients/srv-p/invites',
       'POST /v1/patients/srv-p/sync',
+      'GET /v1/patients/me',
       'GET /v1/patients/srv-p/links',
     ]);
     expect((lastSync['sessions'] as List).length, 1);
@@ -129,14 +136,14 @@ void main() {
     expect(await db.unsyncedConsents(pid), isEmpty);
     expect(await db.unsyncedSessions(pid), isEmpty);
     final row = (await raw.query('care_links', where: 'id = ?', whereArgs: [link])).single;
-    expect([row['server_link_id'], row['status']], ['srv-l', 'accepted']);
+    expect([row['server_link_id'], row['status'], row['verified']], ['srv-l', 'accepted', 1]);
   });
 
   test('second run does not recreate or resend consents and sessions', () async {
     await make().run(pid);
     calls.clear();
     await make().run(pid);
-    expect(calls, ['GET /v1/patients/srv-p/links']);
+    expect(calls, ['GET /v1/patients/me', 'GET /v1/patients/srv-p/links']);
   });
 
   test('withdrawing sync stops uploads but still reports the withdrawal', () async {
@@ -165,6 +172,43 @@ void main() {
     expect((await raw.query('patients')).single['server_patient_id'], 'srv-old');
     expect(calls.any((c) => c.contains('/srv-old/sync') || c.contains('/srv-old/consents')),
         isTrue);
+  });
+
+  test('a starting level changed online by a caretaker reaches this phone', () async {
+    await make().run(pid);
+    serverBaseline = 4; // caretaker changed it on the server
+    await make().run(pid);
+    expect((await db.patientById(pid))!['baseline_level'], 4);
+    expect((await db.patientById(pid))!['server_baseline'], 4);
+    expect(await db.verifyAuditChain(), isTrue);
+  });
+
+  test('a starting level changed on this phone is sent, and wins over an older server value',
+      () async {
+    await make().run(pid);
+    await db.setBaseline(
+        patientId: pid, newLevel: 5, caregiverName: 'Asha', reason: 'test');
+    await make().run(pid);
+    expect(serverBaseline, 5);
+    expect((await db.patientById(pid))!['baseline_level'], 5);
+    // both changed since the last sync: this phone wins, nothing flips back
+    serverBaseline = 1;
+    await db.setBaseline(
+        patientId: pid, newLevel: 3, caregiverName: 'Asha', reason: 'test');
+    await make().run(pid);
+    expect(serverBaseline, 3);
+    expect((await db.patientById(pid))!['baseline_level'], 3);
+  });
+
+  test('without the sync purpose the starting level is not exchanged', () async {
+    await make().run(pid);
+    await db.withdrawConsent(
+        patientId: pid, purpose: 'sync', byName: 'Asha', byRelation: 'self', noticeVersion: 'v2');
+    serverBaseline = 4;
+    calls.clear();
+    await make().run(pid);
+    expect((await db.patientById(pid))!['baseline_level'], 2);
+    expect(calls.contains('GET /v1/patients/me'), isFalse);
   });
 
   test('offline leaves everything queued', () async {

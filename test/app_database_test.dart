@@ -909,4 +909,25 @@ void main() {
       expect((await db.syncBatch(id)).sessions, isEmpty);
     });
   });
+
+  group('upgrade from v5', () {
+    test('adds the starting-level and verified columns and keeps rows', () async {
+      final v5 = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
+          options: OpenDatabaseOptions(
+            singleInstance: false,
+            version: 5,
+            onCreate: (d, _) async {
+              await d.execute('CREATE TABLE patients(id TEXT PRIMARY KEY, name TEXT)');
+              await d.execute('CREATE TABLE care_links(id TEXT PRIMARY KEY, status TEXT)');
+              await d.insert('care_links', {'id': 'l', 'status': 'accepted'});
+            },
+          ));
+      await AppDatabase.upgradeSchema(v5, 5);
+      await AppDatabase.upgradeSchema(v5, 5); // safe to repeat
+      final l = (await v5.query('care_links')).single;
+      expect([l['status'], l['verified']], ['accepted', 0]);
+      await v5.query('patients', columns: ['server_baseline']);
+      await v5.close();
+    });
+  });
 }

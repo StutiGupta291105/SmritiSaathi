@@ -286,6 +286,12 @@ class ApiClient {
         'today': today,
       });
 
+  Future<void> registerDevice(String token, String platform) =>
+      _raw('POST', '/v1/devices', body: {'token': token, 'platform': platform});
+
+  Future<void> unregisterDevice(String token, String platform) =>
+      _raw('DELETE', '/v1/devices', body: {'token': token, 'platform': platform});
+
   Future<void> eraseServerData(String patientId) =>
       _raw('DELETE', '/v1/patients/$patientId');
 

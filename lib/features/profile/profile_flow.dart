@@ -595,12 +595,20 @@ class _CareInviteState extends State<_CareInvite> {
               Text('${link['name']}  ·  ${link['professional_id']}',
                   style: const TextStyle(fontSize: 20)),
               const SizedBox(height: 6),
-              Chip(
-                avatar: const Icon(Icons.schedule, size: 20),
-                label: Text(link['status'] == 'pending'
-                    ? t('invitePending')
-                    : '${link['status']}'),
-              ),
+              Wrap(spacing: 8, children: [
+                Chip(
+                  avatar: const Icon(Icons.schedule, size: 20),
+                  label: Text(link['status'] == 'pending'
+                      ? t('invitePending')
+                      : t('status${'${link['status']}'[0].toUpperCase()}${'${link['status']}'.substring(1)}')),
+                ),
+                if (isDoctor && link['verified'] == 1)
+                  Chip(
+                    avatar: const Icon(Icons.verified_rounded,
+                        size: 20, color: Palette.green),
+                    label: Text(t('doctorVerified')),
+                  ),
+              ]),
             ] else ...[
               TextField(
                 controller: _name,

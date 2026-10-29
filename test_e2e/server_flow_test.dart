@@ -105,6 +105,9 @@ void main() {
     expect((await db.listCareLinks(pid)).single['status'], 'accepted');
     await carer.setBaseline(serverId, 4);
     expect((await api.myPatient())['baseline_level'], 4);
+    await SyncService(db, api).run(pid); // the patient's phone picks the new level up
+    expect((await db.patientById(pid))!['baseline_level'], 4);
+    expect((await db.listCareLinks(pid)).single['verified'], 0); // not a doctor
 
     // 4. Talk to Smriti through the real server (dev provider).
     final talk = CompanionService(db: db, api: api);

@@ -14,6 +14,23 @@ class SyncService {
 
   static const _serverRole = {'doctor': 'doctor', 'caregiver': 'caretaker'};
 
+  /// Keeps the starting level in step in both directions without either side
+  /// overwriting a newer change: a change made on this phone is sent; otherwise
+  /// a change made by a caretaker online is applied here. Needs 'sync'.
+  Future<void> _syncBaseline(String patientId, String serverId) async {
+    if (!await db.hasConsent(patientId, 'sync')) return;
+    final patient = (await db.patientById(patientId))!;
+    final local = patient['baseline_level'] as int;
+    final seen = patient['server_baseline'] as int?;
+    final server = (await api.myPatient())['baseline_level'] as int;
+    if (seen == null || local != seen) {
+      if (server != local) await api.setBaseline(serverId, local);
+      await db.setServerBaseline(patientId, local);
+    } else if (server != seen) {
+      await db.applyServerBaseline(patientId, server);
+    }
+  }
+
   Future<SyncOutcome> run(String patientId) async {
     try {
       final patient = await db.patientById(patientId);
@@ -81,6 +98,7 @@ class SyncService {
             [for (final s in batch.sessions) s['id'] as String]);
       }
 
+      await _syncBaseline(patientId, serverId);
       await db.applyServerLinkStatuses(patientId, await api.links(serverId));
       return SyncOutcome.done;
     } on ApiException catch (e) {
