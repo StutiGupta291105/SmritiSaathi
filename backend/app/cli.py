@@ -5,6 +5,7 @@
   python -m app.cli list-unverified            doctors waiting for a registration check
   python -m app.cli verify-professional <id>   after checking the doctor's registration
   python -m app.cli unverify-professional <id>
+  python -m app.cli send-alerts                push new alerts to caretakers and doctors
 """
 import sys
 
@@ -31,7 +32,7 @@ def _set_verified(db, user_id: str, on: bool) -> int:
 
 def main(argv: list[str]) -> int:
     cmds = {"verify-audit": 1, "audit-head": 1, "list-unverified": 1,
-            "verify-professional": 2, "unverify-professional": 2}
+            "verify-professional": 2, "unverify-professional": 2, "send-alerts": 1}
     if not argv or cmds.get(argv[0]) != len(argv):
         print(__doc__)
         return 2
@@ -45,6 +46,12 @@ def main(argv: list[str]) -> int:
             return 0 if ok else 1
         if cmd == "audit-head":
             print(audit.head_hash(db) or "")
+            return 0
+        if cmd == "send-alerts":
+            from . import dispatch, push
+            n = dispatch.send_pending_alerts(db, push.get_provider(s.push_provider))
+            db.commit()
+            print(f"sent {n}")
             return 0
         if cmd == "list-unverified":
             doctors = db.execute(select(User).where(

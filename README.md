@@ -180,6 +180,19 @@ address the app stays the offline test build (fixed code 123456, no server).
 | India-hosted log store, incident process, security review documents | written; hosting, named incident lead and external testing are for you to arrange |
 | Not built yet | push notifications, restoring a patient on a new phone from the server, doctor registry verification, database migrations tool, caretaker changing the starting level from the app after first sync |
 
+## Phase 4
+
+| Item | Status |
+|---|---|
+| Restore on a new phone (profile, game history, reminder times, consent history, care links) | done. Photos, family contacts, reminder text and the caregiver PIN were never uploaded, so they are set up again |
+| Database migrations (Alembic), checked by a test, enforced at production start | done |
+| Doctor verification by an operator (`python -m app.cli verify-professional`), shown to the patient as `verified` in the server's link list | server done; the app does not show the badge yet |
+| Optional release signing from repository secrets | done (untested with a real key) |
+| Bengali and Assamese (UI, game content, spoken instructions when the phone has a voice) | done as **draft translations: a native speaker must review them**. A test keeps all four languages in step |
+| Talk to Smriti: on-device helper (day, what is next, kind thought, emergency words) | done, works offline |
+| Talk to Smriti: AI chat through the server | done and off by default; own consent; read the companion section of `docs/SECURITY.md` (data can leave India, cost, safety limits) before turning it on |
+| Push notifications to caretakers and doctors | server done and tested with a fake provider; the Firebase provider is untested live and the app does not register for push yet |
+
 ## Look and feel
 
 Follows the second design sheet: teal-green brand (`#1B7F63`, headings

@@ -23,6 +23,7 @@ class Settings:
     requests_per_minute_ip: int = 120
     max_body_bytes: int = 1_000_000
     sms_provider: str = "dev"
+    push_provider: str = "dev"                 # "dev" or "fcm"
     companion_provider: str = "dev"            # "dev" or "anthropic"
     companion_model: str = "claude-opus-5-5"   # any Claude model id; cheaper ones cost less
     companion_daily_limit: int = 40            # answered messages per patient per day
@@ -57,6 +58,7 @@ def load_settings() -> Settings:
         requests_per_minute_ip=g("REQUESTS_PER_MINUTE_IP", d.requests_per_minute_ip),
         max_body_bytes=g("MAX_BODY_BYTES", d.max_body_bytes),
         sms_provider=g("SMS_PROVIDER", d.sms_provider),
+        push_provider=g("PUSH_PROVIDER", d.push_provider),
         companion_provider=g("COMPANION_PROVIDER", d.companion_provider),
         companion_model=g("COMPANION_MODEL", d.companion_model),
         companion_daily_limit=g("COMPANION_DAILY_LIMIT", d.companion_daily_limit),

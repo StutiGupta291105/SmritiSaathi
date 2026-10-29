@@ -172,3 +172,23 @@ class ChatUsage(Base):
     patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), primary_key=True)
     day: Mapped[str] = mapped_column(String(10), primary_key=True)
     count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class DeviceToken(Base):
+    """A phone registered for push notifications."""
+    __tablename__ = "device_tokens"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    token: Mapped[str] = mapped_column(String(512), unique=True)
+    platform: Mapped[str] = mapped_column(String(8), default="android")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    last_seen: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class PushSent(Base):
+    """One push per alert kind per person per day, so nobody is nagged."""
+    __tablename__ = "push_sent"
+    user_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    patient_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32), primary_key=True)
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)

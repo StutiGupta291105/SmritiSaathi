@@ -47,7 +47,7 @@ end).
   and the key can rewrite history. Ship `python -m app.cli audit-head` output to a
   separate append-only store (for example write-once object storage in an Indian
   region) at least daily.
-- **No push notifications.** Alerts are fetched when a caretaker opens the app.
+- **Push notifications: server side only.** Device tokens, a once-a-day-per-alert dispatcher (`python -m app.cli send-alerts`) and a generic lock-screen message exist and are tested with a fake provider. The Firebase provider is untested against a live project, and the app does not yet register a token (needs the Firebase plugin and `google-services.json`).
 - **Doctor identity is checked by a person, not a registry.** The registration number
   is self-declared. An operator checks it with the relevant medical council and runs
   `python -m app.cli verify-professional <id>`; patients' link lists then show

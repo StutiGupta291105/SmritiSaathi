@@ -52,7 +52,30 @@ Phone app --HTTPS--> Load balancer (TLS, WAF) --> container(s) --> PostgreSQL
 | `SMRITI_DATABASE_URL` | `postgresql+psycopg://user:pass@host/db` |
 | `SMRITI_SMS_PROVIDER` | name of the real provider |
 | `SMRITI_TRUST_PROXY` | `true` only behind your own proxy |
+| `SMRITI_COMPANION_PROVIDER`, `SMRITI_COMPANION_MODEL`, `SMRITI_COMPANION_DAILY_LIMIT`, `ANTHROPIC_API_KEY` | "Talk to Smriti": `dev` (default, fixed reply) or `anthropic`. Read the companion section of `SECURITY.md` first |
+| `SMRITI_PUSH_PROVIDER`, `SMRITI_FCM_PROJECT_ID`, `SMRITI_FCM_CREDENTIALS_FILE` | push: `dev` (default) or `fcm`. Needs `pip install google-auth requests` too |
 | `SMRITI_OTP_TTL_SECONDS`, `SMRITI_OTP_MAX_ATTEMPTS`, `SMRITI_OTP_PER_HOUR_PHONE`, `SMRITI_OTP_PER_HOUR_IP`, `SMRITI_ACCESS_TTL_MINUTES`, `SMRITI_REFRESH_TTL_DAYS`, `SMRITI_REQUESTS_PER_MINUTE_IP`, `SMRITI_MAX_BODY_BYTES` | tuning, defaults in `backend/app/config.py` |
+
+## Database changes (migrations)
+
+In production the app does not create tables; it refuses to start unless the
+database is at the newest version. On every deploy, before starting the new
+version (take a backup first):
+
+```
+cd backend && alembic upgrade head      # SMRITI_DATABASE_URL must be set
+```
+
+When you change `app/models.py`, run `alembic revision --autogenerate -m "what changed"`,
+read the generated file, and commit it. A test fails if models and migrations disagree.
+
+## Scheduled jobs
+
+Run `python -m app.cli send-alerts` every 15 to 30 minutes (for example an
+EventBridge schedule that starts a one-off container task). It sends at most one
+generic push per alert kind per person per day, and does nothing with
+`SMRITI_PUSH_PROVIDER=dev`. Also ship `python -m app.cli audit-head` daily (see
+`SECURITY.md`).
 
 ## Build and run
 
