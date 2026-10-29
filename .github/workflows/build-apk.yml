@@ -37,6 +37,27 @@ jobs:
       - name: Apply Android settings
         run: python3 .github/scripts/patch_android.py
       - run: flutter pub get
+      # Optional: sign with your own key when these repository secrets exist
+      # (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
+      # ANDROID_KEY_PASSWORD). Without them the APK is signed with a debug key,
+      # fine for testing but not for the Play Store.
+      - name: Release signing (if a key is configured)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SMRITI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SMRITI_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          SMRITI_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "SMRITI_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "SMRITI_KEYSTORE_PASSWORD=$SMRITI_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "SMRITI_KEY_ALIAS=$SMRITI_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "SMRITI_KEY_PASSWORD=$SMRITI_KEY_PASSWORD" >> "$GITHUB_ENV"
+            SMRITI_KEYSTORE_PATH="$RUNNER_TEMP/release.jks" python3 .github/scripts/sign_android.py
+          else
+            echo "No signing key configured; using the debug key."
+          fi
       - name: Generate the launcher icon from the logo
         run: dart run flutter_launcher_icons
       - run: flutter test

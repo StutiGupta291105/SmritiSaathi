@@ -386,3 +386,33 @@ def test_snapshot_is_audited(env):
         n = conn.execute(_t("select count(*) from audit_log "
                             "where action='patient_snapshot_read'")).scalar()
     assert n == 1
+
+
+# ---- doctor verification ---------------------------------------------------------
+
+def test_doctor_link_shows_unverified_until_an_operator_verifies(env):
+    from app import cli
+    a, pid = env.make_patient()
+    d = env.link_member(a, pid, "doctor", "+919822222222")
+    links = env.client.get(f"/v1/patients/{pid}/links", headers=a.headers).json()
+    assert links[0]["verified"] is False
+
+    # the CLI reads settings from the environment, so call its helper directly
+    sm = env.app.state.sessionmaker
+    with sm() as db:
+        assert cli._set_verified(db, d.user["id"], True) == 0
+    links = env.client.get(f"/v1/patients/{pid}/links", headers=a.headers).json()
+    assert links[0]["verified"] is True
+    with sm() as db:
+        assert cli._set_verified(db, d.user["id"], False) == 0
+    assert env.client.get(f"/v1/patients/{pid}/links",
+                          headers=a.headers).json()[0]["verified"] is False
+
+
+def test_only_doctors_can_be_verified_and_it_is_audited(env):
+    from app import cli
+    a, pid = env.make_patient()
+    sm = env.app.state.sessionmaker
+    with sm() as db:
+        assert cli._set_verified(db, a.user["id"], True) == 1  # a patient, not a doctor
+        assert cli._set_verified(db, "nope", True) == 1

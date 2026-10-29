@@ -31,6 +31,8 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(12))
     name: Mapped[str] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    # Set by an operator after checking a doctor's registration; never by the user.
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     __table_args__ = (UniqueConstraint("phone_hmac", "role", name="uq_user_phone_role"),)
 
 

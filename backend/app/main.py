@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from .config import Settings, load_settings
 from .db import Base, make_engine, make_session_factory
+from .migrate import require_up_to_date
 from .ratelimit import SlidingWindowLimiter
 from .routers import auth, care, patients
 from .sms import SmsProvider, get_provider
@@ -19,7 +20,10 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None)
                   docs_url=None if s.is_prod else "/docs",
                   redoc_url=None, openapi_url=None if s.is_prod else "/openapi.json")
     engine = make_engine(s.database_url)
-    Base.metadata.create_all(engine)  # production should use migrations (see docs)
+    if s.is_prod:
+        require_up_to_date(engine)  # tables are only ever changed by `alembic upgrade head`
+    else:
+        Base.metadata.create_all(engine)
     app.state.settings = s
     app.state.engine = engine
     app.state.sessionmaker = make_session_factory(engine, {"audit_key": s.secret_key})

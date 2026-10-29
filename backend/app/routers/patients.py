@@ -28,8 +28,9 @@ def naive_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
 
 
-def _link_out(l: Link) -> LinkOut:
-    return LinkOut(id=l.id, patient_id=l.patient_id, member_role=l.member_role,
+def _link_out(l: Link, db: Session) -> LinkOut:
+    member = db.get(User, l.member_user_id) if l.member_user_id else None
+    return LinkOut(verified=bool(member and member.verified_at), id=l.id, patient_id=l.patient_id, member_role=l.member_role,
                    invitee_name=l.invitee_name, professional_id=l.professional_id,
                    status=l.status, created_at=l.created_at)
 
@@ -137,7 +138,7 @@ def invite(patient_id: str, body: InviteIn, request: Request,
     db.flush()
     audit.record(db, user.id, "invite_created",
                  f"patient={p.id} link={link.id} role={body.role}")
-    return _link_out(link)
+    return _link_out(link, db)
 
 
 @router.get("/{patient_id}/links", response_model=list[LinkOut])
@@ -146,7 +147,7 @@ def list_links(patient_id: str, user: User = Depends(current_user),
     p = patient_for_owner(db, user, patient_id)
     rows = db.execute(select(Link).where(Link.patient_id == p.id)
                       .order_by(Link.created_at)).scalars().all()
-    return [_link_out(l) for l in rows]
+    return [_link_out(l, db) for l in rows]
 
 
 # ---- sync ----------------------------------------------------------------------

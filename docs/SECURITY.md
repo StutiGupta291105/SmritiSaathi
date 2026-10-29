@@ -36,8 +36,10 @@ end).
   console; protect those accounts with MFA.
 - **Rate limiting of general requests is per process.** Use a shared store or the
   gateway/WAF when running several instances.
-- **No database migrations tool yet** (tables are created on start). Add Alembic
-  before the first schema change in production.
+- **Migrations are in place (Alembic)**, with a test that fails if the models change
+  without a migration. In production the app refuses to start unless the database is
+  at the newest version, so run `alembic upgrade head` as a separate deploy step and
+  take a backup first. Downgrades exist but have not been rehearsed on real data.
 - **Secrets** come from environment variables. Use a secrets manager and plan key
   rotation: rotating `SMRITI_SECRET_KEY` signs everyone out and invalidates the
   audit head MAC, so re-seal the head as part of rotation.
@@ -46,8 +48,15 @@ end).
   separate append-only store (for example write-once object storage in an Indian
   region) at least daily.
 - **No push notifications.** Alerts are fetched when a caretaker opens the app.
-- **Doctor identity is self-declared.** The registration number is stored but not
-  checked against a registry.
+- **Doctor identity is checked by a person, not a registry.** The registration number
+  is self-declared. An operator checks it with the relevant medical council and runs
+  `python -m app.cli verify-professional <id>`; patients' link lists then show
+  `verified`. The app does not show that badge yet, and there is no automated
+  registry lookup.
+- **Release signing is optional in the build.** With the four `ANDROID_*` repository
+  secrets set, the APK is signed with your key; without them it uses a debug key
+  and must not be published. Keep the key store backed up offline: losing it means
+  users cannot update the app.
 - **Backups, restore drills and disaster recovery** are not designed yet.
 
 ## Before real use: checklist

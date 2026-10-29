@@ -91,6 +91,7 @@ class LinkOut(BaseModel):
     professional_id: str
     status: str
     created_at: datetime
+    verified: bool = False  # the invitee's registration was checked by an operator
 
 
 class InviteForMe(BaseModel):
