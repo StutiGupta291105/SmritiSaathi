@@ -15,7 +15,7 @@ on:
     paths:
       - .github/workflows/build-ios.yml
       - .github/scripts/patch_ios.py
-      - flutter_launcher_icons-ios.yaml
+      - .github/icons-ios.yaml
 
 jobs:
   build:
@@ -36,7 +36,7 @@ jobs:
         run: python3 .github/scripts/patch_ios.py project
       - run: flutter pub get
       - name: Generate the iOS app icon from the logo
-        run: dart run flutter_launcher_icons -f flutter_launcher_icons-ios.yaml
+        run: dart run flutter_launcher_icons -f .github/icons-ios.yaml
       - run: flutter test
       - name: Create the Podfile (no build yet)
         run: flutter build ios --config-only --no-codesign
