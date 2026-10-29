@@ -150,7 +150,7 @@ class _RoutineGameState extends State<RoutineGame> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final lang = widget.language;
-    final title = lang == 'hi' ? _round.routine.hi : _round.routine.en;
+    final title = _round.routine.title(lang);
     return GameFrame(
       title: _t('gameRoutine'),
       subtitle: _t('gameRoutineDesc'),

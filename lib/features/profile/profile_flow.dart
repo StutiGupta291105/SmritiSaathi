@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/profile.dart';
+import '../../core/languages.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../data/app_database.dart';
@@ -208,7 +209,7 @@ class _ProfileFlowState extends State<ProfileFlow> {
         Wrap(
           spacing: 8,
           children: [
-            for (final e in const {'en': 'English', 'hi': 'हिन्दी'}.entries)
+            for (final e in kLanguages.entries)
               ChoiceChip(
                 label: Text(e.value, style: const TextStyle(fontSize: 20)),
                 selected: _lang == e.key,

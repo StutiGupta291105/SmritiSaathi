@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/profile.dart';
+import '../../core/languages.dart';
 import '../../core/strings.dart';
 import '../../core/ui.dart';
 import '../../data/app_database.dart';
@@ -152,9 +153,8 @@ class _AuthScreenState extends State<AuthScreen> {
                 onPressed: widget.onBack),
         actions: [
           TextButton(
-            onPressed: () =>
-                widget.onLangChanged(widget.lang == 'en' ? 'hi' : 'en'),
-            child: Text(widget.lang == 'en' ? 'हिन्दी' : 'English',
+            onPressed: () => widget.onLangChanged(nextLanguage(widget.lang)),
+            child: Text(kLanguages[nextLanguage(widget.lang)]!,
                 style: const TextStyle(fontSize: 18)),
           ),
         ],

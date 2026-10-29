@@ -8,13 +8,15 @@ from .config import Settings, load_settings
 from .db import Base, make_engine, make_session_factory
 from .migrate import require_up_to_date
 from .ratelimit import SlidingWindowLimiter
-from .routers import auth, care, patients
+from . import companion as companion_mod
+from .routers import auth, care, companion, patients
 from .sms import SmsProvider, get_provider
 
 log = logging.getLogger("smriti")
 
 
-def create_app(settings: Settings | None = None, sms: SmsProvider | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
+               companion_provider=None) -> FastAPI:
     s = settings or load_settings()
     app = FastAPI(title="Smriti Sathi API", version="1.0",
                   docs_url=None if s.is_prod else "/docs",
@@ -28,6 +30,8 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None)
     app.state.engine = engine
     app.state.sessionmaker = make_session_factory(engine, {"audit_key": s.secret_key})
     app.state.sms = sms or get_provider(s)
+    app.state.companion = companion_provider or companion_mod.get_provider(
+        s.companion_provider, s.companion_model)
     app.state.limiter = SlidingWindowLimiter(s.requests_per_minute_ip, 60)
 
     @app.middleware("http")
@@ -67,4 +71,5 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None)
     app.include_router(auth.router)
     app.include_router(patients.router)
     app.include_router(care.router)
+    app.include_router(companion.router)
     return app

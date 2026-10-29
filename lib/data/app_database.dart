@@ -34,6 +34,7 @@ const kConsentPurposes = [
   'caregiver_share',
   'location',
   'sync',
+  'companion',
 ];
 
 enum PinResult { ok, wrong, locked }

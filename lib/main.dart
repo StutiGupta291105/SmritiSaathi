@@ -333,6 +333,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     }
     final api = widget.api;
     return PatientShell(
+      api: api,
       hooks: api == null ? null : serverHooks(widget.db, api, _sync),
       db: widget.db,
       notifier: widget.notifier,

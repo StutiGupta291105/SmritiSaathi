@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/engagement_alerts.dart';
 import '../../core/profile.dart';
+import '../../core/languages.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -108,7 +109,7 @@ class ProfileTab extends StatelessWidget {
         AppCard(
           padding: const EdgeInsets.all(8),
           child: Column(children: [
-            for (final e in const {'en': 'English', 'hi': 'हिन्दी'}.entries)
+            for (final e in kLanguages.entries)
               ListTile(
                 leading: Icon(
                     _lang == e.key

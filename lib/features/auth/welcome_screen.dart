@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/languages.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -54,7 +55,7 @@ class WelcomeScreen extends StatelessWidget {
                 Wrap(
                   spacing: 10,
                   children: [
-                    for (final e in const {'en': 'English', 'hi': 'हिन्दी'}.entries)
+                    for (final e in kLanguages.entries)
                       ChoiceChip(
                         label: Text(e.value, style: const TextStyle(fontSize: 18)),
                         selected: lang == e.key,

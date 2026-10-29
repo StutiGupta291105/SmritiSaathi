@@ -268,6 +268,24 @@ class ApiClient {
     return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
+  /// One turn of 'Talk to Smriti' through the server. Needs the patient's own
+  /// login and the 'companion' consent. 429 means today's limit was reached.
+  Future<Map<String, dynamic>> companionChat(
+    String patientId, {
+    required List<Map<String, String>> messages,
+    required String lang,
+    required String firstName,
+    required String nowText,
+    required List<Map<String, Object?>> today,
+  }) =>
+      _raw('POST', '/v1/patients/$patientId/companion/chat', body: {
+        'messages': messages,
+        'lang': lang,
+        'first_name': firstName,
+        'now_text': nowText,
+        'today': today,
+      });
+
   Future<void> eraseServerData(String patientId) =>
       _raw('DELETE', '/v1/patients/$patientId');
 

@@ -46,6 +46,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     'caregiver_share': 'purposeCaregiverShare',
     'location': 'purposeLocation',
     'sync': 'purposeSync',
+    'companion': 'purposeCompanion',
   };
 
   @override

@@ -416,3 +416,14 @@ def test_only_doctors_can_be_verified_and_it_is_audited(env):
     with sm() as db:
         assert cli._set_verified(db, a.user["id"], True) == 1  # a patient, not a doctor
         assert cli._set_verified(db, "nope", True) == 1
+
+
+def test_patient_language_can_be_bengali_or_assamese_but_not_anything(env):
+    a = env.signup()
+    for lang, status in (("bn", 201), ("zz", 422)):
+        r = env.client.post("/v1/patients", headers=a.headers, json={
+            "display_name": "Asha", "language": lang, "baseline_level": 2,
+            "tz_offset_minutes": 330})
+        assert r.status_code == status, (lang, r.text)
+        if status == 201:
+            assert r.json()["language"] == "bn"

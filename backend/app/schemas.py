@@ -7,7 +7,7 @@ Role = Literal["patient", "doctor", "caretaker"]
 LinkRole = Literal["doctor", "caretaker"]
 Purpose = Literal[
     "gameplay", "reminders", "family_contacts", "doctor_share",
-    "caregiver_share", "location", "sync",
+    "caregiver_share", "location", "sync", "companion",
 ]
 
 
@@ -47,7 +47,7 @@ class RefreshIn(BaseModel):
 
 class PatientIn(BaseModel):
     display_name: str = Field(min_length=1, max_length=120)
-    language: Literal["en", "hi"] = "en"
+    language: Literal["en", "hi", "bn", "as"] = "en"
     baseline_level: int = Field(default=2, ge=1, le=5)
     tz_offset_minutes: int = Field(default=330, ge=-720, le=840)
 

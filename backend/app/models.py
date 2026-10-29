@@ -13,7 +13,7 @@ ROLES = ("patient", "doctor", "caretaker")
 LINK_ROLES = ("doctor", "caretaker")
 CONSENT_PURPOSES = (
     "gameplay", "reminders", "family_contacts", "doctor_share",
-    "caregiver_share", "location", "sync",
+    "caregiver_share", "location", "sync", "companion",
 )
 # Which consent purpose gates each kind of linked member.
 ROLE_PURPOSE = {"caretaker": "caregiver_share", "doctor": "doctor_share"}
@@ -164,3 +164,11 @@ class AuditHead(Base):
     last_id: Mapped[int] = mapped_column(Integer)
     last_hash: Mapped[str] = mapped_column(String(64))
     mac: Mapped[str] = mapped_column(String(64))
+
+
+class ChatUsage(Base):
+    """Messages answered per patient per day, only to limit use. No content."""
+    __tablename__ = "chat_usage"
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), primary_key=True)
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)

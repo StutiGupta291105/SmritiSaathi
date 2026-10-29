@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../services/api_client.dart';
+import '../../services/companion_service.dart';
 import '../../services/sync_service.dart';
+import '../companion/chat_screen.dart';
 
 import '../../core/strings.dart';
 import '../../data/app_database.dart';
@@ -26,7 +29,9 @@ class PatientShell extends StatefulWidget {
     required this.onPatientChanged,
     required this.onLogout,
     this.hooks,
+    this.api,
   });
+  final ApiClient? api;
   final ServerHooks? hooks;
   final AppDatabase db;
   final ReminderNotifier notifier;
@@ -98,6 +103,17 @@ class _PatientShellState extends State<PatientShell> {
             ProgressScreen(db: widget.db, patientId: _id, lang: _lang),
       ));
 
+  void _openTalk() => Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ChatScreen(
+            service: CompanionService(db: widget.db, api: widget.api),
+            voice: widget.voice,
+            db: widget.db,
+            patientId: _id,
+            name: widget.patient['display_name'] as String,
+            lang: _lang,
+            voiceEnabled: widget.patient['voice_enabled'] == 1,
+          )));
+
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
@@ -111,6 +127,7 @@ class _PatientShellState extends State<PatientShell> {
         onGames: () => setState(() => _tab = 1),
         onReminders: () => setState(() => _tab = 2),
         onProgress: _openProgress,
+        onTalk: _openTalk,
       ),
       GamesTab(
         lang: _lang,

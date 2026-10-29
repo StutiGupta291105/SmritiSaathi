@@ -1,6 +1,12 @@
-/// Minimal in-app strings (English + Hindi). Replace with Flutter gen-l10n
-/// (ARB files) once the text stabilises; kept as a map for speed now.
+import 'strings_as.dart';
+import 'strings_bn.dart';
+
+/// In-app strings: English, Hindi, Bengali, Assamese. Replace with Flutter
+/// gen-l10n (ARB files) once the text stabilises; kept as a map for speed now.
+
 const Map<String, Map<String, String>> kStrings = {
+  'bn': kStringsBn,
+  'as': kStringsAs,
   'en': {
     'appName': 'Smriti Sathi',
     'tagline': 'Better Memory. Brighter Days.',
@@ -122,6 +128,23 @@ const Map<String, Map<String, String>> kStrings = {
     'invitePhone': 'Their mobile number (so they can accept)',
     'eraseNeedsInternet':
         'Your data is also stored online. Please connect to the internet to erase it everywhere.',
+    'chatTitle': 'Talk to Smriti',
+    'chatNote': 'Smriti is a helper program on your phone. It is not a person or a doctor and cannot give medical advice.',
+    'chatHello': 'Hello! I am Smriti. Tap a button, or type something to talk with me.',
+    'chatHint': 'Type here',
+    'chatSend': 'Send',
+    'qaDay': 'What day is it?',
+    'qaNext': 'What is next?',
+    'qaFamily': 'Call my family',
+    'qaNice': 'Say something kind',
+    'chatNextNone': 'Nothing more is planned for today.',
+    'chatNextAnswer': 'Next is {k} at {t}.',
+    'chatOfflineHelp': 'I can tell you the day, what is next, or help you call your family. Tap a button below.',
+    'chatOnlineAsk': 'To chat freely, what you type is sent over the internet to an AI service that may process it outside India. Nothing is saved. Allow this?',
+    'chatThinking': 'Smriti is thinking...',
+    'chatWorkingOffline': 'Smriti is answering without internet right now.',
+    'chatCall112': 'Call 112 (emergency)',
+    'purposeCompanion': 'Chat freely with Smriti: sends what I type to an AI service (may be outside India); nothing is saved',
     'rmPeople': 'People you support',
     'rmInvites': 'Invitations',
     'rmInvitedAs': 'Invited you as',
@@ -428,6 +451,23 @@ const Map<String, Map<String, String>> kStrings = {
     'invitePhone': 'उनका मोबाइल नंबर (ताकि वे स्वीकार कर सकें)',
     'eraseNeedsInternet':
         'आपका डेटा ऑनलाइन भी सहेजा है। हर जगह से मिटाने के लिए कृपया इंटरनेट से जुड़ें।',
+    'chatTitle': 'स्मृति से बात करें',
+    'chatNote': 'स्मृति आपके फ़ोन का एक सहायक प्रोग्राम है। यह कोई इंसान या डॉक्टर नहीं है और चिकित्सा सलाह नहीं दे सकता।',
+    'chatHello': 'नमस्ते! मैं स्मृति हूँ। कोई बटन दबाएँ, या कुछ लिखकर मुझसे बात करें।',
+    'chatHint': 'यहाँ लिखें',
+    'chatSend': 'भेजें',
+    'qaDay': 'आज कौन सा दिन है?',
+    'qaNext': 'आगे क्या है?',
+    'qaFamily': 'परिवार को फ़ोन करें',
+    'qaNice': 'कुछ अच्छा कहिए',
+    'chatNextNone': 'आज के लिए और कुछ तय नहीं है।',
+    'chatNextAnswer': 'अगला {k} है, {t} बजे।',
+    'chatOfflineHelp': 'आप दिन जान सकते हैं, आगे का काम देख सकते हैं, या परिवार को फ़ोन कर सकते हैं। नीचे कोई बटन दबाएँ।',
+    'chatOnlineAsk': 'खुलकर बात करने के लिए आप जो लिखेंगे वह इंटरनेट से एक AI सेवा को भेजा जाएगा, जो उसे भारत के बाहर संसाधित कर सकती है। कुछ भी सहेजा नहीं जाता। क्या अनुमति देते हैं?',
+    'chatThinking': 'स्मृति सोच रही है...',
+    'chatWorkingOffline': 'स्मृति अभी इंटरनेट के बिना जवाब दे रही है।',
+    'chatCall112': '112 पर फ़ोन करें (आपातकाल)',
+    'purposeCompanion': 'स्मृति से खुलकर बात करना: जो मैं लिखूँ वह एक AI सेवा को भेजा जाता है (भारत के बाहर हो सकती है); कुछ सहेजा नहीं जाता',
     'rmPeople': 'जिनकी आप देखभाल करते हैं',
     'rmInvites': 'निमंत्रण',
     'rmInvitedAs': 'आपको आमंत्रित किया:',

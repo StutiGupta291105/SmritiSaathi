@@ -59,6 +59,36 @@ end).
   users cannot update the app.
 - **Backups, restore drills and disaster recovery** are not designed yet.
 
+## Talk to Smriti (AI companion): what to know before turning it on
+
+- **Off by default.** The server provider is `dev` (a fixed reply). Set
+  `SMRITI_COMPANION_PROVIDER=anthropic`, `ANTHROPIC_API_KEY` and, if you want a
+  cheaper model, `SMRITI_COMPANION_MODEL`. The default model is the most capable
+  one, which is the most expensive; measure cost per conversation before launch.
+- **Data leaves India.** What the person types goes from our server to Anthropic's
+  API, which may process it outside India. The consent text says so and is its own
+  purpose (`companion`), off until the person (or guardian) allows it, and withdrawal
+  stops it at once. Have counsel confirm the DPDP cross-border position and the
+  vendor's retention terms (consider zero-data-retention terms) before real use.
+- **Nothing is stored.** Messages and replies are not saved or logged by us. We keep
+  only a per-day count (limit 40 answered messages by default) and an audit line
+  with no content. Reminder text is never sent; only the kind and time of today's
+  reminders, the first name and the date.
+- **Emergencies never depend on the model.** Words such as chest pain, a fall or
+  wanting to die are matched in code (English plus Hindi, Bengali, Assamese), on the
+  phone first and again on the server, and answered with fixed text pointing to 112
+  and family. The word lists are short and will miss phrasings: have clinicians and
+  native speakers extend them, and test them.
+- **The model is steered by a prompt, not guaranteed.** It is told never to
+  diagnose, give medical advice, quiz memory, or ask for personal details, and to
+  warn about requests for money or OTPs. Review real (consented, ideally
+  consented-for-review) transcripts in a pilot before wider use; we do not keep any,
+  so decide how a pilot would collect them.
+- **Refusals and outages** become a gentle fixed reply or the on-device helper. No
+  server-side fallback model is configured.
+- **Without internet or consent** the on-device helper answers the day, what is next
+  and a kind thought, with no data leaving the phone.
+
 ## Before real use: checklist
 
 1. Independent VAPT against OWASP API Security Top 10 and, for the app, OWASP MASVS.

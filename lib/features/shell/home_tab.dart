@@ -30,11 +30,12 @@ class HomeTab extends StatelessWidget {
     required this.onGames,
     required this.onReminders,
     required this.onProgress,
+    required this.onTalk,
   });
   final AppDatabase db;
   final String patientId, name, lang;
   final List<int>? photo;
-  final VoidCallback onPlay, onGames, onReminders, onProgress;
+  final VoidCallback onPlay, onGames, onReminders, onProgress, onTalk;
 
   String t(String k) => tr(lang, k);
 
@@ -163,6 +164,26 @@ class HomeTab extends StatelessWidget {
                       Palette.tileSky, Palette.sky,
                       () => _showFamily(context))),
             ]),
+
+            const SizedBox(height: 14),
+            AppCard(
+              onTap: onTalk,
+              color: Palette.tilePurple,
+              child: Row(children: [
+                const IconBadge(
+                    icon: Icons.chat_bubble_rounded,
+                    fg: Palette.purple,
+                    bg: Colors.white,
+                    circle: true),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(t('chatTitle'),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700)),
+                ),
+                const Icon(Icons.chevron_right_rounded),
+              ]),
+            ),
 
             // Today's tasks
             const SizedBox(height: 24),
