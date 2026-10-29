@@ -1,4 +1,6 @@
 import 'adherence.dart';
+import 'languages.dart';
+import 'safety_data.dart';
 import 'reminder_schedule.dart';
 import 'strings.dart';
 
@@ -54,26 +56,6 @@ const _nice = {
   ],
 };
 
-/// Keep in step with backend/app/companion.py (a backend test checks this).
-const emergencyWords = {
-  'en': ['want to die', 'kill myself', 'end my life', 'suicide', 'chest pain',
-    "can't breathe", 'cannot breathe', 'heart attack', 'stroke', 'i fell',
-    'i have fallen', 'bleeding', 'unconscious', 'overdose', 'took too many'],
-  'hi': ['मरना चाहता', 'मरना चाहती', 'जान दे', 'आत्महत्या', 'सीने में दर्द', 'साँस नहीं',
-    'सांस नहीं', 'दिल का दौरा', 'गिर गया', 'गिर गई', 'खून', 'बेहोश'],
-  'bn': ['মরতে চাই', 'আত্মহত্যা', 'বুকে ব্যথা', 'শ্বাস নিতে পারছি না', 'হার্ট অ্যাটাক',
-    'পড়ে গেছি', 'রক্ত', 'অজ্ঞান'],
-  'as': ['মৰিব বিচাৰো', 'মৰিব মন', 'আত্মহত্যা', 'বুকুত বিষ', "উশাহ ল'ব নোৱাৰো",
-    'পৰি গৈছো', 'তেজ', 'অজ্ঞান'],
-};
-
-const emergencyReply = {
-  'en': 'I am only a helper on your phone, so I cannot send help. If you are hurt or feeling very unwell, please call 112 now, or call your family. Use the Call family button on the home screen.',
-  'hi': 'मैं आपके फ़ोन का एक सहायक हूँ, इसलिए मदद भेजना मेरे बस में नहीं है। अगर आपको चोट लगी है या तबीयत बहुत ख़राब है, तो अभी 112 पर फ़ोन करें, या अपने परिवार को फ़ोन करें। होम स्क्रीन पर "परिवार को फ़ोन करें" बटन दबाएँ।',
-  'bn': 'আমি শুধু আপনার ফোনের একটি সহায়ক, তাই আমি সাহায্য পাঠাতে পারি না। আপনি আঘাত পেলে বা খুব অসুস্থ বোধ করলে এখনই ১১২ নম্বরে ফোন করুন, অথবা পরিবারকে ফোন করুন। হোম স্ক্রিনে "পরিবারকে ফোন করুন" বোতাম চাপুন।',
-  'as': 'মই কেৱল আপোনাৰ ফোনৰ এটা সহায়ক, সেয়ে সহায় পঠাব নোৱাৰো। আপুনি আঘাত পালে বা বৰ বেয়া অনুভৱ কৰিলে এতিয়াই ১১২ নম্বৰত ফোন কৰক, বা পৰিয়ালক ফোন কৰক। হোম স্ক্ৰীণত "পৰিয়ালক ফোন কৰক" বুটাম টিপক।',
-};
-
 bool isEmergencyText(String text, String lang) {
   final low = text.toLowerCase();
   final words = [...?emergencyWords[lang], ...emergencyWords['en']!];
@@ -87,11 +69,14 @@ String _hhmm(int h, int m) =>
 
 /// Today's weekday, date and time in the person's language.
 String dayAnswer(String lang, DateTime now) {
+  final pack = kLangPacks[lang];
   final l = _dayTemplate.containsKey(lang) ? lang : 'en';
-  return _dayTemplate[l]!
-      .replaceAll('{w}', _weekdays[l]![now.weekday - 1])
+  final weekdays = pack?.weekdays ?? _weekdays[l]!;
+  final months = pack?.months ?? _months[l]!;
+  return (pack?.dayTemplate ?? _dayTemplate[l]!)
+      .replaceAll('{w}', weekdays[now.weekday - 1])
       .replaceAll('{d}', '${now.day}')
-      .replaceAll('{m}', _months[l]![now.month - 1])
+      .replaceAll('{m}', months[now.month - 1])
       .replaceAll('{y}', '${now.year}')
       .replaceAll('{t}', _hhmm(now.hour, now.minute));
 }
@@ -116,6 +101,6 @@ String nextAnswer(String lang, List<Reminder> reminders, Set<String> done, DateT
 }
 
 String niceThing(String lang, int seed) {
-  final list = _nice[lang] ?? _nice['en']!;
+  final list = kLangPacks[lang]?.nice ?? _nice[lang] ?? _nice['en']!;
   return list[seed.abs() % list.length];
 }

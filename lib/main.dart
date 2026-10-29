@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'core/language_picker.dart';
+import 'core/languages.dart';
 import 'core/responsive.dart';
 import 'core/strings.dart';
 import 'core/theme.dart';
@@ -35,7 +37,13 @@ class SmritiSathiApp extends StatelessWidget {
       title: 'Smriti Sathi',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      builder: (context, child) => ResponsiveScope(child: child!),
+      builder: (context, child) => ValueListenableBuilder<String>(
+        valueListenable: kActiveLanguage,
+        builder: (context, lang, _) => Directionality(
+          textDirection: isRtl(lang) ? TextDirection.rtl : TextDirection.ltr,
+          child: ResponsiveScope(child: child!),
+        ),
+      ),
       home: const _Boot(),
     );
   }
@@ -269,6 +277,11 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final active = (_patient?['language'] as String?) ?? _lang;
+    if (kActiveLanguage.value != active) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => kActiveLanguage.value = active);
     }
     final account = _account;
     if (account == null && !_started) {

@@ -1,3 +1,5 @@
+import 'languages.dart';
+
 /// Culturally familiar content shared by all games. Widely supported emoji are
 /// used so nothing needs to be downloaded (offline-first). Later: regional
 /// packs per language and caregiver-added family photos and names.
@@ -10,7 +12,7 @@ class Item {
         'hi' => hi,
         'bn' => bn,
         'as' => asm,
-        _ => en,
+        _ => kLangPacks[lang]?.labels[en] ?? en,
       };
 }
 
@@ -49,7 +51,7 @@ class Routine {
         'hi' => hi,
         'bn' => bn,
         'as' => asm,
-        _ => en,
+        _ => kLangPacks[lang]?.labels[en] ?? en,
       };
 }
 

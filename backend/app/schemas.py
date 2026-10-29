@@ -3,6 +3,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from .safety_data import LANGUAGES
+
+_LANG_PATTERN = "^(" + "|".join(LANGUAGES) + ")$"
+
 Role = Literal["patient", "doctor", "caretaker"]
 LinkRole = Literal["doctor", "caretaker"]
 Purpose = Literal[
@@ -47,7 +51,7 @@ class RefreshIn(BaseModel):
 
 class PatientIn(BaseModel):
     display_name: str = Field(min_length=1, max_length=120)
-    language: Literal["en", "hi", "bn", "as"] = "en"
+    language: str = Field("en", pattern=_LANG_PATTERN)
     baseline_level: int = Field(default=2, ge=1, le=5)
     tz_offset_minutes: int = Field(default=330, ge=-720, le=840)
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/dates.dart';
 import '../../core/games.dart';
-import '../../core/languages.dart';
+import '../../core/language_picker.dart';
 import '../../core/reminder_schedule.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
@@ -566,21 +566,10 @@ class _RemoteHomeState extends State<RemoteHome> {
                   fontWeight: FontWeight.w700,
                   color: Palette.brandDeep)),
           const SizedBox(height: 8),
-          AppCard(
-            padding: const EdgeInsets.all(6),
-            child: Column(children: [
-              for (final e in kLanguages.entries)
-                ListTile(
-                  dense: true,
-                  leading: Icon(
-                      widget.lang == e.key
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_off_rounded,
-                      color: widget.lang == e.key ? _accent : Palette.muted),
-                  title: Text(e.value, style: const TextStyle(fontSize: 15)),
-                  onTap: () => widget.onLangChanged?.call(e.key),
-                ),
-            ]),
+          LanguageRow(
+            lang: widget.lang,
+            accent: _accent,
+            onChanged: (code) => widget.onLangChanged?.call(code),
           ),
           const SizedBox(height: 12),
           AppCard(

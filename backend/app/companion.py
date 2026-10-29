@@ -17,47 +17,15 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Protocol
 
-LANGUAGE_NAMES = {"en": "English", "hi": "Hindi", "bn": "Bengali", "as": "Assamese"}
+from .safety_data import (EMERGENCY_REPLY, EMERGENCY_WORDS, LANGUAGES as LANGUAGE_NAMES,
+                          UNAVAILABLE_REPLY)
 
 MAX_TURNS = 12
 MAX_CHARS = 600
 MAX_REPLY_TOKENS = 1024  # adaptive thinking shares this budget; replies stay short by prompt
 
-EMERGENCY_REPLY = {
-    "en": "I am only a helper on your phone, so I cannot send help. If you are hurt or "
-          "feeling very unwell, please call 112 now, or call your family. Use the Call "
-          "family button on the home screen.",
-    "hi": "मैं आपके फ़ोन का एक सहायक हूँ, इसलिए मदद भेजना मेरे बस में नहीं है। अगर आपको चोट लगी है या तबीयत "
-          "बहुत ख़राब है, तो अभी 112 पर फ़ोन करें, या अपने परिवार को फ़ोन करें। होम स्क्रीन पर "
-          "\"परिवार को फ़ोन करें\" बटन दबाएँ।",
-    "bn": "আমি শুধু আপনার ফোনের একটি সহায়ক, তাই আমি সাহায্য পাঠাতে পারি না। আপনি আঘাত পেলে বা খুব "
-          "অসুস্থ বোধ করলে এখনই ১১২ নম্বরে ফোন করুন, অথবা পরিবারকে ফোন করুন। হোম স্ক্রিনে "
-          "\"পরিবারকে ফোন করুন\" বোতাম চাপুন।",
-    "as": "মই কেৱল আপোনাৰ ফোনৰ এটা সহায়ক, সেয়ে সহায় পঠাব নোৱাৰো। আপুনি আঘাত পালে বা বৰ বেয়া অনুভৱ "
-          "কৰিলে এতিয়াই ১১২ নম্বৰত ফোন কৰক, বা পৰিয়ালক ফোন কৰক। হোম স্ক্ৰীণত "
-          "\"পৰিয়ালক ফোন কৰক\" বুটাম টিপক।",
-}
 
-UNAVAILABLE_REPLY = {
-    "en": "I am not sure how to help with that. You could ask your family, or look at your reminders.",
-    "hi": "इसमें मैं कैसे मदद करूँ, मुझे पता नहीं। आप अपने परिवार से पूछ सकते हैं, या अपने रिमाइंडर देख सकते हैं।",
-    "bn": "এ বিষয়ে কীভাবে সাহায্য করব বুঝতে পারছি না। আপনি পরিবারকে জিজ্ঞাসা করতে পারেন, অথবা আপনার মনে করিয়ে দেওয়া দেখতে পারেন।",
-    "as": "এইটোত কেনেকৈ সহায় কৰিম মই নাজানো। আপুনি পৰিয়ালক সুধিব পাৰে, বা আপোনাৰ সোঁৱৰণী চাব পাৰে।",
-}
 
-# Words that mean someone may be in danger. Deliberately broad: a false alarm
-# shows a kind message and a phone number, a miss could be serious.
-_EMERGENCY = {
-    "en": ["want to die", "kill myself", "end my life", "suicide", "chest pain",
-           "can't breathe", "cannot breathe", "heart attack", "stroke", "i fell",
-           "i have fallen", "bleeding", "unconscious", "overdose", "took too many"],
-    "hi": ["मरना चाहता", "मरना चाहती", "जान दे", "आत्महत्या", "सीने में दर्द", "साँस नहीं",
-           "सांस नहीं", "दिल का दौरा", "गिर गया", "गिर गई", "खून", "बेहोश"],
-    "bn": ["মরতে চাই", "আত্মহত্যা", "বুকে ব্যথা", "শ্বাস নিতে পারছি না", "হার্ট অ্যাটাক",
-           "পড়ে গেছি", "রক্ত", "অজ্ঞান"],
-    "as": ["মৰিব বিচাৰো", "মৰিব মন", "আত্মহত্যা", "বুকুত বিষ", "উশাহ ল'ব নোৱাৰো",
-           "পৰি গৈছো", "তেজ", "অজ্ঞান"],
-}
 
 _KINDS = {"medicine", "hydration", "activity", "appointment"}
 
@@ -101,7 +69,7 @@ def clean_turns(raw: list[dict]) -> list[Turn]:
 
 def is_emergency(text: str, lang: str) -> bool:
     low = unicodedata.normalize("NFC", text).lower()
-    words = _EMERGENCY.get(lang, []) + _EMERGENCY["en"]  # English words in any language
+    words = EMERGENCY_WORDS.get(lang, []) + EMERGENCY_WORDS["en"]  # English words in any language
     return any(w in low for w in words)
 
 

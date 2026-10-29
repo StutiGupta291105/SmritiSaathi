@@ -205,11 +205,21 @@ def test_anthropic_provider_maps_failures_and_refusals():
 
 
 def test_phone_and_server_agree_on_emergency_words():
-    """The app checks the same words on the phone; keep the two lists in step."""
+    """The app's offline copy is generated from the server's safety data."""
+    import subprocess, sys
     from pathlib import Path
-    dart = (Path(__file__).resolve().parents[2] / "lib/core/companion_offline.dart").read_text()
-    for words in companion._EMERGENCY.values():
-        for w in words:
-            assert w in dart, f"{w!r} is missing from lib/core/companion_offline.dart"
-    for reply in companion.EMERGENCY_REPLY.values():
-        assert reply in dart
+    root = Path(__file__).resolve().parents[2]
+    r = subprocess.run([sys.executable, str(root / "tools/gen_safety.py"), "--check"])
+    assert r.returncode == 0, "run `python tools/gen_safety.py` to refresh lib/core/safety_data.dart"
+
+
+def test_every_language_has_safety_texts():
+    from app import safety_data as sd
+    for code in sd.LANGUAGES:
+        assert sd.EMERGENCY_WORDS.get(code), f"{code}: no emergency words"
+        assert len(sd.EMERGENCY_WORDS[code]) >= 6, f"{code}: too few emergency words"
+        assert sd.EMERGENCY_REPLY.get(code), f"{code}: no emergency reply"
+        assert sd.UNAVAILABLE_REPLY.get(code), f"{code}: no unavailable reply"
+        assert "112" in sd.EMERGENCY_REPLY[code] or "११२" in sd.EMERGENCY_REPLY[code] \
+            or any(d in sd.EMERGENCY_REPLY[code] for d in "১১২ ౧౧౨ ૧૧૨ ೧೧೨ ൧൧൨ ୧୧୨ ੧੧੨ ᱑᱑᱒ ꯱꯱꯲ ١١٢".split()), \
+            f"{code}: reply must name the emergency number 112"

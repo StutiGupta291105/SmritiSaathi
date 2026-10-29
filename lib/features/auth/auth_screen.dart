@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/profile.dart';
+import '../../core/language_picker.dart';
 import '../../core/languages.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
@@ -153,10 +154,15 @@ class _AuthScreenState extends State<AuthScreen> {
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: widget.onBack),
         actions: [
-          TextButton(
-            onPressed: () => widget.onLangChanged(nextLanguage(widget.lang)),
-            child: Text(kLanguages[nextLanguage(widget.lang)]!,
-                style: const TextStyle(fontSize: 16)),
+          TextButton.icon(
+            onPressed: () async {
+              final picked =
+                  await showLanguagePicker(context, current: widget.lang);
+              if (picked != null) widget.onLangChanged(picked);
+            },
+            icon: const Icon(Icons.language_rounded, size: 20),
+            label: Text(kLanguages[widget.lang] ?? widget.lang,
+                style: const TextStyle(fontSize: 15)),
           ),
         ],
       ),

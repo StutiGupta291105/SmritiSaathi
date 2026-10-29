@@ -1,3 +1,4 @@
+import 'languages.dart';
 import 'strings.dart';
 
 /// Short weekday names, Monday first, in each language.
@@ -9,7 +10,8 @@ const kWeekdayShort = {
 };
 
 String weekdayShort(String lang, int weekday) =>
-    (kWeekdayShort[lang] ?? kWeekdayShort['en']!)[(weekday - 1) % 7];
+    (kWeekdayShort[lang] ?? kLangPacks[lang]?.weekdaysShort ?? kWeekdayShort['en']!)[
+        (weekday - 1) % 7];
 
 /// "10 min ago", "3 hours ago", "2 days ago": how long before [now] a local
 /// time was.

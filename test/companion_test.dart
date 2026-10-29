@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:smriti_assist/core/companion_offline.dart';
+import 'package:smriti_assist/core/safety_data.dart';
 import 'package:smriti_assist/core/reminder_schedule.dart';
 import 'package:smriti_assist/data/app_database.dart';
 import 'package:smriti_assist/services/api_client.dart';

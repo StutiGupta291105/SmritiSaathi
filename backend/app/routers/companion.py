@@ -52,7 +52,7 @@ def chat(patient_id: str, body: ChatIn, request: Request,
     # Fixed safety reply, before any model and not counted against the limit.
     if companion.is_emergency(turns[-1].content, lang):
         audit.record(db, user.id, "companion_emergency_reply", f"patient={p.id}")
-        return ChatOut(reply=companion.EMERGENCY_REPLY[lang], emergency=True)
+        return ChatOut(reply=companion.EMERGENCY_REPLY.get(lang, companion.EMERGENCY_REPLY["en"]), emergency=True)
 
     s = request.app.state.settings
     today = date.today().isoformat()
@@ -73,4 +73,4 @@ def chat(patient_id: str, body: ChatIn, request: Request,
     else:
         usage.count += 1
     audit.record(db, user.id, "companion_chat", f"patient={p.id} turns={len(turns)}")
-    return ChatOut(reply=reply or companion.UNAVAILABLE_REPLY[lang])
+    return ChatOut(reply=reply or companion.UNAVAILABLE_REPLY.get(lang, companion.UNAVAILABLE_REPLY["en"]))

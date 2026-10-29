@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/engagement_alerts.dart';
 import '../../core/profile.dart';
-import '../../core/languages.dart';
+import '../../core/language_picker.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -80,25 +80,13 @@ class ProfileTab extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: Palette.brandDeep)),
         const SizedBox(height: 8),
-        AppCard(
-          padding: const EdgeInsets.all(8),
-          child: Column(children: [
-            for (final e in kLanguages.entries)
-              ListTile(
-                leading: Icon(
-                    _lang == e.key
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_off_rounded,
-                    color: _lang == e.key ? Palette.brand : Palette.muted,
-                    size: 28),
-                title: Text(e.value, style: const TextStyle(fontSize: 18)),
-                onTap: () async {
-                  await db.setLanguage(_id, e.key, 'user');
-                  await notifier.resync(patientId: _id, lang: e.key);
-                  onChanged();
-                },
-              ),
-          ]),
+        LanguageRow(
+          lang: _lang,
+          onChanged: (code) async {
+            await db.setLanguage(_id, code, 'user');
+            await notifier.resync(patientId: _id, lang: code);
+            onChanged();
+          },
         ),
         const SizedBox(height: 18),
 

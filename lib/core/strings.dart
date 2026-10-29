@@ -1,10 +1,12 @@
+import 'languages.dart';
 import 'strings_as.dart';
 import 'strings_bn.dart';
 
-/// In-app strings: English, Hindi, Bengali, Assamese. Replace with Flutter
+/// In-app strings: English, Hindi, Bengali, Assamese here, the other Eighth
+/// Schedule languages in lib/core/lang/. Replace with Flutter
 /// gen-l10n (ARB files) once the text stabilises; kept as a map for speed now.
 
-const Map<String, Map<String, String>> kStrings = {
+const Map<String, Map<String, String>> _kCoreStrings = {
   'bn': kStringsBn,
   'as': kStringsAs,
   'en': {
@@ -756,6 +758,12 @@ const Map<String, Map<String, String>> kStrings = {
         'इससे प्रोफ़ाइल, खेल के परिणाम और रिमाइंडर इस फ़ोन से हमेशा के लिए मिट जाएँगे। इसे वापस नहीं किया जा सकता।',
     'whoIsActing': 'आपका नाम (इस बदलाव के साथ दर्ज होगा)',
   },
+};
+
+/// All languages: the core four plus every language pack.
+final Map<String, Map<String, String>> kStrings = {
+  ..._kCoreStrings,
+  for (final e in kLangPacks.entries) e.key: e.value.strings,
 };
 
 String tr(String lang, String key) =>

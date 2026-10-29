@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/profile.dart';
-import '../../core/languages.dart';
+import '../../core/language_picker.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -224,16 +224,9 @@ class _ProfileFlowState extends State<ProfileFlow> {
         Text(t('preferredLanguage'),
             style: kTitleMedium),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: [
-            for (final e in kLanguages.entries)
-              ChoiceChip(
-                label: Text(e.value, style: const TextStyle(fontSize: 15)),
-                selected: _lang == e.key,
-                onSelected: (_) => setState(() => _lang = e.key),
-              ),
-          ],
+        LanguageRow(
+          lang: _lang,
+          onChanged: (code) => setState(() => _lang = code),
         ),
       ],
     );

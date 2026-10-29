@@ -221,7 +221,10 @@ void main() {
     // settings: language change is reported, about opens
     await t.tap(find.text('Profile').last);
     await t.pumpAndSettle();
-    await t.tap(find.text('हिन्दी'));
+    await t.tap(find.byKey(const ValueKey('languageRow')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('lang_hi')));
+    await t.pumpAndSettle();
     expect(lang, 'hi');
     expect(find.text('Dr Rao'), findsWidgets);
   });
