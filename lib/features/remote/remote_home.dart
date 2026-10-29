@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../core/dates.dart';
 import '../../core/games.dart';
-import '../../core/language_picker.dart';
 import '../../core/reminder_schedule.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../services/api_client.dart';
 import '../reminders/reminder_style.dart';
+import '../shell/settings_pages.dart';
 
 /// Blue for doctors, green for caretakers, as on the design sheet.
 Color accentFor(String role) =>
@@ -532,95 +532,83 @@ class _RemoteHomeState extends State<RemoteHome> {
 
   // ---- tab 3: settings ----------------------------------------------------------
 
-  Widget _settings() => ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        children: [
-          ScreenTitle(t('settings')),
-          const SizedBox(height: 12),
-          AppCard(
+  Widget _settings() {
+    void open(Widget screen) =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+    Widget row(Key key, IconData icon, Color fg, Color bg, String label,
+            VoidCallback onTap) =>
+        InkWell(
+          key: key,
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
             child: Row(children: [
-              _avatar(widget.user.name, radius: 26),
-              const SizedBox(width: 12),
+              IconBadge(icon: icon, fg: fg, bg: bg, size: 44, circle: true),
+              const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.user.name,
-                        style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: Palette.brandDeep)),
-                    Text(
-                        '${t('rmSignedInAs')} ${t(widget.user.role == 'doctor' ? 'roleDoctor' : 'roleCaretaker')}',
-                        style: const TextStyle(
-                            fontSize: 12.5, color: Palette.muted)),
-                  ],
-                ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 16),
-          Text(t('language'),
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Palette.brandDeep)),
-          const SizedBox(height: 8),
-          LanguageRow(
-            lang: widget.lang,
-            accent: _accent,
-            onChanged: (code) => widget.onLangChanged?.call(code),
-          ),
-          const SizedBox(height: 12),
-          AppCard(
-            onTap: () => showDialog<void>(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: Text(t('appName')),
-                content: Text(t('notAMedicalDevice')),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(t('finish'))),
-                ],
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(children: [
-              const IconBadge(
-                  icon: Icons.info_outline_rounded,
-                  fg: Palette.sky,
-                  bg: Palette.tileSky,
-                  size: 40,
-                  circle: true),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: Text(t('rmAbout'),
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600))),
-              const Icon(Icons.chevron_right_rounded, color: Palette.muted),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          AppCard(
-            color: Palette.tileRed,
-            onTap: widget.onLogout,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.logout_rounded, color: Palette.red),
-                const SizedBox(width: 8),
-                Text(t('logout'),
+                child: Text(label,
                     style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Palette.red)),
-              ],
-            ),
+                        fontSize: 17, fontWeight: FontWeight.w600)),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 28, color: Palette.muted),
+            ]),
           ),
-        ],
-      );
+        );
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      children: [
+        ScreenTitle(t('settings')),
+        const SizedBox(height: 16),
+        AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Column(children: [
+            row(const ValueKey('rowProfile'), Icons.person_outline_rounded,
+                Palette.green, Palette.tileGreen, t('tabProfile'),
+                () => open(AccountProfileScreen(
+                      name: widget.user.name,
+                      role: widget.user.role,
+                      lang: widget.lang,
+                      accent: _accent,
+                      onLangChanged: widget.onLangChanged,
+                    ))),
+            row(const ValueKey('rowHelp'), Icons.help_outline_rounded,
+                Palette.blue, Palette.tileBlue, t('helpSupport'),
+                () => open(HelpSupportScreen(lang: widget.lang))),
+            row(const ValueKey('rowAbout'), Icons.info_outline_rounded,
+                Palette.purple, Palette.tilePurple, t('aboutApp'),
+                () => open(AboutAppScreen(lang: widget.lang))),
+            row(const ValueKey('rowSos'), Icons.phone_in_talk_outlined,
+                Palette.red, Palette.tileRed, t('emergencySos'),
+                () => open(SosScreen(lang: widget.lang))),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        AppCard(
+          color: Palette.tileRed,
+          onTap: widget.onLogout,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.logout_rounded, color: Palette.red),
+              const SizedBox(width: 10),
+              Text(t('logout'),
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Palette.red)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text('${t('appName')} • ${t('tagline')} • $kFooterLine',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: Palette.muted)),
+      ],
+    );
+  }
 }
 
 // =====================================================================================

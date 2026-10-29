@@ -221,6 +221,11 @@ void main() {
     // settings: language change is reported, about opens
     await t.tap(find.text('Profile').last);
     await t.pumpAndSettle();
+    for (final k in ['rowHelp', 'rowAbout', 'rowSos']) {
+      expect(find.byKey(ValueKey(k)), findsOneWidget);
+    }
+    await t.tap(find.byKey(const ValueKey('rowProfile')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('languageRow')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('lang_hi')));

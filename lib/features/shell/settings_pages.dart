@@ -77,9 +77,13 @@ class AboutAppScreen extends StatelessWidget {
 
 class SosScreen extends StatelessWidget {
   const SosScreen(
-      {super.key, required this.db, required this.patientId, required this.lang});
-  final AppDatabase db;
-  final String patientId, lang;
+      {super.key, this.db, this.patientId, required this.lang});
+
+  /// Without a local patient (a caregiver or doctor account) only the 112
+  /// button is shown.
+  final AppDatabase? db;
+  final String? patientId;
+  final String lang;
 
   @override
   Widget build(BuildContext context) => _page(tr(lang, 'emergencySos'), [
@@ -93,6 +97,10 @@ class SosScreen extends StatelessWidget {
           icon: const Icon(Icons.call_rounded),
           label: Text(tr(lang, 'chatCall112')),
         ),
+        if (db != null && patientId != null) ..._familyCalls(),
+      ]);
+
+  List<Widget> _familyCalls() => [
         const SizedBox(height: 20),
         Text(tr(lang, 'callFamily'),
             style: const TextStyle(
@@ -101,7 +109,7 @@ class SosScreen extends StatelessWidget {
                 color: Palette.brandDeep)),
         const SizedBox(height: 8),
         FutureBuilder<List<Map<String, Object?>>>(
-          future: db.listFamily(patientId),
+          future: db!.listFamily(patientId!),
           builder: (context, snap) {
             final family = snap.data ?? const <Map<String, Object?>>[];
             if (family.isEmpty) {
@@ -139,7 +147,7 @@ class SosScreen extends StatelessWidget {
             ]);
           },
         ),
-      ]);
+      ];
 }
 
 /// Everything held about the person, with language and spoken instructions
@@ -393,6 +401,77 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                   ));
                 }),
               ]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Profile for a caregiver or doctor account: who is signed in, and language.
+class AccountProfileScreen extends StatefulWidget {
+  const AccountProfileScreen({
+    super.key,
+    required this.name,
+    required this.role,
+    required this.lang,
+    required this.onLangChanged,
+    this.accent = Palette.brand,
+  });
+  final String name, role, lang;
+  final ValueChanged<String>? onLangChanged;
+  final Color accent;
+
+  @override
+  State<AccountProfileScreen> createState() => _AccountProfileScreenState();
+}
+
+class _AccountProfileScreenState extends State<AccountProfileScreen> {
+  late String _lang = widget.lang;
+  String t(String k) => tr(_lang, k);
+
+  @override
+  Widget build(BuildContext context) {
+    final initial =
+        widget.name.trim().isEmpty ? '?' : widget.name.trim()[0].toUpperCase();
+    return Scaffold(
+      appBar: AppBar(title: Text(t('tabProfile'))),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          children: [
+            Center(
+              child: CircleAvatar(
+                radius: 52,
+                backgroundColor: Palette.tileGreen,
+                child: Text(initial,
+                    style: kHeadlineMedium.copyWith(color: widget.accent)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Center(
+                child: Text(widget.name,
+                    textAlign: TextAlign.center, style: kHeadlineMedium)),
+            Center(
+              child: Text(
+                  t(widget.role == 'doctor' ? 'roleDoctor' : 'roleCaretaker'),
+                  style: const TextStyle(fontSize: 15, color: Palette.muted)),
+            ),
+            const SizedBox(height: 20),
+            Text(t('language'),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Palette.brandDeep)),
+            const SizedBox(height: 8),
+            LanguageRow(
+              lang: _lang,
+              accent: widget.accent,
+              onChanged: (code) {
+                setState(() => _lang = code);
+                widget.onLangChanged?.call(code);
+              },
             ),
           ],
         ),
