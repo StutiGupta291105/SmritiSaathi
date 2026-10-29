@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/adherence.dart';
 import '../../core/reminder_schedule.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
@@ -32,6 +33,7 @@ class RemindersScreen extends StatefulWidget {
 
 class _RemindersScreenState extends State<RemindersScreen> {
   List<Reminder> _items = [];
+  Set<String> _doneKeys = {};
   bool _consented = false;
 
   String t(String k) => tr(widget.language, k);
@@ -45,10 +47,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
   Future<void> _load() async {
     final consented = await widget.db.hasConsent(widget.patientId, 'reminders');
     final items = await widget.db.listReminders(widget.patientId);
+    final done = consented ? await widget.db.doneKeys(widget.patientId, days: 2) : <String>{};
     if (mounted) {
       setState(() {
         _consented = consented;
         _items = items;
+        _doneKeys = done;
       });
     }
   }
@@ -166,70 +170,90 @@ class _RemindersScreenState extends State<RemindersScreen> {
 
   Widget _row(Reminder r) {
     final style = kindStyle(r.kind);
+    final today = DateTime.now();
+    final isDone = _doneKeys.contains(doneKey(r.id, DateTime(today.year, today.month, today.day)));
+    final parts = _when(r).split(' · ');
+    final note = r.label.isNotEmpty ? r.label : parts.skip(1).join(' · ');
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: AppCard(
-        padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
-        child: Row(
-          children: [
-            IconBadge(
-                icon: style.icon,
-                fg: style.fg,
-                bg: style.bg,
-                size: 50,
-                circle: true),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(t('kind_${r.kind.name}'),
-                      style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w700)),
-                  // Time on its own line, then how often and any note.
-                  Text(_when(r).split(' · ').first,
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Palette.ink)),
-                  Text(
-                      [
-                        ..._when(r).split(' · ').skip(1),
-                        if (r.label.isNotEmpty) r.label,
-                      ].join(' · '),
-                      style: const TextStyle(fontSize: 13, color: Palette.muted)),
+      child: Opacity(
+        opacity: r.active ? 1 : 0.55,
+        child: AppCard(
+          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+          child: Row(
+            children: [
+              IconBadge(
+                  icon: style.icon,
+                  fg: style.fg,
+                  bg: style.bg,
+                  size: 46,
+                  circle: true),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t('kind_${r.kind.name}'),
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Palette.brandDeep)),
+                    Text(
+                        r.active
+                            ? parts.first
+                            : '${parts.first} · ${t('reminderOff')}',
+                        style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w500,
+                            color: Palette.ink)),
+                    if (note.isNotEmpty)
+                      Text(note,
+                          style: const TextStyle(
+                              fontSize: 12.5, color: Palette.muted)),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: t('reminders'),
+                icon: Icon(
+                    isDone
+                        ? Icons.check_circle_rounded
+                        : Icons.chevron_right_rounded,
+                    color: isDone ? Palette.action : Palette.muted),
+                onSelected: (v) async {
+                  if (v == 'delete') {
+                    await widget.db
+                        .deleteReminder(widget.patientId, r.id, 'caregiver');
+                  } else {
+                    await widget.db.setReminderActive(
+                        widget.patientId, r.id, !r.active, 'caregiver');
+                  }
+                  await _changed();
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                      value: 'toggle',
+                      child: Row(children: [
+                        Icon(
+                            r.active
+                                ? Icons.notifications_off_outlined
+                                : Icons.notifications_active_outlined,
+                            color: Palette.muted),
+                        const SizedBox(width: 8),
+                        Text(t(r.active ? 'reminderTurnOff' : 'reminderTurnOn')),
+                      ])),
+                  PopupMenuItem(
+                      value: 'delete',
+                      child: Row(children: [
+                        const Icon(Icons.delete_outline_rounded,
+                            color: Palette.red),
+                        const SizedBox(width: 8),
+                        Text(t('delete')),
+                      ])),
                 ],
               ),
-            ),
-            Switch(
-              value: r.active,
-              activeThumbColor: Palette.action,
-              onChanged: (v) async {
-                await widget.db
-                    .setReminderActive(widget.patientId, r.id, v, 'caregiver');
-                await _changed();
-              },
-            ),
-            PopupMenuButton<String>(
-              tooltip: t('delete'),
-              icon: const Icon(Icons.more_vert_rounded, color: Palette.muted),
-              onSelected: (_) async {
-                await widget.db
-                    .deleteReminder(widget.patientId, r.id, 'caregiver');
-                await _changed();
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                    value: 'delete',
-                    child: Row(children: [
-                      const Icon(Icons.delete_outline_rounded,
-                          color: Palette.red),
-                      const SizedBox(width: 8),
-                      Text(t('delete')),
-                    ])),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// icon colour of the same hue.
 class Palette {
   static const brand = Color(0xFF1B7F63); // nav highlight, links, accents
-  static const brandDeep = Color(0xFF15503F); // headings, wordmark
+  static const brandDeep = Color(0xFF0F2A47); // headings and wordmark: deep navy, as on the sheet
   static const action = Color(0xFF2FA864); // primary buttons ("Play Now")
   static const cream = Color(0xFFFBF7EE);
   static const ink = Color(0xFF1F2A37);
@@ -65,30 +65,30 @@ ThemeData buildTheme() {
       style: FilledButton.styleFrom(
         backgroundColor: Palette.action,
         foregroundColor: Colors.white,
-        minimumSize: const Size.fromHeight(60),
+        minimumSize: const Size.fromHeight(54),
         shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(18))),
+            borderRadius: BorderRadius.all(Radius.circular(16))),
         textStyle: const TextStyle(
-            fontFamily: 'Poppins', fontSize: 20, fontWeight: FontWeight.w600),
+            fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.w600),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: Palette.brandDeep,
-        minimumSize: const Size.fromHeight(56),
-        side: const BorderSide(color: Palette.line, width: 1.5),
+        foregroundColor: Palette.brand,
+        minimumSize: const Size.fromHeight(52),
+        side: const BorderSide(color: Palette.line, width: 1.2),
         backgroundColor: Colors.white,
         shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(18))),
+            borderRadius: BorderRadius.all(Radius.circular(16))),
         textStyle: const TextStyle(
-            fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.w600),
+            fontFamily: 'Poppins', fontSize: 17, fontWeight: FontWeight.w600),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
       contentPadding:
-          const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: Palette.line),
@@ -103,20 +103,22 @@ ThemeData buildTheme() {
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      height: 76,
+      height: 68,
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
-      indicatorColor: Palette.tileGreen,
+      elevation: 8,
+      shadowColor: const Color(0x22000000),
+      indicatorColor: Colors.transparent,
       labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
             fontFamily: 'Poppins',
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: states.contains(WidgetState.selected)
                 ? Palette.brand
                 : Palette.muted,
           )),
       iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
-            size: 28,
+            size: 26,
             color: states.contains(WidgetState.selected)
                 ? Palette.brand
                 : Palette.muted,

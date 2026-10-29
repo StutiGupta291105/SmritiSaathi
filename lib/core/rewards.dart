@@ -1,3 +1,4 @@
+import 'games.dart';
 import 'engagement_alerts.dart';
 import 'progress.dart';
 
@@ -49,7 +50,8 @@ int xpForLevel(int level) => 100 * (level - 1) * level;
 /// 20 XP for finishing a game plus 5 for every correct answer.
 int sessionXp(SessionRecord s) => 20 + 5 * s.correct;
 
-Rewards computeRewards(List<SessionRecord> sessions, {int gameCount = 3}) {
+Rewards computeRewards(List<SessionRecord> sessions, {int? gameCount}) {
+  final needed = gameCount ?? kGameIds.length;
   final xp = sessions.fold<int>(0, (n, s) => n + sessionXp(s));
   var level = 1;
   while (xpForLevel(level + 1) <= xp) {
@@ -64,7 +66,7 @@ Rewards computeRewards(List<SessionRecord> sessions, {int gameCount = 3}) {
     'fifty_games': sessions.length >= 50,
     'streak3': best >= 3,
     'streak7': best >= 7,
-    'all_games': games.length >= gameCount,
+    'all_games': games.length >= needed,
     'sharp': sessions.any((s) => s.trials >= 5 && s.correct == s.trials),
   };
   return Rewards(

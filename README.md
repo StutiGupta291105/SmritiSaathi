@@ -212,6 +212,13 @@ address the app stays the offline test build (fixed code 123456, no server).
   a new phone, withdrawing consent, and erasure. Its header explains how to run it. It found
   a real bug (the companion used the phone's patient id instead of the server's) that the mocked tests missed.
 
+## Screens, games and apps (design sheet pass)
+
+- Patient app follows the design sheet: navy headings, compact type, four-tab floating bar, Today's Goal with Play Now, Games / Reminders / My Progress / Talk to Smriti tiles, game rows with solid colour icons.
+- Six games: Memory Match, **Word Recall**, **Puzzle Fix**, **Number Order**, Attention Test, My Day. The three new ones are adaptive like the others (levels 1 to 5 inside the caregiver's band), have tested round generators (`test/new_games_test.dart`) and play-through tests, and are reported to caregivers and doctors.
+- Caretaker and doctor app: Home (counts, recent activity), Patients (search, status), Alerts, Settings; a patient screen with Overview / Games / Reminders tabs and a detailed report. Doctors get blue accents. The server gained `GET /v1/patients/{id}/reminders` (times and done marks only, never the text) and dashboard fields on `/v1/my-patients`.
+- Not built from the sheet: the Admin app, the healthcare worker's Visits and Community dashboard (the server has no visits or regions), a microphone button in Talk to Smriti (needs speech-to-text, which sends audio to a speech service and needs its own consent), and "steps" in the report (we do not collect them).
+
 ## Screen sizes and text
 
 Fonts are written for a 390 dp phone and scaled by `lib/core/responsive.dart`: a little smaller on very narrow screens, up to 30% larger on tablets (where content also stays in a centred 640 dp column), multiplied by the person's own system font-size setting, and capped so layouts hold. `test/layout_test.dart` renders ten screens in English, Hindi and Bengali on a small phone, a normal phone and a tablet, with normal and very large system text, and fails on any overflow.

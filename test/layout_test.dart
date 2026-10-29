@@ -18,6 +18,12 @@ import 'package:smriti_assist/data/session_store.dart';
 import 'package:smriti_assist/features/auth/auth_screen.dart';
 import 'package:smriti_assist/features/auth/welcome_screen.dart';
 import 'package:smriti_assist/features/companion/chat_screen.dart';
+import 'package:smriti_assist/features/games/attention_game.dart';
+import 'package:smriti_assist/features/games/memory_match_game.dart';
+import 'package:smriti_assist/features/games/number_order_game.dart';
+import 'package:smriti_assist/features/games/puzzle_fix_game.dart';
+import 'package:smriti_assist/features/games/routine_game.dart';
+import 'package:smriti_assist/features/games/word_recall_game.dart';
 import 'package:smriti_assist/features/onboarding/restore_screen.dart';
 import 'package:smriti_assist/features/shell/games_tab.dart';
 import 'package:smriti_assist/features/shell/home_tab.dart';
@@ -103,16 +109,31 @@ void main() {
           'range_days': 7, 'games_played': 14, 'streak': 3,
           'last_played': '2026-03-10T10:00:00',
           'daily': [0, 1, 0, 2, 1, 0, 3],
-          'per_game': [{'game': 'memory_match', 'sessions': 4, 'accuracy': 0.75}],
+          'per_game': [
+            {'game': 'memory_match', 'sessions': 4, 'accuracy': 0.75},
+            {'game': 'word_recall', 'sessions': 3, 'accuracy': 0.7},
+            {'game': 'puzzle_fix', 'sessions': 4, 'accuracy': 0.9},
+            {'game': 'number_order', 'sessions': 3, 'accuracy': 0.64},
+            {'game': 'attention', 'sessions': 4, 'accuracy': 0.76},
+            {'game': 'routine', 'sessions': 2, 'accuracy': 0.5}
+          ],
           'adherence': {'expected': 6, 'done': 3},
           'alerts': [{'kind': 'inactive', 'severity': 'attention', 'a': 3, 'b': 0}],
         });
       }));
 
   final screens = <String, Widget Function(String lang)>{
+    'memory game': (l) => MemoryMatchGame(db: db, patientId: pid, baselineLevel: 3, startLevel: 3, language: l, voice: Voice(), voiceOn: false),
+    'attention game': (l) => AttentionGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'routine game': (l) => RoutineGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'word recall game': (l) => WordRecallGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'puzzle game': (l) => PuzzleFixGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'number game': (l) => NumberOrderGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
     'remote home': (l) => RemoteHome(
         api: api, user: const ServerUser('u', 'caretaker', 'Ravi Kumar Sharma'),
         lang: l, onLogout: () {}),
+    'remote report': (l) => RemoteReportScreen(
+        api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l),
     'remote patient': (l) => RemotePatientScreen(
         api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l, canSetBaseline: true),
     'welcome': (l) => WelcomeScreen(lang: l, onLangChanged: (_) {}, onGetStarted: () {}, onLogin: () {}),
@@ -126,7 +147,7 @@ void main() {
                 onPlay: () {}, onGames: () {}, onReminders: () {}, onProgress: () {}, onTalk: () {}))),
     'games': (l) => Scaffold(
         body: SafeArea(
-            child: GamesTab(lang: l, onMemory: () {}, onAttention: () {}, onRoutine: () {}))),
+            child: GamesTab(lang: l, onPlay: (_) {}))),
     'progress': (l) => ProgressScreen(db: db, patientId: pid, lang: l),
     'profile': (l) => Scaffold(
         body: SafeArea(
@@ -168,6 +189,8 @@ void main() {
           await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
           await t.pump(const Duration(milliseconds: 300));
           final thrown = t.takeException();
+          // Take the screen down so its timers stop before the test ends.
+          await t.pumpWidget(const SizedBox());
           expect(thrown, isNull, reason: problems.join('\n---\n'));
         });
       }
@@ -175,11 +198,11 @@ void main() {
   }
 
   test('font scale follows the screen and respects the system setting', () {
-    expect(fontScaleFor(390, 1.0), closeTo(1.0, 0.001));
-    expect(fontScaleFor(800, 1.0), closeTo(1.3, 0.001)); // tablet grows, capped
-    expect(fontScaleFor(320, 1.0), closeTo(0.9, 0.001)); // narrow shrinks a little
-    expect(fontScaleFor(390, 1.5), closeTo(1.5, 0.001)); // person's own setting kept
+    expect(fontScaleFor(390, 1.0), closeTo(kTextBase, 0.001)); // compact base
+    expect(fontScaleFor(800, 1.0), closeTo(kTextBase * 1.3, 0.001)); // tablet grows, capped
+    expect(fontScaleFor(320, 1.0), closeTo(kTextBase * 0.9, 0.001)); // narrow shrinks a little
+    expect(fontScaleFor(390, 1.5), closeTo(kTextBase * 1.5, 0.001)); // person's own setting kept
     expect(fontScaleFor(800, 3.0), lessThanOrEqualTo(1.9)); // never runaway
-    expect(fontScaleFor(390, 0.5), greaterThanOrEqualTo(0.8));
+    expect(fontScaleFor(390, 0.5), greaterThanOrEqualTo(0.7));
   });
 }

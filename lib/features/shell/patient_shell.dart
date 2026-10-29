@@ -11,6 +11,9 @@ import '../../services/reminder_notifier.dart';
 import '../../services/voice.dart';
 import '../games/attention_game.dart';
 import '../games/memory_match_game.dart';
+import '../games/number_order_game.dart';
+import '../games/puzzle_fix_game.dart';
+import '../games/word_recall_game.dart';
 import '../games/routine_game.dart';
 import '../reminders/reminders_screen.dart';
 import 'games_tab.dart';
@@ -60,59 +63,127 @@ class _PatientShellState extends State<PatientShell> {
   Future<void> _play(String game, Widget Function(int startLevel) build) async {
     final level = await widget.db.recommendedStartLevel(_id, game, _baseline);
     if (!mounted) return;
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => build(level)));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => build(level)));
     if (mounted) setState(() {});
   }
 
   void _playMemory() => _play(
-      'memory_match',
-      (lvl) => MemoryMatchGame(
-          db: widget.db,
-          patientId: _id,
-          baselineLevel: _baseline,
-          language: _lang,
-          voice: widget.voice,
-          startLevel: lvl,
-          voiceOn: _voiceOn));
+    'memory_match',
+    (lvl) => MemoryMatchGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
 
   void _playAttention() => _play(
-      'attention',
-      (lvl) => AttentionGame(
-          db: widget.db,
-          patientId: _id,
-          baselineLevel: _baseline,
-          language: _lang,
-          voice: widget.voice,
-          startLevel: lvl,
-          voiceOn: _voiceOn));
+    'attention',
+    (lvl) => AttentionGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
 
   void _playRoutine() => _play(
-      'routine',
-      (lvl) => RoutineGame(
-          db: widget.db,
-          patientId: _id,
-          baselineLevel: _baseline,
-          language: _lang,
-          voice: widget.voice,
-          startLevel: lvl,
-          voiceOn: _voiceOn));
+    'routine',
+    (lvl) => RoutineGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
 
-  void _openProgress() => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) =>
-            ProgressScreen(db: widget.db, patientId: _id, lang: _lang),
-      ));
+  void _playWordRecall() => _play(
+    'word_recall',
+    (lvl) => WordRecallGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
 
-  void _openTalk() => Navigator.of(context).push(MaterialPageRoute<void>(
+  void _playPuzzleFix() => _play(
+    'puzzle_fix',
+    (lvl) => PuzzleFixGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
+
+  void _playNumberOrder() => _play(
+    'number_order',
+    (lvl) => NumberOrderGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
+
+  void _playGame(String id) {
+    switch (id) {
+      case 'memory_match':
+        return _playMemory();
+      case 'word_recall':
+        return _playWordRecall();
+      case 'puzzle_fix':
+        return _playPuzzleFix();
+      case 'number_order':
+        return _playNumberOrder();
+      case 'attention':
+        return _playAttention();
+      default:
+        return _playRoutine();
+    }
+  }
+
+  void _openProgress() => Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) =>
+          ProgressScreen(db: widget.db, patientId: _id, lang: _lang),
+    ),
+  );
+
+  void _openTalk() => Navigator.of(context).push(
+    MaterialPageRoute<void>(
       builder: (_) => ChatScreen(
-            service: CompanionService(db: widget.db, api: widget.api),
-            voice: widget.voice,
-            db: widget.db,
-            patientId: _id,
-            name: widget.patient['display_name'] as String,
-            lang: _lang,
-            voiceEnabled: widget.patient['voice_enabled'] == 1,
-          )));
+        service: CompanionService(db: widget.db, api: widget.api),
+        voice: widget.voice,
+        db: widget.db,
+        patientId: _id,
+        name: widget.patient['display_name'] as String,
+        lang: _lang,
+        voiceEnabled: widget.patient['voice_enabled'] == 1,
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -129,12 +200,7 @@ class _PatientShellState extends State<PatientShell> {
         onProgress: _openProgress,
         onTalk: _openTalk,
       ),
-      GamesTab(
-        lang: _lang,
-        onMemory: _playMemory,
-        onAttention: _playAttention,
-        onRoutine: _playRoutine,
-      ),
+      GamesTab(lang: _lang, onPlay: _playGame),
       RemindersScreen(
         db: widget.db,
         notifier: widget.notifier,
@@ -153,27 +219,50 @@ class _PatientShellState extends State<PatientShell> {
     ];
     return Scaffold(
       body: SafeArea(child: pages[_tab]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: [
-          NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home_rounded),
-              label: t('tabHome')),
-          NavigationDestination(
-              icon: const Icon(Icons.sports_esports_outlined),
-              selectedIcon: const Icon(Icons.sports_esports_rounded),
-              label: t('tabGames')),
-          NavigationDestination(
-              icon: const Icon(Icons.notifications_none_rounded),
-              selectedIcon: const Icon(Icons.notifications_rounded),
-              label: t('reminders')),
-          NavigationDestination(
-              icon: const Icon(Icons.person_outline_rounded),
-              selectedIcon: const Icon(Icons.person_rounded),
-              label: t('tabProfile')),
-        ],
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(26),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1F000000),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(26),
+            child: NavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: (i) => setState(() => _tab = i),
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
+                  label: t('tabHome'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.sports_esports_outlined),
+                  selectedIcon: const Icon(Icons.sports_esports_rounded),
+                  label: t('tabGames'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.notifications_none_rounded),
+                  selectedIcon: const Icon(Icons.notifications_rounded),
+                  label: t('reminders'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.person_outline_rounded),
+                  selectedIcon: const Icon(Icons.person_rounded),
+                  label: t('tabProfile'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

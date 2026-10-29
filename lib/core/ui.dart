@@ -81,38 +81,40 @@ class PillTabs extends StatelessWidget {
     required this.labels,
     required this.selected,
     required this.onSelected,
+    this.color = Palette.brand,
   });
   final List<String> labels;
   final int selected;
   final ValueChanged<int> onSelected;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: Palette.tileGreen.withAlpha(140),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < labels.length; i++)
-            Expanded(
+    return Row(
+      children: [
+        for (var i = 0; i < labels.length; i++)
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(left: i == 0 ? 0 : 8),
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => onSelected(i),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
-                    color: i == selected ? Palette.brand : Colors.transparent,
-                    borderRadius: BorderRadius.circular(26),
+                    color: i == selected ? color : Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                        color: i == selected ? color : Palette.line),
                   ),
                   child: Text(
                     labels[i],
                     textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: i == selected ? Colors.white : Palette.muted,
                     ),
@@ -120,8 +122,8 @@ class PillTabs extends StatelessWidget {
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }

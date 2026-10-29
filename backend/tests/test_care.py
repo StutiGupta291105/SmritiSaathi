@@ -427,3 +427,56 @@ def test_patient_language_can_be_bengali_or_assamese_but_not_anything(env):
         assert r.status_code == status, (lang, r.text)
         if status == 201:
             assert r.json()["language"] == "bn"
+
+
+def test_sync_accepts_every_game_the_app_has_and_rejects_unknown_ones(env):
+    a, pid = env.make_patient(consents=("gameplay", "sync"))
+    games = ["memory_match", "word_recall", "puzzle_fix", "number_order", "attention", "routine"]
+    body = {"sessions": [session_payload(i, game=g) for i, g in enumerate(games)]}
+    r = env.client.post(f"/v1/patients/{pid}/sync", headers=a.headers, json=body)
+    assert r.status_code == 200 and r.json()["sessions"] == 6
+    bad = {"sessions": [session_payload(99, game="chess")]}
+    assert env.client.post(f"/v1/patients/{pid}/sync", headers=a.headers, json=bad).status_code == 422
+    rep = env.client.get(f"/v1/patients/{pid}/report", headers=a.headers).json()
+    assert {g["game"] for g in rep["per_game"]} == set(games)
+
+
+# ---- dashboard data and reminder times for caretakers and doctors ----------------
+
+def test_my_patients_carries_dashboard_fields(env):
+    a, pid = env.make_patient()
+    env.client.post(f"/v1/patients/{pid}/sync", headers=a.headers,
+                    json={"sessions": [session_payload(i) for i in range(3)]})
+    m = env.link_member(a, pid, "caretaker")
+    row = env.client.get("/v1/my-patients", headers=m.headers).json()[0]
+    assert row["games_played_7d"] == 3 and row["last_played"] and row["streak"] >= 1
+    assert isinstance(row["alerts"], list)
+
+
+def test_reminder_times_are_visible_to_a_consented_caretaker_but_never_the_text(env):
+    a, pid = env.make_patient(consents=("gameplay", "reminders", "sync"))
+    today = now().date().isoformat()
+    env.client.post(f"/v1/patients/{pid}/sync", headers=a.headers, json={
+        "schedules": [
+            {"id": "r1", "kind": "medicine", "hour": 9, "minute": 0, "days_mask": 127,
+             "on_date": None, "active": True, "created_at": iso(now())},
+            {"id": "r2", "kind": "hydration", "hour": 8, "minute": 30, "days_mask": 127,
+             "on_date": None, "active": False, "created_at": iso(now())}],
+        "marks": [{"reminder_id": "r1", "day": today, "marked_at": iso(now())}]})
+    m = env.link_member(a, pid, "caretaker")
+    r = env.client.get(f"/v1/patients/{pid}/reminders", headers=m.headers)
+    assert r.status_code == 200
+    rows = r.json()
+    assert [(x["kind"], x["hour"]) for x in rows] == [("hydration", 8), ("medicine", 9)]  # by time
+    assert rows[1]["done_today"] is True and rows[0]["done_today"] is False
+    assert "label" not in str(rows)
+    # the patient can read their own; withdrawal cuts the caretaker off at once
+    assert env.client.get(f"/v1/patients/{pid}/reminders", headers=a.headers).status_code == 200
+    env.consent(a, pid, "caregiver_share", False)
+    assert env.client.get(f"/v1/patients/{pid}/reminders", headers=m.headers).status_code == 404
+
+
+def test_a_stranger_cannot_read_reminders(env):
+    a, pid = env.make_patient()
+    other = env.signup("+919833333333", "caretaker", "Nosy")
+    assert env.client.get(f"/v1/patients/{pid}/reminders", headers=other.headers).status_code == 404

@@ -159,5 +159,28 @@ def my_patients(user: User = Depends(require_role("caretaker", "doctor")),
             "link_role": link.member_role,
             "alerts_needing_attention": sum(
                 1 for a in rep["alerts"] if a["severity"] == "attention"),
+            # Enough for a dashboard without opening every report.
+            "last_played": rep["last_played"], "games_played_7d": rep["games_played"],
+            "streak": rep["streak"], "alerts": rep["alerts"],
         })
     return out
+
+
+@router.get("/patients/{patient_id}/reminders")
+def reminders(patient_id: str, user: User = Depends(current_user),
+              db: Session = Depends(get_db)):
+    """The patient's reminder times (never their text) and whether each was
+    marked done today, for the patient or an accepted, consented caretaker or
+    doctor. Reads by others are audited."""
+    p, kind = patient_for_viewer(db, user, patient_id)
+    if kind == "member":
+        audit.record(db, user.id, "reminders_viewed", f"patient={p.id}")
+    today = (utcnow() + timedelta(minutes=p.tz_offset_minutes)).date().isoformat()
+    done = {m.reminder_id for m in db.execute(select(ReminderMark).where(
+        ReminderMark.patient_id == p.id, ReminderMark.day == today)).scalars()}
+    rows = db.execute(select(ReminderSchedule).where(
+        ReminderSchedule.patient_id == p.id)).scalars().all()
+    return [{"id": r.id, "kind": r.kind, "hour": r.hour, "minute": r.minute,
+             "days_mask": r.days_mask, "on_date": r.on_date, "active": r.active,
+             "done_today": r.id in done}
+            for r in sorted(rows, key=lambda r: (r.hour, r.minute))]

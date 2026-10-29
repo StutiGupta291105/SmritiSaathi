@@ -63,25 +63,35 @@ class _GameFrameState extends State<GameFrame> {
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, size: 28),
+            icon: const Icon(Icons.arrow_back_rounded, size: 26),
             onPressed: widget.onFinish,
           ),
-          titleSpacing: 0,
+          centerTitle: true,
           title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(widget.title,
                   style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w600,
                       color: Palette.brandDeep)),
               Text(widget.subtitle,
                   style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w400,
                       color: Palette.muted)),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: widget.onFinish,
+              child: Text(t('finish'),
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Palette.brand)),
+            ),
+          ],
         ),
         body: SafeArea(
           child: Column(
@@ -89,24 +99,17 @@ class _GameFrameState extends State<GameFrame> {
               Expanded(child: widget.child),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                child: Row(
-                  children: [
-                    _stat(t('timeLabel'), _elapsed),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(54),
-                            textStyle: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 18, fontWeight: FontWeight.w600)),
-                        onPressed: widget.onFinish,
-                        child: Text(t('finish')),
-                      ),
+                child: AppCard(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        Expanded(child: _stat(t('timeLabel'), _elapsed)),
+                        const VerticalDivider(width: 1, color: Palette.line),
+                        Expanded(child: _stat(t('scoreLabel'), '${widget.score}')),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    _stat(t('scoreLabel'), '${widget.score}'),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -116,19 +119,15 @@ class _GameFrameState extends State<GameFrame> {
     );
   }
 
-  Widget _stat(String label, String value) => AppCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(label,
-                style: const TextStyle(fontSize: 12, color: Palette.muted)),
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Palette.brandDeep)),
-          ],
-        ),
+  Widget _stat(String label, String value) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: Palette.muted)),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Palette.brandDeep)),
+        ],
       );
 }

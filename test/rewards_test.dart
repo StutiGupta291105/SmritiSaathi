@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti_assist/core/engagement_alerts.dart';
 import 'package:smriti_assist/core/progress.dart';
+import 'package:smriti_assist/core/games.dart';
 import 'package:smriti_assist/core/rewards.dart';
 
 SessionRecord s(DateTime t,
@@ -39,14 +40,21 @@ void main() {
     final sessions = [
       for (var d = 1; d <= 7; d++)
         s(DateTime(2026, 3, d),
-            game: ['memory_match', 'attention', 'routine'][d % 3], correct: 10),
+            game: kGameIds[d % kGameIds.length], correct: 10),
     ];
     final r = computeRewards(sessions);
     bool got(String id) => r.achievements.firstWhere((a) => a.id == id).unlocked;
     expect(got('first_game'), isTrue);
     expect(got('streak3'), isTrue);
     expect(got('streak7'), isTrue);
-    expect(got('all_games'), isTrue);
+    expect(got('all_games'), isTrue); // all six games tried
+    // five of six is not enough
+    expect(
+        computeRewards(sessions.take(5).toList())
+            .achievements
+            .firstWhere((a) => a.id == 'all_games')
+            .unlocked,
+        isFalse);
     expect(got('sharp'), isTrue);
     expect(got('ten_games'), isFalse);
     expect(got('fifty_games'), isFalse);

@@ -81,67 +81,84 @@ class HomeTab extends StatelessWidget {
           children: [
             Row(
               children: [
-                Avatar(photo: photo, radius: 28),
-                const SizedBox(width: 14),
+                Avatar(photo: photo, radius: 24),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text('${_greeting()},\n$name',
-                      style: const TextStyle(
-                          fontSize: 24,
-                          height: 1.2,
-                          fontWeight: FontWeight.w700,
-                          color: Palette.brandDeep)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${_greeting()},',
+                          style: const TextStyle(
+                              fontSize: 14, color: Palette.muted)),
+                      Text(name,
+                          style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Palette.brandDeep)),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                      color: Color(0xFFFFEBD6), shape: BoxShape.circle),
+                  child: const Icon(Icons.favorite_rounded,
+                      size: 20, color: Palette.orange),
                 ),
               ],
             ),
             const SizedBox(height: 6),
             Text(t('greeting'),
-                style: const TextStyle(fontSize: 15, color: Palette.muted)),
-            const SizedBox(height: 18),
+                style: const TextStyle(fontSize: 13, color: Palette.muted)),
+            const SizedBox(height: 16),
 
             // Today's Goal
             AppCard(
-              child: Row(
+              padding: const EdgeInsets.all(14),
+              child: Column(
                 children: [
-                  const IconBadge(
-                      icon: Icons.extension_rounded,
-                      fg: Palette.blue,
-                      bg: Palette.tileBlue,
-                      size: 58),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(t('todaysGoal'),
-                            style: const TextStyle(
-                                fontSize: 14, color: Palette.muted)),
-                        Text(t(done ? 'goalDone' : 'goalPlay'),
-                            style: const TextStyle(
-                                fontSize: 17, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (done)
-                    const Icon(Icons.check_circle_rounded,
-                        color: Palette.action, size: 40)
-                  else
-                    SizedBox(
-                      width: 120,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(46),
-                            textStyle: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                        onPressed: onPlay,
-                        child: Text(t('playNow')),
+                  Row(
+                    children: [
+                      const IconBadge(
+                          icon: Icons.extension_rounded,
+                          fg: Palette.blue,
+                          bg: Palette.tileBlue,
+                          size: 52),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(t('todaysGoal'),
+                                style: const TextStyle(
+                                    fontSize: 12.5, color: Palette.muted)),
+                            Text(t(done ? 'goalDone' : 'goalPlay'),
+                                style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Palette.brandDeep)),
+                          ],
+                        ),
                       ),
+                      if (done)
+                        const Icon(Icons.check_circle_rounded,
+                            color: Palette.action, size: 34),
+                    ],
+                  ),
+                  if (!done) ...[
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46)),
+                      onPressed: onPlay,
+                      child: Text(t('playNow')),
                     ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
 
             // Tiles
             Row(children: [
@@ -220,18 +237,34 @@ class HomeTab extends StatelessWidget {
   }
 
   Widget _tile(IconData icon, String label, Color bg, Color fg, VoidCallback onTap) =>
-      AppCard(
-        color: bg,
-        onTap: onTap,
-        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 12),
-        child: Column(
-          children: [
-            Icon(icon, size: 44, color: fg),
-            const SizedBox(height: 10),
-            Text(label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          ],
+      Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 128),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+            decoration: BoxDecoration(
+              color: bg.withAlpha(150),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: bg, width: 1.6),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 48, color: fg),
+                const SizedBox(height: 8),
+                Text(label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Palette.brandDeep)),
+              ],
+            ),
+          ),
         ),
       );
 

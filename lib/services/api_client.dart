@@ -310,6 +310,11 @@ class ApiClient {
     return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
+  Future<List<Map<String, dynamic>>> patientReminders(String patientId) async {
+    final j = await _raw('GET', '/v1/patients/$patientId/reminders');
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
   Future<Map<String, dynamic>> report(String patientId, int days) =>
       _raw('GET', '/v1/patients/$patientId/report?days=$days');
 

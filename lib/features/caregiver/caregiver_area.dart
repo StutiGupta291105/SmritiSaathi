@@ -8,6 +8,7 @@ import '../../core/engagement_alerts.dart';
 import '../../core/profile.dart';
 import '../../core/progress.dart';
 import '../../core/reporting.dart';
+import '../../core/games.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -17,11 +18,8 @@ import '../profile/consent_gate.dart';
 import '../profile/photo_picker.dart' show Avatar;
 import '../reminders/reminders_screen.dart';
 
-const _games = {
-  'memory_match': 'memoryGame',
-  'attention': 'gameAttention',
-  'routine': 'gameRoutine',
-};
+
+final _games = {for (final g in kGames) g.id: g.titleKey};
 
 /// Opens the caregiver area: PIN first, then the dashboard.
 Future<void> openCaregiverArea(

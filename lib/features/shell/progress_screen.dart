@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/engagement_alerts.dart';
 import '../../core/progress.dart';
 import '../../core/rewards.dart';
+import '../../core/dates.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -61,16 +62,18 @@ class ProgressScreen extends StatelessWidget {
     Widget stat(IconData icon, Color fg, Color bg, String value, String label) =>
         Expanded(
           child: AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IconBadge(icon: icon, fg: fg, bg: bg, size: 44, circle: true),
-                const SizedBox(height: 8),
+                Text(label,
+                    style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
+                const SizedBox(height: 4),
                 Text(value,
                     style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.w700)),
-                Text(label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13, color: Palette.muted)),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: Palette.brandDeep)),
               ],
             ),
           ),
@@ -229,13 +232,17 @@ class ProgressScreen extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              Text(
-                                  'MTWTFSS'[today
-                                          .subtract(Duration(days: 6 - i))
-                                          .weekday -
-                                      1],
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Palette.muted)),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                    weekdayShort(
+                                        lang,
+                                        today
+                                            .subtract(Duration(days: 6 - i))
+                                            .weekday),
+                                    style: const TextStyle(
+                                        fontSize: 11, color: Palette.muted)),
+                              ),
                             ],
                           ),
                         ),

@@ -307,6 +307,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
             user: user,
             lang: _lang,
             onLogout: _logout,
+            onLangChanged: (l) => setState(() => _lang = l),
             onSignedOut: _logout);
       }
       return _RoleComingSoon(

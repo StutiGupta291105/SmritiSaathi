@@ -24,6 +24,31 @@ ApiClient _api(Future<http.Response> Function(http.Request) h) => ApiClient(
     tokens: MemoryTokenStore(),
     client: MockClient(h));
 
+const _patientsJson = [
+  {
+    'patient_id': 'p1',
+    'display_name': 'Asha',
+    'link_role': 'caretaker',
+    'alerts_needing_attention': 1,
+    'last_played': '2020-01-01T10:00:00',
+    'games_played_7d': 4,
+    'streak': 0,
+    'alerts': [
+      {'kind': 'inactive', 'severity': 'attention', 'a': 5, 'b': 0}
+    ],
+  },
+  {
+    'patient_id': 'p2',
+    'display_name': 'Babul',
+    'link_role': 'caretaker',
+    'alerts_needing_attention': 0,
+    'last_played': null,
+    'games_played_7d': 0,
+    'streak': 0,
+    'alerts': [],
+  },
+];
+
 const _report = {
   'patient': {'id': 'p1', 'display_name': 'Asha', 'baseline_level': 2},
   'range_days': 7,
@@ -107,7 +132,9 @@ void main() {
     expect(find.text('Has not played for 3 days.'), findsOneWidget);
     expect(find.text('Games played'), findsOneWidget);
     expect(find.text('4'), findsOneWidget);
-    expect(find.textContaining('75%', skipOffstage: false), findsOneWidget);
+    await t.tap(find.text('Games').last); // the Games pill on the patient screen
+    await t.pumpAndSettle();
+    expect(find.textContaining('75%'), findsOneWidget);
   });
 
   testWidgets('a revoked share is explained, an expired login signs out', (t) async {
@@ -132,5 +159,70 @@ void main() {
     await t.pumpWidget(_app(expired, signedOut: () => out = true));
     await t.pumpAndSettle();
     expect(out, isTrue);
+  });
+
+  testWidgets('dashboard, patients, alerts and settings tabs', (t) async {
+    String? lang;
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/reminders') {
+        return _j(200, [
+          {'id': 'r1', 'kind': 'medicine', 'hour': 9, 'minute': 0, 'days_mask': 127, 'on_date': null, 'active': true, 'done_today': true},
+          {'id': 'r2', 'kind': 'hydration', 'hour': 10, 'minute': 30, 'days_mask': 127, 'on_date': null, 'active': false, 'done_today': false},
+        ]);
+      }
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(MaterialApp(
+        home: RemoteHome(
+            api: api,
+            user: const ServerUser('u', 'doctor', 'Dr Rao'),
+            lang: 'en',
+            onLangChanged: (l) => lang = l,
+            onLogout: () {})));
+    await t.pumpAndSettle();
+
+    // dashboard: counts and recent activity, doctor wording
+    expect(find.text('Your patients, at a glance'), findsOneWidget);
+    expect(find.text('Asha'), findsOneWidget);
+    expect(find.textContaining('Played a game'), findsOneWidget);
+    expect(find.text('No games yet'), findsOneWidget);
+
+    // patients tab: search and status chips
+    await t.tap(find.text('Patients').last);
+    await t.pumpAndSettle();
+    expect(find.text('Needs attention'), findsOneWidget);
+    expect(find.text('Playing as usual'), findsOneWidget);
+    await t.enterText(find.byType(TextField), 'bab');
+    await t.pumpAndSettle();
+    expect(find.text('Asha'), findsNothing);
+    expect(find.text('Babul'), findsOneWidget);
+
+    // alerts tab: the alert, named by patient
+    await t.tap(find.text('Alerts').last);
+    await t.pumpAndSettle();
+    expect(find.text('Has not played for 5 days.'), findsOneWidget);
+
+    // patient reminders tab shows times, done marks and switched-off ones
+    await t.tap(find.text('Has not played for 5 days.'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Reminders').last);
+    await t.pumpAndSettle();
+    expect(find.text('09:00'), findsOneWidget);
+    expect(find.text('Done today'), findsOneWidget);
+    expect(find.textContaining('10:30'), findsOneWidget);
+    expect(find.textContaining('Off'), findsOneWidget);
+    await t.pageBack();
+    await t.pumpAndSettle();
+
+    // settings: language change is reported, about opens
+    await t.tap(find.text('Profile').last);
+    await t.pumpAndSettle();
+    await t.tap(find.text('हिन्दी'));
+    expect(lang, 'hi');
+    expect(find.text('Dr Rao'), findsWidgets);
   });
 }

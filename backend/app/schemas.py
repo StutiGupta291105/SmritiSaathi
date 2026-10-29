@@ -103,7 +103,8 @@ class InviteForMe(BaseModel):
 
 class SessionIn(BaseModel):
     id: str = Field(max_length=36)
-    game: Literal["memory_match", "attention", "routine"]
+    game: Literal["memory_match", "word_recall", "puzzle_fix", "number_order",
+                  "attention", "routine"]
     started_at: datetime
     ended_at: datetime
     start_level: int = Field(ge=1, le=5)
