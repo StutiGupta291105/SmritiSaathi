@@ -9,7 +9,7 @@ from ..db import utcnow
 from ..deps import (consent_granted, current_user, get_db, patient_for_owner,
                     patient_for_viewer, require_role, settings_of)
 from ..models import (CONSENT_PURPOSES, ROLE_PURPOSE, Consent, GameSession,
-                      Link, OtpChallenge, Patient, RefreshToken,
+                      Link, Message, OtpChallenge, Patient, RefreshToken,
                       ReminderMark, ReminderSchedule, User)
 from ..schemas import (BaselineIn, ConsentsIn, InviteIn, LinkOut, PatientIn,
                        PatientOut, SyncIn, SyncOut)
@@ -243,6 +243,11 @@ def export(patient_id: str, user: User = Depends(current_user),
         "sessions": rows(GameSession, GameSession.patient_id == p.id),
         "reminder_schedules": rows(ReminderSchedule, ReminderSchedule.patient_id == p.id),
         "reminder_marks": rows(ReminderMark, ReminderMark.patient_id == p.id),
+        # text and timing; photos and voice notes are listed without their bytes
+        "messages": [{c.name: (v.isoformat() if isinstance(v := getattr(m, c.name), datetime) else v)
+                      for c in Message.__table__.columns if c.name != "media"}
+                     for m in db.execute(select(Message).where(Message.link_id.in_(
+                         select(Link.id).where(Link.patient_id == p.id)))).scalars()],
     }
 
 
@@ -304,6 +309,8 @@ def erase(patient_id: str, user: User = Depends(current_user),
     """Right of erasure: removes the patient, everything linked, and the login.
     The audit log keeps only the fact that erasure happened."""
     p = patient_for_owner(db, user, patient_id)
+    link_ids = select(Link.id).where(Link.patient_id == p.id)
+    db.execute(delete(Message).where(Message.link_id.in_(link_ids)))
     for model in (ReminderMark, ReminderSchedule, GameSession, Consent, Link):
         db.execute(delete(model).where(model.patient_id == p.id))
     db.execute(delete(Patient).where(Patient.id == p.id))

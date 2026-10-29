@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 from .. import audit
 from ..config import FIXED_TEST_OTP
 from ..db import utcnow
-from ..deps import current_user, get_db, ip_hash, settings_of
+from ..deps import current_user, get_db, ip_hash, require_role, settings_of
 from ..models import OtpChallenge, RefreshToken, User, new_id
-from ..schemas import (OtpRequest, OtpRequestOut, OtpVerify, RefreshIn,
+from ..schemas import (ContactIn, OtpRequest, OtpRequestOut, OtpVerify, RefreshIn,
                        TokenOut, UserOut)
 from ..security import (constant_time_equal, make_access_token, new_care_id, new_otp,
                         new_refresh_token, normalize_phone, otp_hash,
@@ -42,7 +42,8 @@ def _issue(db: Session, user: User, s) -> TokenOut:
     return TokenOut(
         access_token=make_access_token(user.id, user.role, s),
         refresh_token=refresh,
-        user=UserOut(id=user.id, role=user.role, name=user.name, care_id=user.care_id),
+        user=UserOut(id=user.id, role=user.role, name=user.name, care_id=user.care_id,
+                     contact_phone=user.contact_phone),
     )
 
 
@@ -158,4 +159,23 @@ def logout(body: RefreshIn, request: Request, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
     ensure_care_id(db, user)
-    return UserOut(id=user.id, role=user.role, name=user.name, care_id=user.care_id)
+    return UserOut(id=user.id, role=user.role, name=user.name, care_id=user.care_id,
+                   contact_phone=user.contact_phone)
+
+
+@router.put("/me/contact", response_model=UserOut)
+def set_contact(body: ContactIn, user: User = Depends(require_role("caretaker", "doctor")),
+                db: Session = Depends(get_db)):
+    """A caretaker or doctor chooses whether their patients can call them from the
+    app. An empty number turns it off."""
+    raw = body.phone.strip()
+    if raw:
+        phone = normalize_phone(raw)
+        if phone is None:
+            raise HTTPException(422, "invalid_phone")
+        user.contact_phone = phone
+    else:
+        user.contact_phone = None
+    audit.record(db, user.id, "contact_phone_changed", f"shared={bool(user.contact_phone)}")
+    return UserOut(id=user.id, role=user.role, name=user.name, care_id=user.care_id,
+                   contact_phone=user.contact_phone)

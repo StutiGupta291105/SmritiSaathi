@@ -27,6 +27,9 @@ manifest = root / "src" / "main" / "AndroidManifest.xml"
 perms = "".join(
     f'    <uses-permission android:name="android.permission.{p}"/>\n'
     for p in (
+        "INTERNET",  # the release template only has it in debug builds
+        "ACCESS_NETWORK_STATE",
+        "RECORD_AUDIO",  # voice notes in chats
         "POST_NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM",
         "RECEIVE_BOOT_COMPLETED",

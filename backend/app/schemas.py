@@ -37,6 +37,11 @@ class UserOut(BaseModel):
     role: Role
     name: str
     care_id: str | None = None  # caretakers and doctors only
+    contact_phone: str | None = None  # the number they chose to let their patients call
+
+
+class ContactIn(BaseModel):
+    phone: str = Field(default="", max_length=24)
 
 
 class TokenOut(BaseModel):

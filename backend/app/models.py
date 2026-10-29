@@ -3,7 +3,7 @@ in the clear, no photos, no family contacts, no free-text reminder labels."""
 import uuid
 from datetime import datetime
 
-from sqlalchemy import (Boolean, DateTime, ForeignKey, Index, Integer, String,
+from sqlalchemy import (Boolean, DateTime, LargeBinary, ForeignKey, Index, Integer, String,
                         Text, UniqueConstraint)
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -35,6 +35,8 @@ class User(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # What a patient types to invite this caretaker or doctor (CG-XXXXXX / DR-XXXXXX).
     care_id: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)
+    # A caretaker's or doctor's own choice: the number patients linked to them may call.
+    contact_phone: Mapped[str | None] = mapped_column(String(24), nullable=True)
     __table_args__ = (UniqueConstraint("phone_hmac", "role", name="uq_user_phone_role"),)
 
 
@@ -195,3 +197,20 @@ class PushSent(Base):
     patient_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     kind: Mapped[str] = mapped_column(String(32), primary_key=True)
     day: Mapped[str] = mapped_column(String(10), primary_key=True)
+
+
+class Message(Base):
+    """One chat message between a patient and a linked caretaker or doctor. A
+    conversation is the link. Text, a photo or a voice note; the media bytes are
+    kept here, never in the audit log, and go when the patient is erased."""
+    __tablename__ = "messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    link_id: Mapped[str] = mapped_column(ForeignKey("links.id"), index=True)
+    sender_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    kind: Mapped[str] = mapped_column(String(8))  # text | image | voice
+    body: Mapped[str] = mapped_column(Text, default="")
+    media: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    mime: Mapped[str] = mapped_column(String(32), default="")
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
