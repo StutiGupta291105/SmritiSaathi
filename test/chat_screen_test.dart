@@ -44,9 +44,6 @@ void main() {
 
   testWidgets('an emergency message shows the call button and no network is needed',
       (t) async {
-    t.view.physicalSize = const Size(800, 1600);
-    t.view.devicePixelRatio = 2;
-    addTearDown(t.view.reset);
     await t.pumpWidget(app());
     await t.enterText(find.byType(TextField), 'I have chest pain');
     await t.tap(find.byIcon(Icons.send_rounded));

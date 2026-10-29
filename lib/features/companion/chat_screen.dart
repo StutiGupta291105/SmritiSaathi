@@ -149,6 +149,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Keyboard open or a short screen: drop the big avatar and mic, keep the
+    // conversation, quick buttons, emergency button and input, so the messages stay readable.
+    final roomy = MediaQuery.of(context).size.height -
+            MediaQuery.of(context).viewInsets.bottom >=
+        640;
     return Scaffold(
       appBar: AppBar(centerTitle: true, title: Text(t('chatTitle'))),
       body: SafeArea(
@@ -158,6 +163,7 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _scroll,
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               children: [
+                if (roomy)
                 Center(
                   child: Container(
                     padding: const EdgeInsets.all(6),
@@ -171,6 +177,12 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(t('chatNote'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: Palette.muted)),
+                ),
                 for (final turn in _turns) _bubble(turn),
                 if (_busy)
                   Padding(
@@ -214,6 +226,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 label: Text(t('chatCall112')),
               ),
             ),
+          if (roomy)
           Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Material(
@@ -289,12 +302,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
             ]),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Text(t('chatNote'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11.5, color: Palette.muted)),
           ),
         ]),
       ),

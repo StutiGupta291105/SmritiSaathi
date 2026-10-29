@@ -1234,9 +1234,9 @@ class _RemoteReportScreenState extends State<RemoteReportScreen> {
                     color: Palette.brandDeep)),
             const SizedBox(height: 12),
             SizedBox(
-              height: 180,
+              height: 190,
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final g in perGame)
                     Expanded(
@@ -1245,30 +1245,38 @@ class _RemoteReportScreenState extends State<RemoteReportScreen> {
                             orElse: () => kGames.first);
                         final pct = ((g['accuracy'] as num) * 100).round();
                         return Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text('$pct%',
-                                style: const TextStyle(
-                                    fontSize: 11, fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 2),
-                            Container(
-                              width: 26,
-                              height: 6 + 64.0 * pct / 100,
-                              decoration: BoxDecoration(
-                                color: info.color,
-                                borderRadius: BorderRadius.circular(8),
+                            // The bar takes whatever height the labels leave.
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: FractionallySizedBox(
+                                  heightFactor: (0.08 + 0.92 * pct / 100),
+                                  child: Container(
+                                    width: 26,
+                                    decoration: BoxDecoration(
+                                      color: info.color,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            SizedBox(
-                              height: 30,
-                              child: Text(t(info.titleKey),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                            const SizedBox(height: 4),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('$pct%',
                                   style: const TextStyle(
-                                      fontSize: 10, color: Palette.muted)),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600)),
                             ),
+                            const SizedBox(height: 2),
+                            Text(t(info.titleKey),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 10, color: Palette.muted)),
                           ],
                         );
                       }),
