@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/responsive.dart';
 import 'core/strings.dart';
 import 'core/theme.dart';
 import 'data/app_database.dart';
@@ -34,6 +35,7 @@ class SmritiSathiApp extends StatelessWidget {
       title: 'Smriti Sathi',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
+      builder: (context, child) => ResponsiveScope(child: child!),
       home: const _Boot(),
     );
   }

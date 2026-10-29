@@ -186,12 +186,18 @@ class _RemindersScreenState extends State<RemindersScreen> {
                   Text(t('kind_${r.kind.name}'),
                       style: const TextStyle(
                           fontSize: 17, fontWeight: FontWeight.w700)),
-                  Text(_when(r),
-                      style: const TextStyle(fontSize: 14, color: Palette.muted)),
-                  if (r.label.isNotEmpty)
-                    Text(r.label,
-                        style: const TextStyle(
-                            fontSize: 14, color: Palette.muted)),
+                  // Time on its own line, then how often and any note.
+                  Text(_when(r).split(' · ').first,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Palette.ink)),
+                  Text(
+                      [
+                        ..._when(r).split(' · ').skip(1),
+                        if (r.label.isNotEmpty) r.label,
+                      ].join(' · '),
+                      style: const TextStyle(fontSize: 13, color: Palette.muted)),
                 ],
               ),
             ),
@@ -204,14 +210,24 @@ class _RemindersScreenState extends State<RemindersScreen> {
                 await _changed();
               },
             ),
-            IconButton(
+            PopupMenuButton<String>(
               tooltip: t('delete'),
-              icon: const Icon(Icons.delete_outline_rounded, color: Palette.muted),
-              onPressed: () async {
+              icon: const Icon(Icons.more_vert_rounded, color: Palette.muted),
+              onSelected: (_) async {
                 await widget.db
                     .deleteReminder(widget.patientId, r.id, 'caregiver');
                 await _changed();
               },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                    value: 'delete',
+                    child: Row(children: [
+                      const Icon(Icons.delete_outline_rounded,
+                          color: Palette.red),
+                      const SizedBox(width: 8),
+                      Text(t('delete')),
+                    ])),
+              ],
             ),
           ],
         ),

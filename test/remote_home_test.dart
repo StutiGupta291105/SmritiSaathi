@@ -105,8 +105,9 @@ void main() {
     await t.tap(find.text('Asha'));
     await t.pumpAndSettle();
     expect(find.text('Has not played for 3 days.'), findsOneWidget);
-    expect(find.textContaining('Games played: 4'), findsOneWidget);
-    expect(find.textContaining('75%'), findsOneWidget);
+    expect(find.text('Games played'), findsOneWidget);
+    expect(find.text('4'), findsOneWidget);
+    expect(find.textContaining('75%', skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('a revoked share is explained, an expired login signs out', (t) async {

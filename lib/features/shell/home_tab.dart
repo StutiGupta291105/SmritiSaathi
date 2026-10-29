@@ -160,24 +160,23 @@ class HomeTab extends StatelessWidget {
                       Palette.tileGreen, Palette.green, onProgress)),
               const SizedBox(width: 14),
               Expanded(
-                  child: _tile(Icons.call_rounded, t('callFamily'),
-                      Palette.tileSky, Palette.sky,
-                      () => _showFamily(context))),
+                  child: _tile(Icons.chat_bubble_rounded, t('chatTitle'),
+                      Palette.tilePurple, Palette.purple, onTalk)),
             ]),
 
             const SizedBox(height: 14),
             AppCard(
-              onTap: onTalk,
-              color: Palette.tilePurple,
+              onTap: () => _showFamily(context),
+              color: Palette.tileSky,
               child: Row(children: [
                 const IconBadge(
-                    icon: Icons.chat_bubble_rounded,
-                    fg: Palette.purple,
+                    icon: Icons.call_rounded,
+                    fg: Palette.sky,
                     bg: Colors.white,
                     circle: true),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Text(t('chatTitle'),
+                  child: Text(t('callFamily'),
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w700)),
                 ),

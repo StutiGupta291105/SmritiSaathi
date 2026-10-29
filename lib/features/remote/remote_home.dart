@@ -80,13 +80,34 @@ class _RemoteHomeState extends State<RemoteHome> {
     await _load();
   }
 
+  String _greeting() {
+    final h = DateTime.now().hour;
+    return t(h < 12 ? 'goodMorning' : h < 17 ? 'goodAfternoon' : 'goodEvening');
+  }
+
+  Widget _stat(IconData icon, Color fg, Color bg, String value, String label) =>
+      Expanded(
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+          child: Column(children: [
+            IconBadge(icon: icon, fg: fg, bg: bg, size: 40, circle: true),
+            const SizedBox(height: 6),
+            Text(value,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+            Text(label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: Palette.muted)),
+          ]),
+        ),
+      );
+
   String _roleLabel(String role) => t(role == 'doctor' ? 'roleDoctor' : 'roleCaretaker');
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.user.name),
+        title: Text(t('appName')),
         actions: [
           IconButton(
               tooltip: t('logout'),
@@ -99,8 +120,31 @@ class _RemoteHomeState extends State<RemoteHome> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            ScreenTitle(t('rmPeople')),
-            const SizedBox(height: 12),
+            Text('${_greeting()},',
+                style: const TextStyle(fontSize: 16, color: Palette.muted)),
+            ScreenTitle(widget.user.name),
+            const SizedBox(height: 14),
+            Row(children: [
+              _stat(Icons.groups_rounded, Palette.green, Palette.tileGreen,
+                  '${_patients.length}', t('rmStatPeople')),
+              const SizedBox(width: 12),
+              _stat(
+                  Icons.notifications_active_rounded,
+                  Palette.red,
+                  Palette.tileRed,
+                  '${_patients.fold<int>(0, (n, p) => n + ((p['alerts_needing_attention'] as int?) ?? 0))}',
+                  t('rmStatAlerts')),
+              const SizedBox(width: 12),
+              _stat(Icons.mail_rounded, Palette.orange, Palette.tileOrange,
+                  '${_invites.length}', t('rmInvites')),
+            ]),
+            const SizedBox(height: 18),
+            Text(t('rmPeople'),
+                style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Palette.brandDeep)),
+            const SizedBox(height: 10),
             if (_errorKey != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -113,7 +157,10 @@ class _RemoteHomeState extends State<RemoteHome> {
             else ...[
               if (_invites.isNotEmpty) ...[
                 Text(t('rmInvites'),
-                    style: Theme.of(context).textTheme.titleLarge),
+                    style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Palette.brandDeep)),
                 const SizedBox(height: 8),
                 for (final i in _invites)
                   Padding(
@@ -168,10 +215,18 @@ class _RemoteHomeState extends State<RemoteHome> {
                             lang: widget.lang,
                             onSignedOut: widget.onSignedOut))),
                     child: Row(children: [
-                      const IconBadge(
-                          icon: Icons.person_rounded,
-                          fg: Palette.green,
-                          bg: Palette.tileGreen),
+                      CircleAvatar(
+                        radius: 26,
+                        backgroundColor: Palette.tileGreen,
+                        child: Text(
+                            '${p['display_name']}'.trim().isEmpty
+                                ? '?'
+                                : '${p['display_name']}'.trim()[0].toUpperCase(),
+                            style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: Palette.brandDeep)),
+                      ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text('${p['display_name']}',
@@ -304,6 +359,21 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
     );
   }
 
+  Widget _statTile(IconData icon, Color fg, Color bg, String value, String label) =>
+      Expanded(
+        child: AppCard(
+          child: Column(children: [
+            IconBadge(icon: icon, fg: fg, bg: bg, size: 44, circle: true),
+            const SizedBox(height: 8),
+            Text(value,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+            Text(label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: Palette.muted)),
+          ]),
+        ),
+      );
+
   List<Widget> _content(Map<String, dynamic> r) {
     final daily = (r['daily'] as List).cast<int>();
     final maxBar = daily.fold<int>(1, (m, v) => v > m ? v : m);
@@ -318,6 +388,14 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
       'routine': 'gameRoutine',
     };
     return [
+      Row(children: [
+        _statTile(Icons.sports_esports_rounded, Palette.blue, Palette.tileBlue,
+            '${r['games_played']}', t('rmGames')),
+        const SizedBox(width: 12),
+        _statTile(Icons.local_fire_department_rounded, Palette.orange,
+            Palette.tileOrange, '${r['streak']}', t('rmStreak')),
+      ]),
+      const SizedBox(height: 12),
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(t('alertsTitle'),
@@ -345,9 +423,6 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
           Text(t('overviewTitle'),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          Text('${t('rmGames')}: ${r['games_played']}',
-              style: const TextStyle(fontSize: 16)),
-          Text('${t('rmStreak')}: ${r['streak']}', style: const TextStyle(fontSize: 16)),
           Text('${t('lastPlayed')}: ${last == null ? '-' : last.substring(0, 10)}',
               style: const TextStyle(fontSize: 16)),
           const SizedBox(height: 12),

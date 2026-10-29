@@ -212,6 +212,10 @@ address the app stays the offline test build (fixed code 123456, no server).
   a new phone, withdrawing consent, and erasure. Its header explains how to run it. It found
   a real bug (the companion used the phone's patient id instead of the server's) that the mocked tests missed.
 
+## Screen sizes and text
+
+Fonts are written for a 390 dp phone and scaled by `lib/core/responsive.dart`: a little smaller on very narrow screens, up to 30% larger on tablets (where content also stays in a centred 640 dp column), multiplied by the person's own system font-size setting, and capped so layouts hold. `test/layout_test.dart` renders ten screens in English, Hindi and Bengali on a small phone, a normal phone and a tablet, with normal and very large system text, and fails on any overflow.
+
 ## Look and feel
 
 Follows the second design sheet: teal-green brand (`#1B7F63`, headings

@@ -162,6 +162,22 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _scroll,
               padding: const EdgeInsets.all(16),
               children: [
+                const Center(
+                  child: Column(children: [
+                    CircleAvatar(
+                      radius: 38,
+                      backgroundColor: Colors.white,
+                      backgroundImage: AssetImage('assets/images/logo_icon.png'),
+                    ),
+                    SizedBox(height: 6),
+                    Text('Smriti',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Palette.brandDeep)),
+                  ]),
+                ),
+                const SizedBox(height: 8),
                 for (final turn in _turns) _bubble(turn),
                 if (_busy)
                   Padding(
@@ -207,17 +223,22 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Wrap(spacing: 8, runSpacing: 4, children: [
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
               _chip(Icons.today_rounded, t('qaDay'),
                   () => _quick(t('qaDay'), () => widget.service.day(widget.lang))),
+              const SizedBox(width: 8),
               _chip(
                   Icons.notifications_active_rounded,
                   t('qaNext'),
                   () => _quick(t('qaNext'),
                       () => widget.service.next(widget.patientId, widget.lang))),
+              const SizedBox(width: 8),
               _chip(Icons.favorite_rounded, t('qaNice'),
                   () => _quick(t('qaNice'), () async => widget.service.nice(widget.lang))),
-            ]),
+              ]),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),

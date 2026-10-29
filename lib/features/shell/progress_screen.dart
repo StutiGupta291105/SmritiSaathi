@@ -155,10 +155,12 @@ class ProgressScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                Text(t('achievements'),
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
-                const Spacer(),
+                Expanded(
+                  child: Text(t('achievements'),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 8),
                 Text('${rewards.unlockedCount} / ${rewards.achievements.length}',
                     style: const TextStyle(
                         fontSize: 16,

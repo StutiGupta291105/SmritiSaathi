@@ -1,6 +1,8 @@
 /// Bengali UI text. Draft translation: have a native speaker review it
 /// (ideally someone who works with older adults) before real use.
 const Map<String, String> kStringsBn = {
+  'rmStatPeople': 'মানুষ',
+  'rmStatAlerts': 'সতর্কতা',
   'doctorVerified': 'নিবন্ধন যাচাই করা হয়েছে',
   'chatTitle': 'স্মৃতির সঙ্গে কথা বলুন',
   'chatNote': 'স্মৃতি আপনার ফোনের একটি সহায়ক প্রোগ্রাম। এটি কোনো মানুষ বা ডাক্তার নয় এবং চিকিৎসার পরামর্শ দিতে পারে না।',
