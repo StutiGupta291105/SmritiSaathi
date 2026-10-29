@@ -112,7 +112,7 @@ const Map<String, Map<String, String>> kStrings = {
     'iAm': 'I am a',
     'rolePatient': 'Patient',
     'roleDoctor': 'Doctor',
-    'roleCaregiver': 'Caretaker',
+    'roleCaretaker': 'Caregiver',
     'yourName': 'Your name',
     'phoneNumber': 'Mobile number',
     'sendOtp': 'Send OTP',
