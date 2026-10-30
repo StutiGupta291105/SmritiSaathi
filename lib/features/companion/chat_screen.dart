@@ -21,7 +21,12 @@ class ChatScreen extends StatefulWidget {
     required this.name,
     required this.lang,
     required this.voiceEnabled,
+    this.syncNow,
   });
+
+  /// Sends the new consent to the server right away; without it the first
+  /// question after "allow" would be refused until the next background sync.
+  final Future<void> Function()? syncNow;
   final CompanionService service;
   final Voice voice;
   final AppDatabase db;
@@ -119,6 +124,9 @@ class _ChatScreenState extends State<ChatScreen> {
       givenByRelation: 'self_or_guardian',
       noticeVersion: kNoticeVersion,
     );
+    try {
+      await widget.syncNow?.call();
+    } catch (_) {}
     await _checkOnline();
   }
 

@@ -294,6 +294,7 @@ class _PatientShellState extends State<PatientShell> {
         name: widget.patient['display_name'] as String,
         lang: _lang,
         voiceEnabled: widget.patient['voice_enabled'] == 1,
+        syncNow: widget.hooks?.syncNow,
       ),
     ),
   );

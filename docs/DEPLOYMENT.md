@@ -14,6 +14,16 @@ afterwards takes about a minute) and the free database expires after 30 days.
    New repository variable `API_BASE_URL` = that address (no trailing slash).
 5. Run the Build Android APK workflow and install the new APK on both phones.
 
+# Turning on the AI helper (Talk to Smriti) on the Render test server
+
+1. Get an API key at console.anthropic.com (paid per use; a small model keeps it cheap).
+2. In Render: your `smriti-api` service > Environment > add `ANTHROPIC_API_KEY` = the key.
+   (`render.yaml` already sets `SMRITI_COMPANION_PROVIDER=anthropic` and a small
+   `SMRITI_COMPANION_MODEL`.) Save; the service restarts.
+3. Open `https://<your-service>.onrender.com/healthz`. `"ai":true` means a real model is
+   connected; `"ai":false` means the key is missing and the app uses its on-device helper.
+4. On the patient's phone: Talk to Smriti > "Allow the online helper" once, then ask away.
+
 # Turning on push notifications for new chat messages
 
 The server already sends a push on every new message (`SMRITI_PUSH_PROVIDER=fcm`), and

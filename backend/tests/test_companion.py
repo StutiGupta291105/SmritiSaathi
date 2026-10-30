@@ -254,3 +254,14 @@ def test_a_server_without_an_api_key_still_starts_and_answers_gently(monkeypatch
     assert isinstance(p, UnavailableCompanion)
     with pytest.raises(CompanionUnavailable):
         p.reply("s", [{"role": "user", "content": "hi"}])
+
+
+def test_healthz_says_whether_a_real_ai_is_behind_talk_to_smriti(env):
+    from fastapi.testclient import TestClient
+    from app.companion import AnthropicCompanion
+    from app.config import Settings
+    from app.main import create_app
+    assert env.client.get("/healthz").json() == {"status": "ok", "ai": False}
+    fake = AnthropicCompanion.__new__(AnthropicCompanion)  # no key or network needed
+    c = TestClient(create_app(Settings(database_url="sqlite://"), companion_provider=fake))
+    assert c.get("/healthz").json() == {"status": "ok", "ai": True}

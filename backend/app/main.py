@@ -69,7 +69,10 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
 
     @app.get("/healthz")
     def healthz():
-        return {"status": "ok"}
+        # "ai" says whether Talk to Smriti has a real model behind it, so a
+        # test server can be checked from a browser.
+        return {"status": "ok",
+                "ai": isinstance(app.state.companion, companion_mod.AnthropicCompanion)}
 
     app.include_router(auth.router)
     app.include_router(patients.router)
