@@ -130,6 +130,12 @@ def totp_ok(secret: str, code: str, at: float | None = None) -> bool:
                for d in (-1, 0, 1))
 
 
+def admin_password_ok(password: str, s: Settings) -> bool:
+    if s.admin_password_hash:
+        return verify_password(password, s.admin_password_hash)
+    return bool(s.admin_password) and constant_time_equal(password, s.admin_password)
+
+
 def make_admin_token(admin_id: str, s: Settings) -> str:
     now = datetime.now(timezone.utc)
     return jwt.encode({"sub": admin_id, "aud": ADMIN_AUDIENCE, "iat": int(now.timestamp()),

@@ -32,10 +32,21 @@ class Settings:
     companion_daily_limit: int = 40            # answered messages per patient per day
     companion_style: str = "assistant"         # "assistant" (general helper) or "companion" (chat only)
     trust_proxy: bool = False  # true only behind a proxy you control (X-Forwarded-For)
+    # The one admin of the read-only admin portal. Fixed in the server's settings, not
+    # a user account: it is not in the users table and cannot be created or changed
+    # through any API. Unset password and hash = the admin portal is switched off.
+    admin_username: str = "admin"
+    admin_password: str = ""           # simplest: the password itself (kept in the host's secret store)
+    admin_password_hash: str = ""      # or a hash made with: python -m app.cli admin-hash
+    admin_totp_secret: str = ""        # optional authenticator-app secret (a second factor)
 
     @property
     def is_prod(self) -> bool:
         return self.env == "prod"
+
+    @property
+    def admin_enabled(self) -> bool:
+        return bool(self.admin_username and (self.admin_password or self.admin_password_hash))
 
 
 def load_settings() -> Settings:
@@ -73,6 +84,10 @@ def load_settings() -> Settings:
         companion_daily_limit=g("COMPANION_DAILY_LIMIT", d.companion_daily_limit),
         companion_style=g("COMPANION_STYLE", d.companion_style),
         trust_proxy=g("TRUST_PROXY", d.trust_proxy),
+        admin_username=g("ADMIN_USERNAME", d.admin_username).strip().lower(),
+        admin_password=g("ADMIN_PASSWORD", d.admin_password),
+        admin_password_hash=g("ADMIN_PASSWORD_HASH", d.admin_password_hash),
+        admin_totp_secret=g("ADMIN_TOTP_SECRET", d.admin_totp_secret),
     )
     if s.is_prod:
         problems = []
@@ -88,6 +103,8 @@ def load_settings() -> Settings:
             problems.append("SMRITI_COMPANION_API_KEY must be set when the companion uses openai_compat")
         if s.companion_provider == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
             problems.append("ANTHROPIC_API_KEY must be set when the companion uses anthropic")
+        if s.admin_password and len(s.admin_password) < 12:
+            problems.append("SMRITI_ADMIN_PASSWORD must be 12+ characters")
         if problems:
             raise RuntimeError("Unsafe production configuration: " + "; ".join(problems))
     return s

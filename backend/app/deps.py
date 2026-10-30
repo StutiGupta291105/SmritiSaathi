@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from . import audit
 from .config import Settings
-from .models import (ROLE_PURPOSE, AdminUser, Consent, Link, Patient, User)
+from .models import (ROLE_PURPOSE, Consent, Link, Patient, User)
 from .security import decode_access_token, decode_admin_token, keyed_hash
 
 bearer = HTTPBearer(auto_error=False)
@@ -134,15 +134,16 @@ def patient_for_viewer(db: Session, user: User, patient_id: str) -> tuple[Patien
 def current_admin(
     request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(bearer),
-    db: Session = Depends(get_db),
-) -> AdminUser:
-    if creds is None:
+) -> str:
+    """The portal's one admin. Not a row in any table: just the fixed account from the
+    server settings, and a token that only the admin sign-in issues."""
+    s = settings_of(request)
+    if creds is None or not s.admin_enabled:
         raise HTTPException(401, "not_authenticated")
     try:
-        claims = decode_admin_token(creds.credentials, settings_of(request))
+        claims = decode_admin_token(creds.credentials, s)
     except PyJWTError:
         raise HTTPException(401, "invalid_token")
-    admin = db.get(AdminUser, claims["sub"])
-    if admin is None or admin.disabled:
+    if claims["sub"] != s.admin_username:
         raise HTTPException(401, "invalid_token")
-    return admin
+    return s.admin_username

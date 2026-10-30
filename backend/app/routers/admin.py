@@ -1,5 +1,10 @@
 """Admin portal API. READ ONLY.
 
+There is exactly one admin, with a fixed username and password set in the server's
+settings (SMRITI_ADMIN_USERNAME / SMRITI_ADMIN_PASSWORD or _HASH). It is not a user
+account: it is not in the users table, the mobile app knows nothing of it, and no API
+can create, change or list admins. With no password configured these routes do not exist.
+
 Every endpoint here is a GET, apart from the sign-in itself. Nothing in this file
 changes patients, caretakers, doctors, links, consents, reminders or messages, and
 a test fails if a writing route is ever added. The portal is for monitoring: who is
@@ -19,15 +24,16 @@ from sqlalchemy.orm import Session
 
 from .. import audit
 from ..db import utcnow
-from ..deps import current_admin, get_db, settings_of
-from ..models import (CONSENT_PURPOSES, AdminUser, AuditEntry, CareReminder, Consent,
+from ..deps import current_admin, get_db, ip_hash, settings_of
+from ..models import (CONSENT_PURPOSES, AuditEntry, CareReminder, Consent,
                       DeviceToken, GameSession, Link, Message, Patient, User)
-from ..security import (make_admin_token, totp_ok, verify_password)
+from ..security import admin_password_ok, make_admin_token, totp_ok
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
 LOCK_AFTER, LOCK_MINUTES = 5, 15
 LOGIN_ACTIONS = ("login", "signup")
+ADMIN_ACTOR = "admin"
 
 
 class AdminLogin(BaseModel):
@@ -38,30 +44,27 @@ class AdminLogin(BaseModel):
 
 @router.post("/login")
 def login(body: AdminLogin, request: Request, db: Session = Depends(get_db)):
-    """Password plus the six-digit code from an authenticator app. Five wrong
-    attempts lock the account for 15 minutes."""
-    admin = db.execute(select(AdminUser).where(
-        AdminUser.username == body.username.strip().lower())).scalar_one_or_none()
-    now = utcnow()
-    if admin is None or admin.disabled:
-        audit.record(db, "system", "admin_login_failed", "unknown or disabled")
-        db.commit()
-        raise HTTPException(401, "invalid_credentials")
-    if admin.locked_until and admin.locked_until > now:
+    """The one fixed admin account from the server settings. Password, plus the
+    authenticator code when a secret is configured. Five wrong tries from one address
+    lock that address for 15 minutes (counted from the audit log, so it survives
+    restarts and works across instances)."""
+    s = settings_of(request)
+    ip = ip_hash(request)[:12]
+    since = utcnow() - timedelta(minutes=LOCK_MINUTES)
+    recent = db.execute(select(func.count(AuditEntry.id)).where(
+        AuditEntry.action == "admin_login_failed", AuditEntry.ts >= since,
+        AuditEntry.detail == f"ip={ip}")).scalar_one()
+    if recent >= LOCK_AFTER:
         raise HTTPException(429, "locked")
-    ok = verify_password(body.password, admin.password_hash) and totp_ok(admin.totp_secret, body.code)
+    ok = (body.username.strip().lower() == s.admin_username and admin_password_ok(body.password, s)
+          and (not s.admin_totp_secret or totp_ok(s.admin_totp_secret, body.code)))
     if not ok:
-        admin.failed_attempts += 1
-        if admin.failed_attempts >= LOCK_AFTER:
-            admin.locked_until = now + timedelta(minutes=LOCK_MINUTES)
-            admin.failed_attempts = 0
-        audit.record(db, "system", "admin_login_failed", f"admin={admin.id}")
+        audit.record(db, "system", "admin_login_failed", f"ip={ip}")
         db.commit()
         raise HTTPException(401, "invalid_credentials")
-    admin.failed_attempts, admin.locked_until, admin.last_login_at = 0, None, now
-    audit.record(db, f"admin:{admin.id[:8]}", "admin_login", "")
-    return {"access_token": make_admin_token(admin.id, settings_of(request)),
-            "username": admin.username, "expires_in": 1800}
+    audit.record(db, ADMIN_ACTOR, "admin_login", f"ip={ip}")
+    return {"access_token": make_admin_token(s.admin_username, s),
+            "username": s.admin_username, "expires_in": 1800}
 
 
 # ---- helpers ------------------------------------------------------------------
@@ -117,7 +120,7 @@ def _page(q, limit, offset):
 # ---- overview -----------------------------------------------------------------
 
 @router.get("/overview")
-def overview(admin: AdminUser = Depends(current_admin), db: Session = Depends(get_db)):
+def overview(admin: str = Depends(current_admin), db: Session = Depends(get_db)):
     day = utcnow() - timedelta(hours=24)
     cnt = lambda q: db.execute(q).scalar_one()
     roles = {r: cnt(select(func.count(User.id)).where(User.role == r))
@@ -156,7 +159,7 @@ def _user_item(u: User, logins: dict, extra: dict) -> dict:
 
 @router.get("/users")
 def users(role: str = "", q: str = "", limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0),
-          admin: AdminUser = Depends(current_admin), db: Session = Depends(get_db)):
+          admin: str = Depends(current_admin), db: Session = Depends(get_db)):
     cond = []
     if role:
         cond.append(User.role == role)
@@ -178,7 +181,7 @@ def users(role: str = "", q: str = "", limit: int = Query(50, ge=1, le=200), off
 
 @router.get("/patients")
 def patients(q: str = "", limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0),
-             admin: AdminUser = Depends(current_admin), db: Session = Depends(get_db)):
+             admin: str = Depends(current_admin), db: Session = Depends(get_db)):
     base = select(Patient, User).join(User, User.id == Patient.user_id)
     if q.strip():
         like = f"%{q.strip()}%"
@@ -213,11 +216,11 @@ def patients(q: str = "", limit: int = Query(50, ge=1, le=200), offset: int = Qu
 
 
 @router.get("/users/{user_id}")
-def user_detail(user_id: str, admin: AdminUser = Depends(current_admin), db: Session = Depends(get_db)):
+def user_detail(user_id: str, admin: str = Depends(current_admin), db: Session = Depends(get_db)):
     u = db.get(User, user_id)
     if u is None:
         raise HTTPException(404, "not_found")
-    audit.record(db, f"admin:{admin.id[:8]}", "admin_viewed_user", f"user={u.id}")
+    audit.record(db, ADMIN_ACTOR, "admin_viewed_user", f"user={u.id}")
     msgs = _msg_stats(db)
     out = {"user": _user_item(u, _last_logins(db, [u.id]), {}),
            "devices": db.execute(select(func.count(DeviceToken.id)).where(
@@ -267,7 +270,7 @@ def user_detail(user_id: str, admin: AdminUser = Depends(current_admin), db: Ses
 
 @router.get("/links")
 def links(status: str = "", role: str = "", q: str = "", limit: int = Query(100, ge=1, le=500),
-          offset: int = Query(0, ge=0), admin: AdminUser = Depends(current_admin),
+          offset: int = Query(0, ge=0), admin: str = Depends(current_admin),
           db: Session = Depends(get_db)):
     base = select(Link, Patient, User).join(Patient, Patient.id == Link.patient_id).outerjoin(
         User, User.id == Link.member_user_id)
@@ -302,7 +305,7 @@ def _names(db: Session, entries) -> dict:
 @router.get("/audit")
 def audit_log(actor: str = "", action: str = "", q: str = "", since_hours: int = Query(0, ge=0, le=24 * 365),
               limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0),
-              admin: AdminUser = Depends(current_admin), db: Session = Depends(get_db)):
+              admin: str = Depends(current_admin), db: Session = Depends(get_db)):
     cond = []
     if actor:
         cond.append(AuditEntry.actor == actor)
@@ -321,7 +324,7 @@ def audit_log(actor: str = "", action: str = "", q: str = "", since_hours: int =
 
 
 @router.get("/audit/verify")
-def audit_verify(admin: AdminUser = Depends(current_admin), db: Session = Depends(get_db)):
+def audit_verify(admin: str = Depends(current_admin), db: Session = Depends(get_db)):
     return {"ok": audit.verify_chain(db), "head": audit.head_hash(db),
             "entries": db.execute(select(func.count(AuditEntry.id))).scalar_one()}
 
@@ -332,7 +335,7 @@ SECURITY_ACTIONS = ("otp_failed", "access_denied", "refresh_reuse_detected", "ad
 
 
 @router.get("/security")
-def security(admin: AdminUser = Depends(current_admin), db: Session = Depends(get_db)):
+def security(admin: str = Depends(current_admin), db: Session = Depends(get_db)):
     """What a security review looks at first."""
     day = utcnow() - timedelta(hours=24)
     week = utcnow() - timedelta(days=7)
@@ -346,7 +349,6 @@ def security(admin: AdminUser = Depends(current_admin), db: Session = Depends(ge
         .group_by(AuditEntry.actor).order_by(func.count(AuditEntry.id).desc()).limit(10)).all()
     tn = {u.id: f"{u.name} ({u.role})" for u in db.execute(
         select(User).where(User.id.in_([a for a, _ in top]))).scalars()} if top else {}
-    locked = db.execute(select(AdminUser).where(AdminUser.locked_until > utcnow())).scalars().all()
     return {
         "last_24h": {a: cnt(a, day) for a in ("otp_failed", "access_denied", "refresh_reuse_detected",
                                               "admin_login_failed", "login", "report_viewed")},
@@ -356,6 +358,5 @@ def security(admin: AdminUser = Depends(current_admin), db: Session = Depends(ge
                                for u in db.execute(select(User).where(
                                    User.role == "doctor", User.verified_at.is_(None))).scalars()],
         "top_report_viewers_7d": [{"actor": a, "name": tn.get(a), "views": n} for a, n in top],
-        "locked_admins": [a.username for a in locked],
         "recent_events": [_audit_item(e, names) for e in recent],
     }

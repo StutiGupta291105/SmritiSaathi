@@ -235,18 +235,3 @@ class CareReminder(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     deleted: Mapped[bool] = mapped_column(Boolean, default=False)
 
-
-class AdminUser(Base):
-    """Someone who may look at the admin portal. Read-only: nothing in the admin API
-    changes app data. Created only from the command line (python -m app.cli
-    admin-create), never through the API."""
-    __tablename__ = "admin_users"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    username: Mapped[str] = mapped_column(String(64), unique=True)
-    password_hash: Mapped[str] = mapped_column(String(200))
-    totp_secret: Mapped[str] = mapped_column(String(64))
-    failed_attempts: Mapped[int] = mapped_column(Integer, default=0)
-    locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

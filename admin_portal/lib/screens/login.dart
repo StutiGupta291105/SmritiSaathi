@@ -20,7 +20,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _server =
       TextEditingController(text: 'https://smriti-api-227e.onrender.com');
-  final _user = TextEditingController();
+  final _user = TextEditingController(text: 'admin');
   final _pass = TextEditingController();
   final _code = TextEditingController();
   bool _busy = false;
@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   field('Username', _user, key: const ValueKey('username')),
                   field('Password', _pass,
                       secret: true, key: const ValueKey('password')),
-                  field('Authenticator code', _code,
+                  field('Authenticator code (only if switched on)', _code,
                       key: const ValueKey('code')),
                   if (_error.isNotEmpty)
                     Padding(

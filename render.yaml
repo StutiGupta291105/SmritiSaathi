@@ -45,6 +45,12 @@ services:
         sync: false
       - key: SMRITI_FCM_CREDENTIALS_JSON
         sync: false
+      # The ONE admin of the read-only admin portal (desktop app). Choose the password in
+      # the Render dashboard (12+ characters). Leave it unset to switch the portal off.
+      - key: SMRITI_ADMIN_USERNAME
+        value: admin
+      - key: SMRITI_ADMIN_PASSWORD
+        sync: false
       - key: SMRITI_SECRET_KEY
         generateValue: true
       - key: SMRITI_PHONE_HMAC_KEY

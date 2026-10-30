@@ -150,4 +150,4 @@ end).
 
 
 ## Admin portal
-A read-only desktop portal for monitoring users, supervision links and the access log; see `docs/ADMIN_PORTAL.md`. Admin accounts are created only from the server command line, need a password and an authenticator code, use tokens that the app endpoints reject, and the whole `/v1/admin` API is GET only (tested). Blocked attempts to reach a patient are logged as `access_denied`.
+A read-only desktop portal for monitoring users, supervision links and the access log; see `docs/ADMIN_PORTAL.md`. There is one fixed admin set in the server settings (not a user account, not in any table), who signs in with a password and, if configured, an authenticator code, with tokens that the app endpoints reject, and the whole `/v1/admin` API is GET only (tested). Blocked attempts to reach a patient are logged as `access_denied`.

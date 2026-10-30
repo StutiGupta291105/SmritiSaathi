@@ -31,23 +31,29 @@ process in `docs/INCIDENT_RESPONSE.md`, not a standing screen.
 * The desktop client's code has one POST (sign-in); a test fails if a PUT, PATCH, DELETE or
   second POST appears. Verifying a doctor stays a command-line operator task.
 * The only things the portal writes are log lines about itself: admin sign-ins, failed
-  sign-ins, and which person's page was opened (`admin_viewed_user`). Admins are watched too.
+  sign-ins, and which person's page was opened (`admin_viewed_user`). The admin is watched too.
+
+## One fixed admin, kept apart from every user
+There is exactly **one** admin, with a fixed username and password that you set in the
+server's settings. It is not a user account: it is not in the users table, the mobile app
+has no admin option, and no API can create, change or list admins. The portal is a
+separate desktop application, not a screen inside the app. If no admin password is
+configured, the `/v1/admin` routes do not exist at all.
 
 ## Setting it up
-1. On the server, create an admin (needs shell access, so it is never done through the
-   API). Use a password of 12+ characters:
-   ```
-   python -m app.cli admin-create alice
-   ```
-   It prints an authenticator secret **once**; add it to an authenticator app. Other commands:
-   `admin-passwd`, `admin-disable`, `admin-enable`, `admin-list`.
-   On Render use the service's Shell tab. In production mode run `alembic upgrade head` first
-   (migration 0008 adds the `admin_users` table); in dev mode, as on the Render test
-   server, the table is created when the server starts.
-2. Build the desktop app: GitHub > Actions > **Build Admin Portal (desktop)** > Run workflow.
-   Download the artifact for your system and run it.
-3. Sign in with the server address, username, password and the six-digit code. Sessions last
-   30 minutes. Five wrong tries lock that account for 15 minutes.
+1. Choose the admin's password (12+ characters) and put it in the server settings. On Render:
+   the service's **Environment** tab, add `SMRITI_ADMIN_PASSWORD` (and `SMRITI_ADMIN_USERNAME`
+   if you want something other than `admin`). Do **not** put the password in the code or the
+   repository. Instead of the plain password you can store a hash:
+   `python -m app.cli admin-hash` prints `SMRITI_ADMIN_PASSWORD_HASH=...` (and a secret for the
+   optional second factor below).
+2. Optional but recommended: set `SMRITI_ADMIN_TOTP_SECRET` to the authenticator-app secret
+   so sign-in also needs the six-digit code.
+3. Build the desktop app: GitHub > Actions > **Build Admin Portal (desktop)**; download the
+   artifact for your system and run it.
+4. Sign in with the server address, the username, the password (and the code, if you set a
+   secret). Sessions last 30 minutes. Five wrong tries from one address lock that address for
+   15 minutes. To change the password, change the setting and restart the server.
 
 ## What is now in the access log
 Beside sign-ins, writes and report views, the server now records **blocked access attempts**
@@ -58,6 +64,6 @@ linked to). Chat reads are not logged (they happen every few seconds); chat send
 * An admin who also has database access can read or alter data directly; the portal limits
   what the *application* shows, not what a database administrator can do. Keep the
   hash-chain head (`python -m app.cli audit-head`) in a separate append-only store.
-* There is no per-admin permission level yet: every admin sees everything the portal shows.
+* There is a single admin and a single permission level: whoever has the password sees everything the portal shows. Keep it in a password manager, and change it if anyone who knew it leaves.
 * The desktop builds are produced by the workflow above; they have not been run on real
   Windows or macOS machines by us.

@@ -81,5 +81,6 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
     app.include_router(companion.router)
     app.include_router(devices.router)
     app.include_router(chat.router)
-    app.include_router(admin.router)
+    if s.admin_enabled:  # without an admin password configured, the portal does not exist
+        app.include_router(admin.router)
     return app

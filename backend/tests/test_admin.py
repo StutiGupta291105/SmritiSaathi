@@ -2,30 +2,32 @@
 It is read only, and it never shows what people said or wrote."""
 import json
 
-from app.models import AdminUser
+import pytest
+
 from app.security import hash_password, new_totp_secret, totp_code
+from tests.conftest import Env
 from tests.test_care import session_payload
 
 P, C, D = "+919876543210", "+919811111111", "+919822222222"
 PASSWORD = "correct horse battery"
 
 
-def _admin(env, username="root"):
-    secret = new_totp_secret()
-    with env.client.app.state.sessionmaker() as s:
-        s.add(AdminUser(username=username, password_hash=hash_password(PASSWORD), totp_secret=secret))
-        s.commit()
-    return secret
+SECRET = new_totp_secret()
 
 
-def _login(env, secret, **over):
-    body = {"username": "root", "password": PASSWORD, "code": totp_code(secret)}
+@pytest.fixture
+def env():
+    """An environment where the one fixed admin is configured."""
+    return Env(admin_username="admin", admin_password=PASSWORD, admin_totp_secret=SECRET)
+
+
+def _login(env, secret=None, **over):
+    body = {"username": "admin", "password": PASSWORD, "code": totp_code(secret or SECRET)}
     body.update(over)
     return env.client.post("/v1/admin/login", json=body)
 
 
 def _headers(env, secret=None):
-    secret = secret or _admin(env)
     r = _login(env, secret)
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
@@ -43,15 +45,54 @@ def _family(env):
     return a, pid, cg, dr
 
 
-def test_sign_in_needs_password_and_authenticator_code_and_locks(env):
-    secret = _admin(env)
-    assert _login(env, secret).status_code == 200
-    assert _login(env, secret, password="wrong password!!").status_code == 401
-    assert _login(env, secret, code="000000").status_code == 401
-    assert _login(env, secret, username="nobody").status_code == 401
+def test_one_fixed_admin_signs_in_with_password_and_code_and_a_bad_address_is_locked(env):
+    assert _login(env).status_code == 200
+    assert _login(env, password="wrong password!!").status_code == 401
+    assert _login(env, code="000000").status_code == 401
+    assert _login(env, username="nobody").status_code == 401
+    assert _login(env, username="ADMIN ").status_code == 200  # same account, case and spaces ignored
     for _ in range(5):
-        _login(env, secret, password="wrong password!!")
-    assert _login(env, secret).status_code == 429  # locked, even with the right details
+        _login(env, password="wrong password!!")
+    assert _login(env).status_code == 429  # locked, even with the right details
+
+
+def test_password_only_when_no_authenticator_secret_is_configured():
+    e = Env(admin_password=PASSWORD)
+    r = e.client.post("/v1/admin/login", json={"username": "admin", "password": PASSWORD})
+    assert r.status_code == 200
+
+
+def test_a_stored_hash_works_instead_of_the_plain_password():
+    e = Env(admin_password_hash=hash_password(PASSWORD))
+    ok = e.client.post("/v1/admin/login", json={"username": "admin", "password": PASSWORD})
+    bad = e.client.post("/v1/admin/login", json={"username": "admin", "password": "something else!!"})
+    assert ok.status_code == 200 and bad.status_code == 401
+
+
+def test_without_a_configured_password_the_portal_does_not_exist():
+    e = Env()
+    assert e.client.post("/v1/admin/login", json={"username": "admin", "password": "x" * 12}).status_code == 404
+    assert e.client.get("/v1/admin/overview").status_code == 404
+    assert not any(p.startswith("/v1/admin") for p in e.client.app.openapi()["paths"])
+
+
+def test_the_admin_is_not_a_user_account(env):
+    from sqlalchemy import select
+    from app.models import User
+    _headers(env)
+    with env.client.app.state.sessionmaker() as s:
+        assert s.execute(select(User)).scalars().all() == []
+    # the app's own sign-in has no admin role, and the portal has no way to make one
+    assert env.request_otp("+919876543210", "admin").status_code == 422
+
+
+def test_short_plain_passwords_are_refused_in_production(monkeypatch):
+    from app.config import load_settings
+    for k, v in {"ENV": "prod", "SECRET_KEY": "s" * 40, "PHONE_HMAC_KEY": "p" * 40, "SMS_PROVIDER": "real",
+                 "DATABASE_URL": "postgresql://u:p@h/db", "ADMIN_PASSWORD": "short"}.items():
+        monkeypatch.setenv(f"SMRITI_{k}", v)
+    with pytest.raises(RuntimeError, match="ADMIN_PASSWORD"):
+        load_settings()
 
 
 def test_tokens_are_not_interchangeable(env):
@@ -160,29 +201,19 @@ def test_access_log_records_logins_views_and_denied_attempts(env):
 
 
 def test_failed_admin_sign_ins_are_logged(env):
-    secret = _admin(env)
-    _login(env, secret, password="wrong password!!")
-    h = _headers(env, secret)
+    _login(env, password="wrong password!!")
+    h = _headers(env)
     sec = env.client.get("/v1/admin/security", headers=h).json()
     assert sec["last_24h"]["admin_login_failed"] == 1
 
 
-def test_cli_creates_an_admin_who_can_sign_in(env, monkeypatch, capsys):
+def test_cli_makes_a_hash_for_the_settings(monkeypatch, capsys):
     from app import cli
-    from sqlalchemy import select
-    monkeypatch.setenv("SMRITI_ADMIN_PASSWORD", PASSWORD)
-    url = str(env.client.app.state.settings.database_url)
-    monkeypatch.setenv("SMRITI_DATABASE_URL", url)
-    # run the same function the command uses against the test database
-    with env.client.app.state.sessionmaker() as db:
-        assert cli._admin_command(db, env.client.app.state.settings, "admin-create", "Ops") == 0
-        out = capsys.readouterr().out
-        secret = out.split("secret: ")[1].split()[0]
-        assert cli._admin_command(db, env.client.app.state.settings, "admin-create", "ops") == 1  # exists
-        assert db.execute(select(AdminUser)).scalar_one().username == "ops"
-    r = env.client.post("/v1/admin/login", json={"username": "ops", "password": PASSWORD, "code": totp_code(secret)})
-    assert r.status_code == 200
-    with env.client.app.state.sessionmaker() as db:
-        cli._admin_command(db, env.client.app.state.settings, "admin-disable", "ops")
-    r = env.client.post("/v1/admin/login", json={"username": "ops", "password": PASSWORD, "code": totp_code(secret)})
-    assert r.status_code == 401
+    monkeypatch.setenv("SMRITI_ADMIN_PASSWORD_INPUT", PASSWORD)
+    assert cli._admin_hash() == 0
+    out = capsys.readouterr().out
+    h = out.split("SMRITI_ADMIN_PASSWORD_HASH=")[1].split()[0]
+    e = Env(admin_password_hash=h)
+    assert e.client.post("/v1/admin/login", json={"username": "admin", "password": PASSWORD}).status_code == 200
+    monkeypatch.setenv("SMRITI_ADMIN_PASSWORD_INPUT", "short")
+    assert cli._admin_hash() == 1
