@@ -71,7 +71,9 @@ end).
   stricter chat-only style (no medical or legal topics).
 - **Off by default.** The server provider is `dev` (a fixed reply). Set
   `SMRITI_COMPANION_PROVIDER=anthropic`, `ANTHROPIC_API_KEY` and, if you want a
-  cheaper model, `SMRITI_COMPANION_MODEL` (`render.yaml` already uses a small model).
+  cheaper model, `SMRITI_COMPANION_MODEL`. A free route exists too: provider
+  `openai_compat` with Gemini or Groq (see `docs/DEPLOYMENT.md`); free tiers may keep and
+  learn from what is sent, so use them with made-up data only.
   Without a key the server still starts and the app uses its on-device helper. The default model is the most capable
   one, which is the most expensive; measure cost per conversation before launch.
 - **Data leaves India.** What the person types goes from our server to Anthropic's

@@ -24,14 +24,18 @@ services:
         value: "50"
       - key: SMRITI_OTP_PER_HOUR_IP
         value: "200"
-      # Talk to Smriti: a real AI needs your Anthropic API key. Paste it in the
-      # Render dashboard (Environment > ANTHROPIC_API_KEY); without it the app
-      # uses its small on-device helper. A small model keeps the cost low.
+      # Talk to Smriti: a free AI through Google Gemini's chat endpoint. Get a free
+      # key at https://aistudio.google.com/apikey and paste it in the Render
+      # dashboard (Environment > SMRITI_COMPANION_API_KEY). Without a key the app
+      # uses its small on-device helper. To use another service (Groq, a paid
+      # Anthropic key...) see docs/DEPLOYMENT.md.
       - key: SMRITI_COMPANION_PROVIDER
-        value: anthropic
+        value: openai_compat
+      - key: SMRITI_COMPANION_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai
       - key: SMRITI_COMPANION_MODEL
-        value: claude-haiku-5-5
-      - key: ANTHROPIC_API_KEY
+        value: gemini-flash-latest
+      - key: SMRITI_COMPANION_API_KEY
         sync: false
       - key: SMRITI_SECRET_KEY
         generateValue: true

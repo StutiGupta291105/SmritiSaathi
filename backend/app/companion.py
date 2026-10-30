@@ -12,9 +12,12 @@ Safety design, in order of importance:
   3. Nothing the person types or the model says is stored or logged. Only a
      count per day is kept (to limit use).
 """
+import json
 import os
 import re
 import unicodedata
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -209,6 +212,33 @@ class UnavailableCompanion:
         raise CompanionUnavailable("no_api_key")
 
 
+class OpenAICompatCompanion:
+    """Any service that speaks the common 'chat completions' protocol, which
+    includes several with a free tier (Google Gemini, Groq, OpenRouter). Uses only
+    the standard library. Free tiers may keep and learn from what is sent: test
+    with made-up data, and read the provider's terms before real use."""
+
+    def __init__(self, base_url: str, api_key: str, model: str) -> None:
+        self._url = base_url.rstrip("/") + "/chat/completions"
+        self._key, self._model = api_key, model
+
+    def reply(self, system: str, messages: list[dict]) -> str:
+        body = json.dumps({
+            "model": self._model, "max_tokens": MAX_REPLY_TOKENS, "temperature": 0.6,
+            "messages": [{"role": "system", "content": system}, *messages]}).encode()
+        req = urllib.request.Request(self._url, data=body, headers={
+            "Authorization": f"Bearer {self._key}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=25) as r:
+                data = json.load(r)
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+            raise CompanionUnavailable(type(e).__name__) from None
+        try:
+            return (data["choices"][0]["message"]["content"] or "").strip()
+        except (KeyError, IndexError, TypeError):
+            return ""
+
+
 class AnthropicCompanion:
     def __init__(self, model: str) -> None:
         import anthropic  # imported here so tests and dev need no key
@@ -242,4 +272,10 @@ def get_provider(provider: str, model: str) -> CompanionProvider:
         if not os.environ.get("ANTHROPIC_API_KEY"):
             return UnavailableCompanion()
         return AnthropicCompanion(model)
+    if provider == "openai_compat":
+        key = os.environ.get("SMRITI_COMPANION_API_KEY", "")
+        base = os.environ.get("SMRITI_COMPANION_BASE_URL", "")
+        if not key or not base.startswith("https://"):
+            return UnavailableCompanion()
+        return OpenAICompatCompanion(base, key, model)
     raise RuntimeError(f"Unknown companion provider: {provider}")

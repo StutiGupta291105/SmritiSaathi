@@ -265,3 +265,45 @@ def test_healthz_says_whether_a_real_ai_is_behind_talk_to_smriti(env):
     fake = AnthropicCompanion.__new__(AnthropicCompanion)  # no key or network needed
     c = TestClient(create_app(Settings(database_url="sqlite://"), companion_provider=fake))
     assert c.get("/healthz").json() == {"status": "ok", "ai": True}
+
+
+def test_openai_compatible_provider_sends_the_prompt_and_reads_the_reply(monkeypatch):
+    import io, json, urllib.request
+    from app.companion import OpenAICompatCompanion
+    seen = {}
+
+    class Resp(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    def fake_urlopen(req, timeout):
+        seen["url"], seen["auth"] = req.full_url, req.headers["Authorization"]
+        seen["body"] = json.loads(req.data)
+        return Resp(json.dumps({"choices": [{"message": {"content": "  Namaste!  "}}]}).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    c = OpenAICompatCompanion("https://example.test/v1/", "KEY", "some-model")
+    out = c.reply("SYSTEM", [{"role": "user", "content": "hi"}])
+    assert out == "Namaste!"
+    assert seen["url"] == "https://example.test/v1/chat/completions"
+    assert seen["auth"] == "Bearer KEY"
+    assert seen["body"]["model"] == "some-model"
+    assert seen["body"]["messages"][0] == {"role": "system", "content": "SYSTEM"}
+    assert seen["body"]["messages"][1]["content"] == "hi"
+
+
+def test_openai_compatible_failures_become_unavailable_and_need_a_key(monkeypatch):
+    import urllib.error, urllib.request
+    from app.companion import OpenAICompatCompanion, UnavailableCompanion, get_provider
+    def boom(req, timeout):
+        raise urllib.error.URLError("down")
+    monkeypatch.setattr(urllib.request, "urlopen", boom)
+    with pytest.raises(CompanionUnavailable):
+        OpenAICompatCompanion("https://x.test", "K", "m").reply("s", [{"role": "user", "content": "hi"}])
+    monkeypatch.delenv("SMRITI_COMPANION_API_KEY", raising=False)
+    assert isinstance(get_provider("openai_compat", "m"), UnavailableCompanion)
+    monkeypatch.setenv("SMRITI_COMPANION_API_KEY", "K")
+    monkeypatch.setenv("SMRITI_COMPANION_BASE_URL", "http://insecure.test")  # https only
+    assert isinstance(get_provider("openai_compat", "m"), UnavailableCompanion)
+    monkeypatch.setenv("SMRITI_COMPANION_BASE_URL", "https://ok.test/v1")
+    assert isinstance(get_provider("openai_compat", "m"), OpenAICompatCompanion)

@@ -27,7 +27,7 @@ class Settings:
     max_body_bytes: int = 1_000_000
     sms_provider: str = "dev"                  # "dev", "test" (fixed code, never in prod) or a real one
     push_provider: str = "dev"                 # "dev" or "fcm"
-    companion_provider: str = "dev"            # "dev" or "anthropic"
+    companion_provider: str = "dev"            # "dev", "anthropic" or "openai_compat" (Gemini, Groq...)
     companion_model: str = "claude-opus-5-5"   # any Claude model id; cheaper ones cost less
     companion_daily_limit: int = 40            # answered messages per patient per day
     companion_style: str = "assistant"         # "assistant" (general helper) or "companion" (chat only)
@@ -84,6 +84,8 @@ def load_settings() -> Settings:
             problems.append("SMRITI_SMS_PROVIDER must be a real provider in prod")
         if s.database_url.startswith("sqlite"):
             problems.append("SMRITI_DATABASE_URL must be PostgreSQL in prod")
+        if s.companion_provider == "openai_compat" and not os.environ.get("SMRITI_COMPANION_API_KEY"):
+            problems.append("SMRITI_COMPANION_API_KEY must be set when the companion uses openai_compat")
         if s.companion_provider == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
             problems.append("ANTHROPIC_API_KEY must be set when the companion uses anthropic")
         if problems:

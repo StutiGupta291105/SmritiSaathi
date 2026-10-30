@@ -14,15 +14,30 @@ afterwards takes about a minute) and the free database expires after 30 days.
    New repository variable `API_BASE_URL` = that address (no trailing slash).
 5. Run the Build Android APK workflow and install the new APK on both phones.
 
-# Turning on the AI helper (Talk to Smriti) on the Render test server
+# Turning on the AI helper (Talk to Smriti) on the Render test server, free
 
-1. Get an API key at console.anthropic.com (paid per use; a small model keeps it cheap).
-2. In Render: your `smriti-api` service > Environment > add `ANTHROPIC_API_KEY` = the key.
-   (`render.yaml` already sets `SMRITI_COMPANION_PROVIDER=anthropic` and a small
-   `SMRITI_COMPANION_MODEL`.) Save; the service restarts.
-3. Open `https://<your-service>.onrender.com/healthz`. `"ai":true` means a real model is
-   connected; `"ai":false` means the key is missing and the app uses its on-device helper.
-4. On the patient's phone: Talk to Smriti > "Allow the online helper" once, then ask away.
+The server speaks the common "chat completions" protocol, so several services with a free
+tier work. Free tiers have daily limits, and some may keep and learn from what is sent:
+use made-up data for testing and read the provider's terms before real patients use it.
+
+**Google Gemini (free, no card, good in Indian languages)**
+1. Open https://aistudio.google.com/apikey, sign in, create a key.
+2. In Render: `smriti-api` > Environment > set `SMRITI_COMPANION_API_KEY` = the key. The
+   other settings are already in `render.yaml` (`SMRITI_COMPANION_PROVIDER=openai_compat`,
+   `SMRITI_COMPANION_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`,
+   `SMRITI_COMPANION_MODEL=gemini-flash-latest`). If that model name is rejected, use a
+   name from the Gemini model list.
+
+**Groq (free, fast):** base URL `https://api.groq.com/openai/v1`, a model from its list
+such as `llama-3.3-70b-versatile`, key from console.groq.com. Indian-language quality is
+weaker than Gemini.
+
+**Paid Anthropic instead:** `SMRITI_COMPANION_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`,
+`SMRITI_COMPANION_MODEL=claude-haiku-5-5`.
+
+Then open `https://<your-service>.onrender.com/healthz`: `"ai":true` means a real model is
+connected, `"ai":false` means no key (the app uses its on-device helper). On the patient's
+phone: Talk to Smriti > allow the online helper once, then ask away.
 
 # Turning on push notifications for new chat messages
 
