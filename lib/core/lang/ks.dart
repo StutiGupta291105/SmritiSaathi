@@ -4,6 +4,15 @@ import '../lang_data.dart';
 const LangData kLangKs = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "tabMedicines": "دوائی",
+    "tabWater": "آب ٹریکر",
+    "tabRoutine": "روزانہ معمول",
+    "waterOfGlasses": "{b} مَنٛز {a} گلاس",
+    "waterHint": "سارہ دۄہ تھوڈ تھوڈ آب پیوو۔",
+    "drinkGlass": "اکھ گلاس آب پیوو",
+    "markTaken": "ہیوُن نِشان لَگاو",
+    "takenToday": "ہیوُن",
+    "notifSoon": "30 مِنٹن منٛز",
     "chatAiNotOn": "آن لائن مددگار چھُ ہُرِ چالو نہ۔ سروس چلاون والس وَنۍ زِ یہ چالو کرُن۔",
     "chatDailyLimit": "اَتھ دۄہ خاطرٕ چھِ یِم سوال کافی۔ پگاہ دوبارہ کوشش کٔرو، یا خاندانہ پرزِو۔",
     "chatNeedsLogin": "آن لائن مددگار استعمال کرنہ خاطرٕ لاگ آؤٹ کٔرِتھ دوبارہ سائن اِن کٔرو، تہِ یہ فون ییٚلہ سروسس سٕتۍ جۄڑتھ۔",

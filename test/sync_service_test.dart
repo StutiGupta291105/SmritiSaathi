@@ -196,12 +196,14 @@ void main() {
     expect(s1.remindersChanged, isTrue);
     var local = await db.listReminders(pid);
     expect(local.map((r) => [r.label, r.addedBy, r.hour, r.minute]).toList(), [['BP tablet', 'Ravi', 9, 30]]);
-    // not copied twice, and not sent back up as the patient's own schedule
+    // not copied twice; only its timing goes up (no title) so adherence covers it
     final s2 = make();
     await s2.run(pid);
     expect(s2.remindersChanged, isFalse);
     expect((await db.listReminders(pid)).length, 1);
-    expect((await db.syncBatch(pid)).schedules, isEmpty);
+    final sched = (await db.syncBatch(pid)).schedules;
+    expect(sched.length, 1);
+    expect(sched.single.containsKey('label'), isFalse);
     // they removed it
     careList = [];
     final s3 = make();

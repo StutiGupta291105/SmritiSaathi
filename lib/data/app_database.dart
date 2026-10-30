@@ -80,7 +80,7 @@ class AppDatabase {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 8;
+  static const schemaVersion = 9;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -161,6 +161,13 @@ class AppDatabase {
         added_by TEXT
       )''');
     await _createCareReminderTables(db);
+    await _createWaterLog(db);
+  }
+
+  /// Glasses of water drunk per day (the Water Tracker). Kept on the phone only.
+  static Future<void> _createWaterLog(Database db) async {
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS water_log(patient_id TEXT NOT NULL, day TEXT NOT NULL, glasses INTEGER NOT NULL, PRIMARY KEY(patient_id, day))');
   }
 
   /// Routines a caregiver or doctor set: which server ids this phone has
@@ -233,6 +240,7 @@ class AppDatabase {
       await _addColumn(db, 'reminders', 'added_by TEXT');
       await _createCareReminderTables(db);
     }
+    if (oldVersion < 9) await _createWaterLog(db);
   }
 
   static Future<void> _addColumn(Database db, String table, String def) async {
@@ -1061,9 +1069,10 @@ class AppDatabase {
     final schedules = <Map<String, Object?>>[];
     final marks = <Map<String, Object?>>[];
     if (await hasConsent(patientId, 'reminders')) {
-      // The ones a caregiver set live on the server already.
+      // Including the ones a caregiver or doctor set: only timing is sent, so the
+      // care team's adherence figures cover a prescribed medicine too.
       for (final r in await _db.query('reminders',
-          where: 'patient_id = ? AND remote_id IS NULL', whereArgs: [patientId])) {
+          where: 'patient_id = ?', whereArgs: [patientId])) {
         final onDate = r['on_date'] as String?;
         schedules.add({
           'id': r['id'],
@@ -1143,6 +1152,30 @@ class AppDatabase {
           where: 'server_link_id = ? AND patient_id = ?',
           whereArgs: [l['id'], patientId]);
     }
+  }
+
+  // ---- water tracker -----------------------------------------------------
+
+  static const waterGoal = 8;
+
+  String _dayKey(DateTime d) => doneKey('x', d).split('|').last;
+
+  Future<int> waterToday(String patientId, {DateTime? day}) async {
+    final rows = await _db.query('water_log',
+        where: 'patient_id = ? AND day = ?',
+        whereArgs: [patientId, _dayKey(day ?? _clock())]);
+    return rows.isEmpty ? 0 : rows.first['glasses'] as int;
+  }
+
+  /// Adds (or with a negative [by] removes) glasses for today; never below 0 or
+  /// above 20. Returns the new count.
+  Future<int> addWater(String patientId, {int by = 1}) async {
+    final now = _clock();
+    final n = ((await waterToday(patientId, day: now)) + by).clamp(0, 20);
+    await _db.insert('water_log',
+        {'patient_id': patientId, 'day': _dayKey(now), 'glasses': n},
+        conflictAlgorithm: ConflictAlgorithm.replace);
+    return n;
   }
 
   // ---- reminder completion -----------------------------------------------
@@ -1403,7 +1436,8 @@ class AppDatabase {
       'consents',
       'family_members',
       'care_links',
-      'reminder_log'
+      'reminder_log',
+      'water_log'
     ]) {
       await _db.delete(t, where: 'patient_id = ?', whereArgs: [patientId]);
     }

@@ -4,6 +4,15 @@ import '../lang_data.dart';
 const LangData kLangKok = LangData(
   strings: {
     "appName": "स्मृती साथी",
+    "tabMedicines": "वखदां",
+    "tabWater": "उदक ट्रॅकर",
+    "tabRoutine": "दिनचर्या",
+    "waterOfGlasses": "{b} ग्लासांतल्यान {a}",
+    "waterHint": "दिसभर थोडें थोडें उदक पियेत.",
+    "drinkGlass": "1 ग्लास उदक पियात",
+    "markTaken": "घेतलें अशें खूण करात",
+    "takenToday": "घेतलें",
+    "notifSoon": "30 मिनटांनी",
     "chatAiNotOn": "ऑनलायन सहाय्यक अजून चालू जावंक ना. सेवा चलोवपी मनशाक तो चालू करपाक सांगात.",
     "chatDailyLimit": "आजच्या खातीर इतले प्रस्न पुरो. फाल्यां परतून यत्न करात, वा कुटुंबाक विचारात.",
     "chatNeedsLogin": "ऑनलायन सहाय्यक वापरपाक लॉग आउट करून परतून साइन इन करात, म्हणजे हो फोन सेवेकडेन जुडतलो.",

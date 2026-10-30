@@ -930,4 +930,23 @@ void main() {
       await v5.close();
     });
   });
+
+  group('water tracker', () {
+    test('counts per day, never goes below 0, and is erased with the patient', () async {
+      var now = DateTime(2026, 3, 4, 9);
+      final (db, _) = await _open(clock: () => now);
+      final pid = await _patient(db, {'reminders'});
+      expect(await db.waterToday(pid), 0);
+      await db.addWater(pid);
+      await db.addWater(pid);
+      expect(await db.waterToday(pid), 2);
+      expect(await db.addWater(pid, by: -5), 0);
+      await db.addWater(pid);
+      now = DateTime(2026, 3, 5, 9); // a new day starts again at 0
+      expect(await db.waterToday(pid), 0);
+      await db.addWater(pid);
+      await db.erasePatient(pid, 'Asha');
+      expect(await db.waterToday(pid), 0);
+    });
+  });
 }

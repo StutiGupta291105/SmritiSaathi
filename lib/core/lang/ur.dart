@@ -4,6 +4,15 @@ import '../lang_data.dart';
 const LangData kLangUr = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "tabMedicines": "دوائیں",
+    "tabWater": "پانی ٹریکر",
+    "tabRoutine": "معمول",
+    "waterOfGlasses": "{b} میں سے {a} گلاس",
+    "waterHint": "دن بھر تھوڑا تھوڑا پانی پیتے رہیں۔",
+    "drinkGlass": "ایک گلاس پانی پئیں",
+    "markTaken": "لے لی کا نشان لگائیں",
+    "takenToday": "لے لی",
+    "notifSoon": "30 منٹ میں",
     "chatAiNotOn": "آن لائن مددگار ابھی چالو نہیں ہے۔ سروس چلانے والے سے اسے چالو کرنے کو کہیں۔",
     "chatDailyLimit": "آج کے لیے اتنے سوال کافی ہیں۔ کل دوبارہ کوشش کریں، یا گھر والوں سے پوچھیں۔",
     "chatNeedsLogin": "آن لائن مددگار استعمال کرنے کے لیے لاگ آؤٹ کر کے دوبارہ سائن ان کریں تاکہ یہ فون سروس سے جڑ جائے۔",

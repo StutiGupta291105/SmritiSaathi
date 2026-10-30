@@ -4,6 +4,15 @@ import '../lang_data.dart';
 const LangData kLangBrx = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "tabMedicines": "बेनाय",
+    "tabWater": "दै ट्रेकार",
+    "tabRoutine": "सानसिनै दावरा",
+    "waterOfGlasses": "{b} गिलासनिफ्राय {a}",
+    "waterHint": "सान बोथोरै अख्रां अख्रां दै गोहोब।",
+    "drinkGlass": "1 गिलास दै गोहो",
+    "markTaken": "नानाय सिनायनो चिन्हा खालाम",
+    "takenToday": "नानाय",
+    "notifSoon": "30 मिनिटआव",
     "chatAiNotOn": "अनलाइन मदतगौ दिनै तागौ चालू जाखै। सेबा चालायग्राखौ बेखौ चालू खालामनो फोरमा।",
     "chatDailyLimit": "दिनैनि थाखाय बे सोलोंथाइ जागोन। गाहाइ फिन खालाम, नाथाय गुबुन सोदोबखौ सोदोब।",
     "chatNeedsLogin": "अनलाइन मदतगौ बाहायनो लग आउट खालामनानै फिन साइन इन खालाम, बेयो फोनआ सेबाजों जोबोद।",

@@ -67,3 +67,33 @@ List<DateTime> nextOccurrences(Reminder r, DateTime from, {int count = 1}) {
   }
   return out;
 }
+
+
+/// How long before a routine or reminder the heads-up notification goes off.
+const kReminderLead = Duration(minutes: 30);
+
+/// One notification to schedule: when, for which kind, and whether it is the
+/// "in 30 minutes" heads-up rather than the one at the time itself.
+class PlannedAlert {
+  const PlannedAlert(this.at, this.kind, this.headsUp);
+  final DateTime at;
+  final ReminderKind kind;
+  final bool headsUp;
+}
+
+/// Two alerts per occurrence (30 minutes before, and at the time), soonest
+/// first, at most [limit] (iOS keeps 64 pending local notifications). A
+/// heads-up that would already be in the past is left out.
+List<PlannedAlert> plannedAlerts(List<Reminder> reminders, DateTime now,
+    {int perReminder = 14, int limit = 60}) {
+  final out = <PlannedAlert>[];
+  for (final r in reminders) {
+    for (final at in nextOccurrences(r, now, count: perReminder)) {
+      out.add(PlannedAlert(at, r.kind, false));
+      final before = at.subtract(kReminderLead);
+      if (before.isAfter(now)) out.add(PlannedAlert(before, r.kind, true));
+    }
+  }
+  out.sort((a, b) => a.at.compareTo(b.at));
+  return out.take(limit).toList();
+}

@@ -4,6 +4,15 @@ import '../lang_data.dart';
 const LangData kLangGu = LangData(
   strings: {
     "appName": "સ્મૃતિ સાથી",
+    "tabMedicines": "દવાઓ",
+    "tabWater": "પાણી ટ્રૅકર",
+    "tabRoutine": "દિનચર્યા",
+    "waterOfGlasses": "{b} માંથી {a} ગ્લાસ",
+    "waterHint": "આખા દિવસ દરમિયાન થોડું થોડું પાણી પીઓ.",
+    "drinkGlass": "૧ ગ્લાસ પાણી પીઓ",
+    "markTaken": "લીધી તરીકે ચિહ્નિત કરો",
+    "takenToday": "લીધી",
+    "notifSoon": "૩૦ મિનિટમાં",
     "chatAiNotOn": "ઑનલાઇન સહાયક હજી ચાલુ નથી. સેવા ચલાવનારને તેને ચાલુ કરવા કહો.",
     "chatDailyLimit": "આજ માટે આટલા પ્રશ્નો પૂરતા છે. કાલે ફરી પ્રયત્ન કરો, અથવા પરિવારને પૂછો.",
     "chatNeedsLogin": "ઑનલાઇન સહાયક વાપરવા લૉગ આઉટ કરીને ફરી સાઇન ઇન કરો, જેથી આ ફોન સેવા સાથે જોડાય.",

@@ -4,6 +4,15 @@ import '../lang_data.dart';
 const LangData kLangMni = LangData(
   strings: {
     "appName": "ꯁ꯭ꯃꯔꯤꯇꯤ ꯁꯥꯊꯤ",
+    "tabMedicines": "ꯂꯤꯉꯥꯝ",
+    "tabWater": "ꯏꯁꯤꯡ ꯇ꯭ꯔꯦꯀꯔ",
+    "tabRoutine": "ꯅꯨꯃꯤꯠ ꯈꯨꯗꯤꯡꯃꯛꯀꯤ ꯊꯕꯛ",
+    "waterOfGlasses": "ꯒ꯭ꯂꯥꯁ {b} ꯃꯅꯨꯡꯗꯥ {a}",
+    "waterHint": "ꯅꯨꯃꯤꯠ ꯄꯨꯝꯅꯃꯛ ꯍꯤꯡꯍꯤꯡ ꯏꯁꯤꯡ ꯊꯨꯡꯅꯕꯥ ꯍꯣꯠꯅꯧ꯫",
+    "drinkGlass": "ꯒ꯭ꯂꯥꯁ 1 ꯏꯁꯤꯡ ꯊꯨꯡꯅꯧ",
+    "markTaken": "ꯃꯧꯔꯛꯅꯧ",
+    "takenToday": "ꯃꯧꯔꯛꯅꯕ",
+    "notifSoon": "ꯃꯤꯅꯦꯠ 30 ꯃꯅꯨꯡꯗꯥ",
     "chatAiNotOn": "ꯑꯣꯟꯂꯥꯏꯟ ꯃꯇꯦꯡ ꯄꯤꯕꯥ ꯍꯧꯖꯤꯛ ꯍꯥꯟꯅꯗ꯭ꯔꯦ꯫ ꯁꯦꯕꯥ ꯊꯧꯒꯠꯂꯤꯕꯥ ꯃꯤꯗꯥ ꯍꯥꯡꯗꯣꯛꯅꯕꯥ ꯍꯥꯌꯌꯨ꯫",
     "chatDailyLimit": "ꯉꯁꯤꯒꯤꯗꯃꯛ ꯄꯥꯎꯈꯨꯝ ꯃꯁꯤ ꯃꯇꯧ ꯐꯪꯕꯅꯤ꯫ ꯍꯌꯦꯡ ꯑꯃꯨꯛ ꯍꯟꯅꯥ ꯍꯣꯠꯅꯧ, ꯅꯠꯇ꯭ꯔꯒꯥ ꯏꯃꯨꯡꯗꯥ ꯍꯥꯌꯖꯧ꯫",
     "chatNeedsLogin": "ꯑꯣꯟꯂꯥꯏꯟ ꯃꯇꯦꯡ ꯁꯤꯖꯤꯟꯅꯅꯕꯥ ꯂꯣꯒꯥꯎꯠ ꯇꯧꯗꯨꯅꯥ ꯑꯃꯨꯛ ꯁꯥꯏꯟ ꯏꯟ ꯇꯧꯕꯤꯌꯨ꯫",

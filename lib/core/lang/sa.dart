@@ -4,6 +4,15 @@ import '../lang_data.dart';
 const LangData kLangSa = LangData(
   strings: {
     "appName": "स्मृतिसाथी",
+    "tabMedicines": "औषधानि",
+    "tabWater": "जलमापकम्",
+    "tabRoutine": "दिनचर्या",
+    "waterOfGlasses": "{b} चषकेषु {a}",
+    "waterHint": "दिनं यावत् स्तोकं स्तोकं जलं पिबतु।",
+    "drinkGlass": "एकं चषकं जलं पिबतु",
+    "markTaken": "गृहीतम् इति चिह्नयतु",
+    "takenToday": "गृहीतम्",
+    "notifSoon": "३० निमेषेषु",
     "chatAiNotOn": "ऑनलाइन-सहायकः अद्यापि न प्रवर्तितः। सेवासञ्चालकं तं प्रवर्तयितुं वदतु।",
     "chatDailyLimit": "अद्यतनाय एतावन्तः प्रश्नाः पर्याप्ताः। श्वः पुनः यतताम्, कुटुम्बं वा पृच्छतु।",
     "chatNeedsLogin": "ऑनलाइन-सहायकस्य उपयोगाय निर्गत्य पुनः प्रविशतु, येन एषः दूरभाषः सेवया संयुज्येत।",

@@ -4,6 +4,15 @@ import '../lang_data.dart';
 const LangData kLangPa = LangData(
   strings: {
     "appName": "ਸਮ੍ਰਿਤੀ ਸਾਥੀ",
+    "tabMedicines": "ਦਵਾਈਆਂ",
+    "tabWater": "ਪਾਣੀ ਟ੍ਰੈਕਰ",
+    "tabRoutine": "ਰੁਟੀਨ",
+    "waterOfGlasses": "{b} ਵਿੱਚੋਂ {a} ਗਲਾਸ",
+    "waterHint": "ਦਿਨ ਭਰ ਥੋੜ੍ਹਾ-ਥੋੜ੍ਹਾ ਪਾਣੀ ਪੀਂਦੇ ਰਹੋ।",
+    "drinkGlass": "1 ਗਲਾਸ ਪਾਣੀ ਪੀਓ",
+    "markTaken": "ਲਈ ਗਈ ਵਜੋਂ ਚਿੰਨ੍ਹਿਤ ਕਰੋ",
+    "takenToday": "ਲੈ ਲਈ",
+    "notifSoon": "30 ਮਿੰਟ ਵਿੱਚ",
     "chatAiNotOn": "ਆਨਲਾਈਨ ਸਹਾਇਕ ਅਜੇ ਚਾਲੂ ਨਹੀਂ ਹੈ। ਸੇਵਾ ਚਲਾਉਣ ਵਾਲੇ ਨੂੰ ਇਸਨੂੰ ਚਾਲੂ ਕਰਨ ਲਈ ਕਹੋ।",
     "chatDailyLimit": "ਅੱਜ ਲਈ ਇੰਨੇ ਸਵਾਲ ਕਾਫ਼ੀ ਹਨ। ਕੱਲ੍ਹ ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ, ਜਾਂ ਪਰਿਵਾਰ ਤੋਂ ਪੁੱਛੋ।",
     "chatNeedsLogin": "ਆਨਲਾਈਨ ਸਹਾਇਕ ਵਰਤਣ ਲਈ ਲਾਗ ਆਊਟ ਕਰਕੇ ਦੁਬਾਰਾ ਸਾਈਨ ਇਨ ਕਰੋ, ਤਾਂ ਜੋ ਇਹ ਫ਼ੋਨ ਸੇਵਾ ਨਾਲ ਜੁੜ ਜਾਵੇ।",

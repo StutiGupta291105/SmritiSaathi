@@ -48,20 +48,16 @@ class ReminderNotifier {
   Future<void> resync({required String patientId, required String lang}) async {
     await _plugin.cancelAll();
     if (!await _db.hasConsent(patientId, 'reminders')) return;
-    final now = DateTime.now();
-    final upcoming = <(DateTime, Reminder)>[];
-    for (final r in await _db.listReminders(patientId)) {
-      for (final at in nextOccurrences(r, now, count: 14)) {
-        upcoming.add((at, r));
-      }
-    }
-    upcoming.sort((a, b) => a.$1.compareTo(b.$1));
     var id = 0;
-    for (final (at, r) in upcoming.take(_maxPending)) {
+    for (final a in plannedAlerts(await _db.listReminders(patientId), DateTime.now(),
+        limit: _maxPending)) {
+      final text = tr(lang, 'notif_${a.kind.name}');
+      final at = a.at;
+      final body = a.headsUp ? '${tr(lang, 'notifSoon')}: $text' : text;
       await _plugin.zonedSchedule(
         id++,
         tr(lang, 'appName'),
-        tr(lang, 'notif_${r.kind.name}'),
+        body,
         // Each notification is a one-off absolute instant computed from local
         // wall-clock time (DST-correct), so no timezone database is needed.
         tz.TZDateTime.from(at, tz.UTC),
