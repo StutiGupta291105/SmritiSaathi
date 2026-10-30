@@ -49,6 +49,10 @@ jobs:
       - name: Generate the desktop project
         working-directory: admin_portal
         run: flutter create . --project-name smriti_admin --platforms=${{ matrix.platform }}
+      - name: Remove the generated sample test (it targets a class we do not have)
+        shell: bash
+        working-directory: admin_portal
+        run: rm -f test/widget_test.dart
       - run: flutter pub get
         working-directory: admin_portal
       - run: flutter analyze
