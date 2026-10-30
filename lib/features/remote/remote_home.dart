@@ -11,6 +11,7 @@ import '../../core/ui.dart';
 import '../../services/api_client.dart';
 import '../chat/messages_screen.dart';
 import '../reminders/reminder_style.dart';
+import '../reminders/reminders_screen.dart' show showAddReminderDialog;
 import '../shell/settings_pages.dart';
 
 /// Blue for doctors, green for caretakers, as on the design sheet.
@@ -160,6 +161,7 @@ class _RemoteHomeState extends State<RemoteHome> {
               canSetBaseline: widget.user.role == 'caretaker',
               accent: _accent,
               lang: widget.lang,
+              byName: widget.user.name,
               onMessage: _threadFor(p['patient_id'] as String) == null
                   ? null
                   : () => _openChat(_threadFor(p['patient_id'] as String)!),
@@ -788,7 +790,11 @@ class RemotePatientScreen extends StatefulWidget {
     this.accent = Palette.action,
     this.onSignedOut,
     this.onMessage,
+    this.byName = '',
   });
+
+  /// The signed-in caregiver's or doctor's name, recorded on what they add.
+  final String byName;
 
   /// Opens the conversation with this patient; null when there is none.
   final VoidCallback? onMessage;
@@ -806,6 +812,7 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
   int _tab = 0; // 0 overview, 1 games, 2 reminders
   Map<String, dynamic>? _report;
   List<Map<String, dynamic>>? _reminders;
+  List<Map<String, dynamic>> _careItems = const [];
   String? _errorKey;
   bool _loading = true;
 
@@ -855,10 +862,60 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
     if (_reminders != null) return;
     try {
       final r = await widget.api.patientReminders(widget.patientId);
-      if (mounted) setState(() => _reminders = r);
+      final c = await widget.api.careReminders(widget.patientId);
+      if (mounted) {
+        setState(() {
+          _reminders = r;
+          _careItems = c;
+        });
+      }
     } on ApiException catch (e) {
       if (mounted) _fail(e);
     }
+  }
+
+  Future<void> _reloadCare() async {
+    try {
+      final c = await widget.api.careReminders(widget.patientId);
+      if (mounted) setState(() => _careItems = c);
+    } on ApiException catch (e) {
+      if (mounted) _fail(e);
+    }
+  }
+
+  /// A caregiver or doctor adds a routine or reminder; the patient's phone picks
+  /// it up the next time it syncs and sets up its notification.
+  Future<void> _addCare() async {
+    final r = await showAddReminderDialog(context,
+        language: widget.lang,
+        kinds: ReminderKind.values,
+        defaultBy: widget.byName);
+    if (r == null) return;
+    final d = r.date;
+    try {
+      await widget.api.addCareReminder(widget.patientId,
+          kind: r.kind.name,
+          label: r.label,
+          hour: r.time.hour,
+          minute: r.time.minute,
+          onDate: d == null
+              ? null
+              : '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}');
+    } on ApiException catch (e) {
+      if (mounted) _fail(e);
+      return;
+    }
+    await _reloadCare();
+  }
+
+  Future<void> _deleteCare(String id) async {
+    try {
+      await widget.api.deleteCareReminder(widget.patientId, id);
+    } on ApiException catch (e) {
+      if (mounted) _fail(e);
+      return;
+    }
+    await _reloadCare();
   }
 
   Future<void> _setBaseline(int level) async {
@@ -1168,8 +1225,18 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
                   child: Center(child: CircularProgressIndicator()))
             ];
     }
-    if (items.isEmpty) {
+    final addButton = Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: FilledButton.icon(
+        key: const ValueKey('addCareReminder'),
+        icon: const Icon(Icons.add_rounded),
+        label: Text(t('addReminder')),
+        onPressed: _addCare,
+      ),
+    );
+    if (items.isEmpty && _careItems.isEmpty) {
       return [
+        addButton,
         Padding(
           padding: const EdgeInsets.all(24),
           child: Text(t('rmNoReminders'),
@@ -1179,6 +1246,61 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
       ];
     }
     return [
+      addButton,
+      for (final x in _careItems)
+        Builder(builder: (_) {
+          final kind = ReminderKind.values.firstWhere((k) => k.name == x['kind'],
+              orElse: () => ReminderKind.activity);
+          final style = kindStyle(kind);
+          final hh = (x['hour'] as int).toString().padLeft(2, '0');
+          final mm = (x['minute'] as int).toString().padLeft(2, '0');
+          final date = x['on_date'] as String?;
+          final label = '${x['label']}';
+          return Padding(
+            key: ValueKey('care_${x['id']}'),
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+              child: Row(children: [
+                IconBadge(
+                    icon: style.icon,
+                    fg: style.fg,
+                    bg: style.bg,
+                    size: 44,
+                    circle: true),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(label.isEmpty ? t('kind_${kind.name}') : label,
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Palette.brandDeep)),
+                        Text(date == null ? '$hh:$mm' : '$date · $hh:$mm',
+                            style: const TextStyle(
+                                fontSize: 13, color: Palette.ink)),
+                        Text(
+                            t('addedBy').replaceAll('{a}', '${x['created_by_name']}'),
+                            style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: widget.accent)),
+                      ]),
+                ),
+                if (x['mine'] == true)
+                  IconButton(
+                    key: ValueKey('deleteCare_${x['id']}'),
+                    tooltip: t('delete'),
+                    icon: const Icon(Icons.delete_outline_rounded,
+                        color: Palette.red),
+                    onPressed: () => _deleteCare('${x['id']}'),
+                  ),
+              ]),
+            ),
+          );
+        }),
       for (final x in items)
         Builder(builder: (_) {
           final kind = ReminderKind.values.firstWhere(

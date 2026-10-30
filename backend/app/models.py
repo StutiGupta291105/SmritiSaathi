@@ -214,3 +214,23 @@ class Message(Base):
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class CareReminder(Base):
+    """A routine or reminder a caretaker or doctor set for the patient. Unlike the
+    patient's own reminders, its title is stored here, because the patient's phone
+    has to receive it. The patient's phone copies it and may delete it."""
+    __tablename__ = "care_reminders"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), index=True)
+    created_by: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    created_by_name: Mapped[str] = mapped_column(String(120))
+    created_by_role: Mapped[str] = mapped_column(String(12))
+    kind: Mapped[str] = mapped_column(String(16))
+    label: Mapped[str] = mapped_column(String(120), default="")
+    hour: Mapped[int] = mapped_column(Integer)
+    minute: Mapped[int] = mapped_column(Integer)
+    days_mask: Mapped[int] = mapped_column(Integer, default=127)
+    on_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False)

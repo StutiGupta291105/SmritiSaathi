@@ -200,8 +200,15 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     if ((patient['setup_stage'] as int) < 5 || !await api.hasSession) return;
     _syncing = true;
     try {
-      final outcome = await SyncService(widget.db, api).run(patient['id'] as String);
+      final service = SyncService(widget.db, api);
+      final outcome = await service.run(patient['id'] as String);
       if (outcome == SyncOutcome.signedOut) await _logout();
+      if (service.remindersChanged) {
+        await widget.notifier.resync(
+            patientId: patient['id'] as String,
+            lang: patient['language'] as String);
+        kRemindersRevision.value++;
+      }
     } finally {
       _syncing = false;
     }

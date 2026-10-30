@@ -152,3 +152,12 @@ class SyncOut(BaseModel):
     sessions: int
     schedules: int
     marks: int
+
+
+class CareReminderIn(BaseModel):
+    kind: Literal["medicine", "hydration", "activity", "appointment", "birthday", "event"]
+    label: str = Field(default="", max_length=120)
+    hour: int = Field(ge=0, le=23)
+    minute: int = Field(ge=0, le=59)
+    days_mask: int = Field(default=127, ge=1, le=127)
+    on_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")

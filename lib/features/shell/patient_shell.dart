@@ -58,17 +58,29 @@ class _PatientShellState extends State<PatientShell> {
   List<Map<String, dynamic>> _threads = const [];
   Timer? _chatTimer;
 
+  var _ticks = 0;
+
+  void _remindersChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    kRemindersRevision.addListener(_remindersChanged);
     if (widget.api != null) {
       _loadThreads();
-      _chatTimer = Timer.periodic(const Duration(seconds: 20), (_) => _loadThreads());
+      _chatTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+        _loadThreads();
+        // About once a minute, pick up routines a caregiver or doctor added.
+        if (++_ticks % 3 == 0) widget.hooks?.syncNow();
+      });
     }
   }
 
   @override
   void dispose() {
+    kRemindersRevision.removeListener(_remindersChanged);
     _chatTimer?.cancel();
     super.dispose();
   }

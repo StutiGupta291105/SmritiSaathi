@@ -22,6 +22,8 @@ void main() {
   late Map<String, Object?> lastSync;
   late Object? lastConsents;
   Map<String, dynamic>? lastInvite;
+  var careList = <Map<String, dynamic>>[];
+  final careDeleted = <String>[];
   var offline = false;
   var existing = false;
   var serverBaseline = 2;
@@ -59,6 +61,11 @@ void main() {
               lastSync = body;
               return _j(200, {'sessions': 1, 'schedules': 1, 'marks': 0});
             }
+            if (p.endsWith('/care-reminders') && r.method == 'GET') return _j(200, careList);
+            if (p.contains('/care-reminders/') && r.method == 'DELETE') {
+              careDeleted.add(p.split('/').last);
+              return http.Response('', 204);
+            }
             if (p.endsWith('/links')) {
               return _j(linkStatus, [
                 {'id': 'srv-l', 'status': 'accepted', 'verified': true}
@@ -68,6 +75,8 @@ void main() {
           })));
 
   setUp(() async {
+    careList = [];
+    careDeleted.clear();
     sqfliteFfiInit();
     raw = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
         options: OpenDatabaseOptions(
@@ -134,6 +143,7 @@ void main() {
       'POST /v1/patients/srv-p/sync',
       'GET /v1/patients/me',
       'GET /v1/patients/srv-p/links',
+      'GET /v1/patients/srv-p/care-reminders',
     ]);
     expect((lastSync['sessions'] as List).length, 1);
     expect(jsonEncode(lastSync), isNot(contains('Tablet')));
@@ -174,11 +184,74 @@ void main() {
     expect(await raw.query('care_links', where: 'id = ?', whereArgs: [id]), isEmpty);
   });
 
+  test('routines a caregiver set are copied once, and removed when they remove them', () async {
+    careList = [
+      {'id': 'c1', 'kind': 'medicine', 'label': 'BP tablet', 'hour': 9, 'minute': 30,
+       'days_mask': 127, 'on_date': null, 'created_by_name': 'Ravi', 'created_by_role': 'caretaker', 'mine': false},
+    ];
+    await db.recordConsent(patientId: pid, purposes: {'reminders': true},
+        givenByName: 'Asha', givenByRelation: 'self', noticeVersion: 'v2');
+    final s1 = make();
+    await s1.run(pid);
+    expect(s1.remindersChanged, isTrue);
+    var local = await db.listReminders(pid);
+    expect(local.map((r) => [r.label, r.addedBy, r.hour, r.minute]).toList(), [['BP tablet', 'Ravi', 9, 30]]);
+    // not copied twice, and not sent back up as the patient's own schedule
+    final s2 = make();
+    await s2.run(pid);
+    expect(s2.remindersChanged, isFalse);
+    expect((await db.listReminders(pid)).length, 1);
+    expect((await db.syncBatch(pid)).schedules, isEmpty);
+    // they removed it
+    careList = [];
+    final s3 = make();
+    await s3.run(pid);
+    expect(s3.remindersChanged, isTrue);
+    expect(await db.listReminders(pid), isEmpty);
+  });
+
+  test('deleting one here tells the server, and it does not come back', () async {
+    careList = [
+      {'id': 'c1', 'kind': 'hydration', 'label': 'Water', 'hour': 10, 'minute': 0,
+       'days_mask': 127, 'on_date': null, 'created_by_name': 'Ravi', 'created_by_role': 'caretaker', 'mine': false},
+    ];
+    await db.recordConsent(patientId: pid, purposes: {'reminders': true},
+        givenByName: 'Asha', givenByRelation: 'self', noticeVersion: 'v2');
+    await make().run(pid);
+    final r = (await db.listReminders(pid)).single;
+    await db.deleteReminder(pid, r.id, 'Asha');
+    offline = true;
+    await make().run(pid); // cannot reach the server: stays queued
+    offline = false;
+    expect(await db.pendingCareReminderDeletes(), ['c1']);
+    await make().run(pid);
+    expect(careDeleted, ['c1']);
+    expect(await db.pendingCareReminderDeletes(), isEmpty);
+    expect(await db.listReminders(pid), isEmpty); // not copied again, though the server list still had it
+  });
+
+  test('without the reminders permission nothing is copied', () async {
+    careList = [
+      {'id': 'c1', 'kind': 'medicine', 'label': 'x', 'hour': 9, 'minute': 0, 'days_mask': 127,
+       'on_date': null, 'created_by_name': 'Ravi', 'created_by_role': 'caretaker', 'mine': false},
+    ];
+    await db.recordConsent(patientId: pid, purposes: {'reminders': false},
+        givenByName: 'Asha', givenByRelation: 'self', noticeVersion: 'v2');
+    final s = make();
+    await s.run(pid);
+    expect(s.remindersChanged, isFalse);
+    expect(await db.listReminders(pid), isEmpty);
+  });
+
   test('second run does not recreate or resend consents and sessions', () async {
     await make().run(pid);
     calls.clear();
     await make().run(pid);
-    expect(calls, ['GET /v1/patients/me', 'GET /v1/patients/srv-p/links']);
+    expect(calls, [
+      'GET /v1/patients/me',
+      'GET /v1/patients/srv-p/links',
+      'GET /v1/patients/srv-p/care-reminders'
+    ]);
   });
 
   test('withdrawing sync stops uploads but still reports the withdrawal', () async {

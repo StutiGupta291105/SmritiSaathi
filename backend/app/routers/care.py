@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
@@ -8,9 +8,9 @@ from .. import analytics, audit
 from ..db import utcnow
 from ..deps import (consent_granted, current_user, get_db, patient_for_viewer,
                     require_role)
-from ..models import (ROLE_PURPOSE, GameSession, Link, Patient, ReminderMark,
-                      ReminderSchedule, User)
-from ..schemas import InviteForMe
+from ..models import (ROLE_PURPOSE, CareReminder, GameSession, Link, Patient,
+                      ReminderMark, ReminderSchedule, User)
+from ..schemas import CareReminderIn, InviteForMe
 
 router = APIRouter(prefix="/v1", tags=["care"])
 
@@ -186,3 +186,53 @@ def reminders(patient_id: str, user: User = Depends(current_user),
              "days_mask": r.days_mask, "on_date": r.on_date, "active": r.active,
              "done_today": r.id in done}
             for r in sorted(rows, key=lambda r: (r.hour, r.minute))]
+
+
+# ---- routines and reminders set by a caretaker or doctor ----------------------------
+
+def _care_reminder_out(r: CareReminder, user: User) -> dict:
+    return {"id": r.id, "kind": r.kind, "label": r.label, "hour": r.hour,
+            "minute": r.minute, "days_mask": r.days_mask, "on_date": r.on_date,
+            "created_by_name": r.created_by_name, "created_by_role": r.created_by_role,
+            "created_at": r.created_at.isoformat(), "mine": r.created_by == user.id}
+
+
+@router.get("/patients/{patient_id}/care-reminders")
+def list_care_reminders(patient_id: str, user: User = Depends(current_user),
+                        db: Session = Depends(get_db)):
+    """The patient's phone copies these; the people who set them see them too."""
+    p, _ = patient_for_viewer(db, user, patient_id)
+    rows = db.execute(select(CareReminder).where(
+        CareReminder.patient_id == p.id, CareReminder.deleted.is_(False))
+        .order_by(CareReminder.hour, CareReminder.minute)).scalars().all()
+    return [_care_reminder_out(r, user) for r in rows]
+
+
+@router.post("/patients/{patient_id}/care-reminders", status_code=201)
+def add_care_reminder(patient_id: str, body: CareReminderIn,
+                      user: User = Depends(require_role("caretaker", "doctor")),
+                      db: Session = Depends(get_db)):
+    p, _ = patient_for_viewer(db, user, patient_id)  # accepted link and sharing consent
+    r = CareReminder(patient_id=p.id, created_by=user.id, created_by_name=user.name,
+                     created_by_role=user.role, kind=body.kind, label=body.label.strip(),
+                     hour=body.hour, minute=body.minute, days_mask=body.days_mask,
+                     on_date=body.on_date)
+    db.add(r)
+    db.flush()
+    audit.record(db, user.id, "care_reminder_added", f"patient={p.id} reminder={r.id} kind={r.kind}")
+    return _care_reminder_out(r, user)
+
+
+@router.delete("/patients/{patient_id}/care-reminders/{reminder_id}", status_code=204)
+def delete_care_reminder(patient_id: str, reminder_id: str,
+                         user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """The patient may remove any of them; a caretaker or doctor only their own."""
+    p, kind = patient_for_viewer(db, user, patient_id)
+    r = db.get(CareReminder, reminder_id)
+    if r is None or r.patient_id != p.id or r.deleted:
+        raise HTTPException(404, "not_found")
+    if kind == "member" and r.created_by != user.id:
+        raise HTTPException(404, "not_found")
+    r.deleted = True
+    audit.record(db, user.id, "care_reminder_deleted", f"patient={p.id} reminder={r.id}")
+    return Response(status_code=204)

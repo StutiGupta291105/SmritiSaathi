@@ -46,6 +46,13 @@ class _RemindersScreenState extends State<RemindersScreen> {
   void initState() {
     super.initState();
     _load();
+    kRemindersRevision.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    kRemindersRevision.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -227,6 +234,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
                             fontSize: 13.5,
                             fontWeight: FontWeight.w500,
                             color: Palette.ink)),
+                    if (r.addedBy != null && r.addedBy!.isNotEmpty)
+                      Text(t('addedBy').replaceAll('{a}', r.addedBy!),
+                          style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Palette.brand)),
                     if (note.isNotEmpty)
                       Text(note,
                           style: const TextStyle(

@@ -181,6 +181,7 @@ void main() {
         ]);
       }
       if (p == '/v1/patients/p1/report') return _j(200, _report);
+      if (p == '/v1/patients/p1/care-reminders') return _j(200, []);
       return _j(404, {'detail': 'x'});
     });
     await t.pumpWidget(MaterialApp(
@@ -241,5 +242,59 @@ void main() {
     await t.pumpAndSettle();
     expect(lang, 'hi');
     expect(find.text('Dr Rao'), findsWidgets);
+  });
+
+  testWidgets('a caregiver adds a routine for the patient, sees who added what, deletes their own', (t) async {
+    final care = <Map<String, dynamic>>[
+      {'id': 'x1', 'kind': 'hydration', 'label': 'Drink water', 'hour': 10, 'minute': 0,
+       'days_mask': 127, 'on_date': null, 'created_by_name': 'Dr Rao', 'created_by_role': 'doctor', 'mine': false},
+    ];
+    Map<String, dynamic>? posted;
+    final deleted = <String>[];
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/reminders') return _j(200, []);
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      if (p == '/v1/patients/p1/care-reminders' && r.method == 'POST') {
+        posted = jsonDecode(r.body) as Map<String, dynamic>;
+        care.add({'id': 'x2', ...posted!, 'days_mask': 127, 'created_by_name': 'Ravi',
+                  'created_by_role': 'caretaker', 'mine': true});
+        return _j(201, care.last);
+      }
+      if (p.startsWith('/v1/patients/p1/care-reminders/') && r.method == 'DELETE') {
+        deleted.add(p.split('/').last);
+        care.removeWhere((x) => x['id'] == p.split('/').last);
+        return http.Response('', 204);
+      }
+      if (p == '/v1/patients/p1/care-reminders') return _j(200, care);
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(_app(api));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Asha'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Reminders').last);
+    await t.pumpAndSettle();
+    expect(find.text('Drink water'), findsOneWidget);
+    expect(find.text('Added by Dr Rao'), findsOneWidget);
+    expect(find.byKey(const ValueKey('deleteCare_x1')), findsNothing); // not theirs
+    await t.tap(find.byKey(const ValueKey('addCareReminder')));
+    await t.pumpAndSettle();
+    expect(find.text('Title'), findsOneWidget);
+    expect(find.textContaining('Your name'), findsNothing);
+    await t.enterText(find.byType(TextField).last, 'Morning tablet');
+    await t.pump();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    await t.pumpAndSettle();
+    expect(posted!['label'], 'Morning tablet');
+    expect(posted!['kind'], 'medicine');
+    expect([posted!['hour'], posted!['minute']], [9, 0]);
+    expect(find.text('Added by Ravi'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('deleteCare_x2')));
+    await t.pumpAndSettle();
+    expect(deleted, ['x2']);
+    expect(find.text('Morning tablet'), findsNothing);
   });
 }

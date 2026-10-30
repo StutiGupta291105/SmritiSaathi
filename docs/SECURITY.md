@@ -128,3 +128,18 @@ end).
   from the app (`users.contact_phone`). It is shown only to the patient linked to them.
 - Not yet: end-to-end encryption (the server can read messages, like the rest of the
   shared data), message retention limits, and reporting or blocking.
+
+## Routines and reminders set by a caretaker or doctor
+
+- A caretaker or doctor with an accepted link and the patient's matching sharing consent
+  can add routines and reminders for the patient (`care_reminders`). Unlike the patient's
+  own reminders, whose text never leaves the phone, the **title is stored on the server**,
+  because the patient's phone must receive it. The audit log records only that one was
+  added or removed.
+- The patient's phone copies them when it syncs (about once a minute while the app is
+  open and when it is opened), needs the patient's `reminders` consent, sets up the
+  local notification, and shows "Added by <name>". The patient can delete any of them;
+  that deletion reaches the server and the copy does not come back. A caretaker or
+  doctor can delete only their own. Withdrawing sharing ends the link, so they can no
+  longer add or read.
+- Erasing the patient deletes them, and the patient's export lists them.

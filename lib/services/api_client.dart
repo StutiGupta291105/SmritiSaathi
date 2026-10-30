@@ -414,6 +414,34 @@ class ApiClient {
   Future<void> chatMarkRead(String linkId, int upto) =>
       _raw('POST', '/v1/chat/$linkId/read', body: {'upto': upto});
 
+  // ---- routines and reminders set by a caretaker or doctor -----------------
+
+  Future<List<Map<String, dynamic>>> careReminders(String patientId) async {
+    final j = await _raw('GET', '/v1/patients/$patientId/care-reminders');
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> addCareReminder(
+    String patientId, {
+    required String kind,
+    required String label,
+    required int hour,
+    required int minute,
+    int daysMask = 127,
+    String? onDate, // yyyy-mm-dd
+  }) =>
+      _raw('POST', '/v1/patients/$patientId/care-reminders', body: {
+        'kind': kind,
+        'label': label,
+        'hour': hour,
+        'minute': minute,
+        'days_mask': daysMask,
+        if (onDate != null) 'on_date': onDate,
+      });
+
+  Future<void> deleteCareReminder(String patientId, String reminderId) =>
+      _raw('DELETE', '/v1/patients/$patientId/care-reminders/$reminderId');
+
   /// A caretaker or doctor chooses the number their patients may call ('' = none).
   Future<ServerUser> setContactPhone(String phoneE164) async {
     final j = await _raw('PUT', '/v1/auth/me/contact', body: {'phone': phoneE164});

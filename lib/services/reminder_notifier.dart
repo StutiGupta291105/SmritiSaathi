@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -15,6 +16,10 @@ import '../data/app_database.dart';
 ///    are shown only in the app (DPDP data minimisation, privacy on a shared
 ///    or lost phone).
 ///  * No third-party push service and no network call is involved.
+/// Bumped when reminders change from outside the screens (a caregiver or doctor
+/// added or removed one), so open screens reload.
+final ValueNotifier<int> kRemindersRevision = ValueNotifier<int>(0);
+
 class ReminderNotifier {
   ReminderNotifier(this._db);
   final AppDatabase _db;

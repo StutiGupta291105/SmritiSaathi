@@ -80,7 +80,7 @@ class AppDatabase {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 7;
+  static const schemaVersion = 8;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -156,8 +156,21 @@ class AppDatabase {
         on_date TEXT,
         active INTEGER NOT NULL DEFAULT 1,
         created_by TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        remote_id TEXT,
+        added_by TEXT
       )''');
+    await _createCareReminderTables(db);
+  }
+
+  /// Routines a caregiver or doctor set: which server ids this phone has
+  /// already copied (so deleting one here does not bring it back), and which
+  /// deletions still have to reach the server.
+  static Future<void> _createCareReminderTables(Database db) async {
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS care_reminder_seen(remote_id TEXT PRIMARY KEY)');
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS care_reminder_deleted(remote_id TEXT PRIMARY KEY)');
   }
 
   /// Upgrade from an older installed version.
@@ -213,6 +226,12 @@ class AppDatabase {
       await _addColumn(db, 'patients', 'email TEXT');
       await _addColumn(db, 'patients', 'city TEXT');
       await _addColumn(db, 'patients', 'state TEXT');
+    }
+    if (oldVersion < 8) {
+      // Routines and reminders set by a caregiver or doctor.
+      await _addColumn(db, 'reminders', 'remote_id TEXT');
+      await _addColumn(db, 'reminders', 'added_by TEXT');
+      await _createCareReminderTables(db);
     }
   }
 
@@ -663,6 +682,7 @@ class AppDatabase {
             : DateTime.parse(r['on_date'] as String),
         active: r['active'] == 1,
         createdAt: DateTime.tryParse(r['created_at'] as String? ?? '')?.toLocal(),
+        addedBy: r['added_by'] as String?,
       );
 
   Future<String> addReminder({
@@ -696,6 +716,63 @@ class AppDatabase {
     return id;
   }
 
+  /// Copies routines and reminders a caregiver or doctor set, and drops ones they
+  /// removed. Needs the patient's 'reminders' consent. True when anything changed.
+  Future<bool> applyCareReminders(
+      String patientId, List<Map<String, dynamic>> remote) async {
+    if (!await hasConsent(patientId, 'reminders')) return false;
+    var changed = false;
+    final seen = {
+      for (final r in await _db.query('care_reminder_seen')) r['remote_id'] as String
+    };
+    final remoteIds = {for (final r in remote) r['id'] as String};
+    for (final r in remote) {
+      final id = r['id'] as String;
+      if (seen.contains(id)) continue;
+      await _db.insert('reminders', {
+        'id': _uuid.v4(),
+        'patient_id': patientId,
+        'kind': r['kind'],
+        'label': r['label'] ?? '',
+        'hour': r['hour'],
+        'minute': r['minute'],
+        'days_mask': r['days_mask'] ?? 127,
+        'on_date': r['on_date'] == null
+            ? null
+            : DateTime.parse(r['on_date'] as String).toIso8601String(),
+        'active': 1,
+        'created_by': '${r['created_by_name']}',
+        'created_at': _now(),
+        'remote_id': id,
+        'added_by': '${r['created_by_name']}',
+      });
+      await _db.insert('care_reminder_seen', {'remote_id': id},
+          conflictAlgorithm: ConflictAlgorithm.ignore);
+      await audit('${r['created_by_name']}', 'care_reminder_received',
+          'patient=$patientId remote=$id kind=${r['kind']}');
+      changed = true;
+    }
+    for (final row in await _db.query('reminders',
+        columns: ['id', 'remote_id'],
+        where: 'patient_id = ? AND remote_id IS NOT NULL',
+        whereArgs: [patientId])) {
+      if (!remoteIds.contains(row['remote_id'])) {
+        await _db.delete('reminders', where: 'id = ?', whereArgs: [row['id']]);
+        changed = true; // they removed it
+      }
+    }
+    return changed;
+  }
+
+  /// Deletions of caregiver-set reminders that still have to reach the server.
+  Future<List<String>> pendingCareReminderDeletes() async => [
+        for (final r in await _db.query('care_reminder_deleted'))
+          r['remote_id'] as String
+      ];
+
+  Future<void> clearCareReminderDelete(String remoteId) => _db.delete(
+      'care_reminder_deleted', where: 'remote_id = ?', whereArgs: [remoteId]);
+
   Future<List<Reminder>> listReminders(String patientId) async {
     final rows = await _db.query('reminders',
         where: 'patient_id = ?',
@@ -715,8 +792,18 @@ class AppDatabase {
 
   Future<void> deleteReminder(
       String patientId, String reminderId, String by) async {
+    final row = await _db.query('reminders',
+        columns: ['remote_id'],
+        where: 'id = ? AND patient_id = ?',
+        whereArgs: [reminderId, patientId]);
+    final remote = row.isEmpty ? null : row.first['remote_id'] as String?;
     await _db.delete('reminders',
         where: 'id = ? AND patient_id = ?', whereArgs: [reminderId, patientId]);
+    // One a caregiver or doctor set: tell the server too, once online.
+    if (remote != null) {
+      await _db.insert('care_reminder_deleted', {'remote_id': remote},
+          conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
     await audit(by, 'reminder_deleted',
         'patient=$patientId reminder=$reminderId');
   }
@@ -945,8 +1032,9 @@ class AppDatabase {
     final schedules = <Map<String, Object?>>[];
     final marks = <Map<String, Object?>>[];
     if (await hasConsent(patientId, 'reminders')) {
+      // The ones a caregiver set live on the server already.
       for (final r in await _db.query('reminders',
-          where: 'patient_id = ?', whereArgs: [patientId])) {
+          where: 'patient_id = ? AND remote_id IS NULL', whereArgs: [patientId])) {
         final onDate = r['on_date'] as String?;
         schedules.add({
           'id': r['id'],

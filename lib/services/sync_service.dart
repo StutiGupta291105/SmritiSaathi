@@ -12,6 +12,10 @@ class SyncService {
   final AppDatabase db;
   final ApiClient api;
 
+  /// True after [run] when a caregiver or doctor added or removed a routine, so
+  /// the phone's notifications need setting up again.
+  bool remindersChanged = false;
+
   static const _serverRole = {'doctor': 'doctor', 'caregiver': 'caretaker'};
 
   /// Keeps the starting level in step in both directions without either side
@@ -112,6 +116,20 @@ class SyncService {
 
       await _syncBaseline(patientId, serverId);
       await db.applyServerLinkStatuses(patientId, await api.links(serverId));
+
+      // Routines and reminders a caregiver or doctor set. Deletions made here
+      // go first so they are not copied back.
+      for (final id in await db.pendingCareReminderDeletes()) {
+        try {
+          await api.deleteCareReminder(serverId, id);
+          await db.clearCareReminderDelete(id);
+        } on ApiException catch (e) {
+          if (e.isNetwork || e.isUnauthorized) rethrow;
+          if (e.status == 404) await db.clearCareReminderDelete(id);
+        }
+      }
+      remindersChanged =
+          await db.applyCareReminders(patientId, await api.careReminders(serverId));
       return SyncOutcome.done;
     } on ApiException catch (e) {
       if (e.isNetwork) return SyncOutcome.offline;

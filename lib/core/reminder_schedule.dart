@@ -14,6 +14,7 @@ class Reminder {
     this.onDate,
     this.active = true,
     this.createdAt,
+    this.addedBy,
   });
 
   final String id;
@@ -30,6 +31,9 @@ class Reminder {
 
   /// When the reminder was created, so history never counts days before it existed.
   final DateTime? createdAt;
+
+  /// Set when a caregiver or doctor added it: their name.
+  final String? addedBy;
 
   bool runsOn(DateTime day) => (daysMask >> (day.weekday - 1)) & 1 == 1;
 }
