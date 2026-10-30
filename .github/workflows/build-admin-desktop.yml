@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - os: windows-2022   # Flutter 3.35 needs the Visual Studio 2022 toolchain
             platform: windows
             out: admin_portal/build/windows/x64/runner/Release
             name: smriti-admin-windows
