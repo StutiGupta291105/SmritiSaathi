@@ -6,6 +6,12 @@ name: Build Admin Portal (desktop)
 # server with `python -m app.cli admin-create <username>` (see docs/ADMIN_PORTAL.md).
 on:
   workflow_dispatch:
+  # Also builds when the portal changes, so it can be tried from a feature branch
+  # (a manual run is only offered for workflows that exist on the default branch).
+  push:
+    paths:
+      - "admin_portal/**"
+      - ".github/workflows/build-admin-desktop.yml"
 
 permissions:
   contents: read
