@@ -1,0 +1,59 @@
+name: Build Admin Portal (desktop)
+
+# The admin portal is a read-only desktop application (Windows, macOS, Linux). Run this
+# workflow, then download the artifact for your system from the run's "Artifacts".
+# The portal talks to the Smriti Sathi server and needs an admin account created on the
+# server with `python -m app.cli admin-create <username>` (see docs/ADMIN_PORTAL.md).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            out: admin_portal/build/windows/x64/runner/Release
+            name: smriti-admin-windows
+          - os: ubuntu-latest
+            platform: linux
+            out: admin_portal/build/linux/x64/release/bundle
+            name: smriti-admin-linux
+          - os: macos-latest
+            platform: macos
+            out: admin_portal/build/macos/Build/Products/Release/smriti_admin.app
+            name: smriti-admin-macos
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.7"
+          channel: stable
+          cache: true
+      - name: Linux build tools
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+      - name: Generate the desktop project
+        working-directory: admin_portal
+        run: flutter create . --project-name smriti_admin --platforms=${{ matrix.platform }}
+      - run: flutter pub get
+        working-directory: admin_portal
+      - run: flutter analyze
+        working-directory: admin_portal
+      - run: flutter test
+        working-directory: admin_portal
+      - name: Build
+        working-directory: admin_portal
+        run: flutter build ${{ matrix.platform }} --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.out }}
+          if-no-files-found: error

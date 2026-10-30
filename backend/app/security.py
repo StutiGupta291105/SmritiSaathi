@@ -1,7 +1,10 @@
+import base64
 import hashlib
 import hmac
 import re
 import secrets
+import struct
+import time
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -86,3 +89,54 @@ def clean_care_id(raw: str) -> str | None:
 
 def role_of_care_id(cid: str) -> str:
     return "doctor" if cid.startswith("DR-") else "caretaker"
+
+
+# ---- admin portal accounts ----------------------------------------------------
+ADMIN_AUDIENCE = "smriti-sathi-admin"  # a different audience: an app token never opens the portal, nor the reverse
+_PBKDF2_ROUNDS = 240_000
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, _PBKDF2_ROUNDS)
+    return f"pbkdf2${_PBKDF2_ROUNDS}${salt.hex()}${dk.hex()}"
+
+
+def verify_password(password: str, stored: str) -> bool:
+    try:
+        _, rounds, salt, dk = stored.split("$")
+        got = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), int(rounds))
+        return hmac.compare_digest(got.hex(), dk)
+    except Exception:
+        return False
+
+
+def new_totp_secret() -> str:
+    return base64.b32encode(secrets.token_bytes(20)).decode().rstrip("=")
+
+
+def totp_code(secret: str, at: float | None = None, step: int = 30) -> str:
+    """RFC 6238 (SHA-1, 6 digits), the one every authenticator app uses."""
+    key = base64.b32decode(secret + "=" * (-len(secret) % 8))
+    counter = int((time.time() if at is None else at) // step)
+    mac = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+    o = mac[-1] & 0x0F
+    return f"{(struct.unpack('>I', mac[o:o + 4])[0] & 0x7FFFFFFF) % 1_000_000:06d}"
+
+
+def totp_ok(secret: str, code: str, at: float | None = None) -> bool:
+    now = time.time() if at is None else at
+    return any(hmac.compare_digest(totp_code(secret, now + d * 30), (code or "").strip())
+               for d in (-1, 0, 1))
+
+
+def make_admin_token(admin_id: str, s: Settings) -> str:
+    now = datetime.now(timezone.utc)
+    return jwt.encode({"sub": admin_id, "aud": ADMIN_AUDIENCE, "iat": int(now.timestamp()),
+                       "exp": int((now + timedelta(minutes=30)).timestamp()),
+                       "jti": secrets.token_hex(8)}, s.secret_key, algorithm="HS256")
+
+
+def decode_admin_token(token: str, s: Settings) -> dict:
+    return jwt.decode(token, s.secret_key, algorithms=["HS256"], audience=ADMIN_AUDIENCE,
+                      options={"require": ["exp", "sub", "aud", "iat"]})

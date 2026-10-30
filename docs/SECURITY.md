@@ -147,3 +147,7 @@ end).
   doctor can delete only their own. Withdrawing sharing ends the link, so they can no
   longer add or read.
 - Erasing the patient deletes them, and the patient's export lists them.
+
+
+## Admin portal
+A read-only desktop portal for monitoring users, supervision links and the access log; see `docs/ADMIN_PORTAL.md`. Admin accounts are created only from the server command line, need a password and an authenticator code, use tokens that the app endpoints reject, and the whole `/v1/admin` API is GET only (tested). Blocked attempts to reach a patient are logged as `access_denied`.

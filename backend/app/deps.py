@@ -5,9 +5,10 @@ from jwt import PyJWTError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import audit
 from .config import Settings
-from .models import (ROLE_PURPOSE, Consent, Link, Patient, User)
-from .security import decode_access_token, keyed_hash
+from .models import (ROLE_PURPOSE, AdminUser, Consent, Link, Patient, User)
+from .security import decode_access_token, decode_admin_token, keyed_hash
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -121,5 +122,27 @@ def patient_for_viewer(db: Session, user: User, patient_id: str) -> tuple[Patien
     link = accepted_link(db, user, patient_id)
     purpose = ROLE_PURPOSE.get(user.role)
     if link is None or purpose is None or not consent_granted(db, patient_id, purpose):
+        # Kept even though the request fails: a caretaker or doctor reaching for a
+        # patient they are not (or no longer) linked to is what a security review
+        # wants to see. Only ids are recorded.
+        audit.record(db, user.id, "access_denied", f"patient={patient_id} role={user.role}")
+        db.commit()
         raise HTTPException(404, "not_found")
     return p, "member"
+
+
+def current_admin(
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: Session = Depends(get_db),
+) -> AdminUser:
+    if creds is None:
+        raise HTTPException(401, "not_authenticated")
+    try:
+        claims = decode_admin_token(creds.credentials, settings_of(request))
+    except PyJWTError:
+        raise HTTPException(401, "invalid_token")
+    admin = db.get(AdminUser, claims["sub"])
+    if admin is None or admin.disabled:
+        raise HTTPException(401, "invalid_token")
+    return admin

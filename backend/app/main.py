@@ -10,7 +10,7 @@ from .migrate import require_up_to_date
 from .ratelimit import SlidingWindowLimiter
 from . import companion as companion_mod
 from . import push as push_mod
-from .routers import auth, care, chat, companion, devices, patients
+from .routers import admin, auth, care, chat, companion, devices, patients
 from .sms import SmsProvider, get_provider
 
 log = logging.getLogger("smriti")
@@ -81,4 +81,5 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
     app.include_router(companion.router)
     app.include_router(devices.router)
     app.include_router(chat.router)
+    app.include_router(admin.router)
     return app
