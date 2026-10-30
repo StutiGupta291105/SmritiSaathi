@@ -69,7 +69,11 @@ class _RemindersScreenState extends State<RemindersScreen> {
 
   Future<void> _add() async {
     final result =
-        await showAddReminderDialog(context, language: widget.language);
+        await showAddReminderDialog(context,
+            language: widget.language,
+            defaultBy: ((await widget.db.patientById(widget.patientId))?['display_name']
+                    as String?) ??
+                '');
     if (result == null) return;
     await widget.db.addReminder(
       patientId: widget.patientId,
@@ -333,14 +337,12 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
   TimeOfDay _time = const TimeOfDay(hour: 9, minute: 0);
   DateTime? _date;
   final _label = TextEditingController();
-  late final _by = TextEditingController(text: widget.defaultBy);
 
   String t(String k) => tr(widget.language, k);
 
   @override
   void dispose() {
     _label.dispose();
-    _by.dispose();
     super.dispose();
   }
 
@@ -437,12 +439,6 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                               fontSize: 15, color: Palette.muted))),
                 ]),
               ),
-            field(
-                t('whoIsActing'),
-                TextField(
-                    controller: _by,
-                    textCapitalization: TextCapitalization.words,
-                    onChanged: (_) => setState(() {}))),
           ],
         ),
       ),
@@ -457,12 +453,14 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
           const SizedBox(width: 12),
           Expanded(
             child: FilledButton(
-              onPressed: (_by.text.trim().isEmpty || (dated && _date == null))
+              onPressed: (dated && _date == null)
                   ? null
                   : () => Navigator.pop(
                       context,
                       NewReminder(_kind, _label.text.trim(), _time, _date,
-                          _by.text.trim())),
+                          widget.defaultBy.trim().isEmpty
+                              ? 'self'
+                              : widget.defaultBy.trim())),
               child: Text(t('save')),
             ),
           ),

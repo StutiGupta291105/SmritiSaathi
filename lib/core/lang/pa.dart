@@ -4,6 +4,10 @@ import '../lang_data.dart';
 const LangData kLangPa = LangData(
   strings: {
     "appName": "ਸਮ੍ਰਿਤੀ ਸਾਥੀ",
+    "chatAiNotOn": "ਆਨਲਾਈਨ ਸਹਾਇਕ ਅਜੇ ਚਾਲੂ ਨਹੀਂ ਹੈ। ਸੇਵਾ ਚਲਾਉਣ ਵਾਲੇ ਨੂੰ ਇਸਨੂੰ ਚਾਲੂ ਕਰਨ ਲਈ ਕਹੋ।",
+    "chatDailyLimit": "ਅੱਜ ਲਈ ਇੰਨੇ ਸਵਾਲ ਕਾਫ਼ੀ ਹਨ। ਕੱਲ੍ਹ ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ, ਜਾਂ ਪਰਿਵਾਰ ਤੋਂ ਪੁੱਛੋ।",
+    "chatNeedsLogin": "ਆਨਲਾਈਨ ਸਹਾਇਕ ਵਰਤਣ ਲਈ ਲਾਗ ਆਊਟ ਕਰਕੇ ਦੁਬਾਰਾ ਸਾਈਨ ਇਨ ਕਰੋ, ਤਾਂ ਜੋ ਇਹ ਫ਼ੋਨ ਸੇਵਾ ਨਾਲ ਜੁੜ ਜਾਵੇ।",
+    "addedBy": "{a} ਨੇ ਜੋੜਿਆ",
     "removePerson": "ਹਟਾਓ",
     "removeConfirm": "{a} ਨੂੰ ਹਟਾਉਣਾ ਹੈ? ਉਹ ਹੁਣ ਤੁਹਾਡੀ ਤਰੱਕੀ ਨਹੀਂ ਦੇਖ ਸਕਣਗੇ ਜਾਂ ਤੁਹਾਡੇ ਨਾਲ ਚੈਟ ਨਹੀਂ ਕਰ ਸਕਣਗੇ।",
     "removeNeedsOnline": "ਉਹਨਾਂ ਨੂੰ ਹਟਾਉਣ ਲਈ ਇੰਟਰਨੈੱਟ ਚਾਹੀਦਾ ਹੈ।",
@@ -375,7 +379,7 @@ const LangData kLangPa = LangData(
     "kind_activity": "ਸਰਗਰਮੀ",
     "kind_appointment": "ਮੁਲਾਕਾਤ",
     "addReminder": "ਯਾਦ-ਦਹਾਨੀ ਜੋੜੋ",
-    "reminderLabel": "ਵੇਰਵਾ (ਸਿਰਫ਼ ਇਸ ਐਪ ਦੇ ਅੰਦਰ ਦਿਖੇਗਾ)",
+    "reminderLabel": "ਸਿਰਲੇਖ",
     "pickTime": "ਸਮਾਂ ਚੁਣੋ",
     "pickDate": "ਮਿਤੀ ਚੁਣੋ",
     "everyDay": "ਹਰ ਦਿਨ",

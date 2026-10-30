@@ -202,12 +202,16 @@ void main() {
       expect(calls, isEmpty);
     });
 
-    test('limit, outage or no internet fall back to the helper', () async {
+    test('each failure says what is wrong; no internet falls back to the helper', () async {
       await consent(true);
       failWith = 429;
-      expect((await ask(make(), 'Hello')).offline, isTrue);
+      expect((await ask(make(), 'Hello')).text, contains('enough questions for today'));
       failWith = 503;
-      expect((await ask(make(), 'Hello')).offline, isTrue);
+      final off = await ask(make(), 'Hello');
+      expect(off.text, contains('not switched on'));
+      expect(off.offline, isFalse); // the phone is online; the service has no AI yet
+      failWith = 401;
+      expect((await ask(make(), 'Hello')).text, contains('sign in again'));
       failWith = 0;
       offline = true;
       final r = await ask(make(), 'Hello');

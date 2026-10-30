@@ -68,6 +68,10 @@ class CompanionService {
       return CompanionReply(emergencyTextFor(text, lang), emergency: true);
     }
     if (!await onlineAllowed(patientId)) {
+      // Signed in only on this phone (an account made before the service existed).
+      if (api != null && !await api!.hasSession) {
+        return CompanionReply(tr(lang, 'chatNeedsLogin'));
+      }
       return CompanionReply(tr(lang, 'chatOfflineHelp'));
     }
     final now = _clock();
@@ -98,7 +102,11 @@ class CompanionService {
       );
       return CompanionReply(out['reply'] as String,
           emergency: out['emergency'] == true);
-    } on ApiException {
+    } on ApiException catch (e) {
+      // Say what is actually wrong, so it can be fixed.
+      if (e.status == 503) return CompanionReply(tr(lang, 'chatAiNotOn'));
+      if (e.status == 429) return CompanionReply(tr(lang, 'chatDailyLimit'));
+      if (e.status == 401) return CompanionReply(tr(lang, 'chatNeedsLogin'));
       return CompanionReply(tr(lang, 'chatOfflineHelp'), offline: true);
     }
   }

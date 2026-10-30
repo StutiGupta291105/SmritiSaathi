@@ -4,6 +4,10 @@ import '../lang_data.dart';
 const LangData kLangSa = LangData(
   strings: {
     "appName": "स्मृतिसाथी",
+    "chatAiNotOn": "ऑनलाइन-सहायकः अद्यापि न प्रवर्तितः। सेवासञ्चालकं तं प्रवर्तयितुं वदतु।",
+    "chatDailyLimit": "अद्यतनाय एतावन्तः प्रश्नाः पर्याप्ताः। श्वः पुनः यतताम्, कुटुम्बं वा पृच्छतु।",
+    "chatNeedsLogin": "ऑनलाइन-सहायकस्य उपयोगाय निर्गत्य पुनः प्रविशतु, येन एषः दूरभाषः सेवया संयुज्येत।",
+    "addedBy": "{a} द्वारा योजितम्",
     "removePerson": "अपनयतु",
     "removeConfirm": "{a} अपनेतव्यः वा? सः इतः परं भवतः प्रगतिं द्रष्टुं भवता सह संवदितुं वा न शक्नोति।",
     "removeNeedsOnline": "तम् अपनेतुम् अन्तर्जालम् अपेक्षते।",
@@ -375,7 +379,7 @@ const LangData kLangSa = LangData(
     "kind_activity": "गतिविधिः",
     "kind_appointment": "मेलनम्",
     "addReminder": "स्मारकं योजयत",
-    "reminderLabel": "विवरणम् (केवलम् अस्मिन् एपे दृश्यते)",
+    "reminderLabel": "शीर्षकम्",
     "pickTime": "समयं चिनुत",
     "pickDate": "तिथिं चिनुत",
     "everyDay": "प्रतिदिनम्",

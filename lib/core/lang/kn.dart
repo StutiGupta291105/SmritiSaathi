@@ -4,6 +4,10 @@ import '../lang_data.dart';
 const LangData kLangKn = LangData(
   strings: {
     "appName": "ಸ್ಮೃತಿ ಸಾಥಿ",
+    "chatAiNotOn": "ಆನ್‌ಲೈನ್ ಸಹಾಯಕ ಇನ್ನೂ ಆನ್ ಆಗಿಲ್ಲ. ಸೇವೆ ನಡೆಸುವವರಿಗೆ ಅದನ್ನು ಆನ್ ಮಾಡಲು ಹೇಳಿ.",
+    "chatDailyLimit": "ಇಂದಿಗೆ ಇಷ್ಟು ಪ್ರಶ್ನೆಗಳು ಸಾಕು. ನಾಳೆ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ, ಅಥವಾ ಕುಟುಂಬವನ್ನು ಕೇಳಿ.",
+    "chatNeedsLogin": "ಆನ್‌ಲೈನ್ ಸಹಾಯಕ ಬಳಸಲು ಲಾಗ್ ಔಟ್ ಮಾಡಿ ಮತ್ತೆ ಸೈನ್ ಇನ್ ಮಾಡಿ, ಆಗ ಈ ಫೋನ್ ಸೇವೆಗೆ ಸಂಪರ್ಕವಾಗುತ್ತದೆ.",
+    "addedBy": "{a} ಸೇರಿಸಿದ್ದಾರೆ",
     "removePerson": "ತೆಗೆದುಹಾಕಿ",
     "removeConfirm": "{a} ಅವರನ್ನು ತೆಗೆಯಬೇಕೇ? ಅವರು ಇನ್ನು ನಿಮ್ಮ ಪ್ರಗತಿ ನೋಡಲಾರರು ಅಥವಾ ನಿಮ್ಮೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಲಾರರು.",
     "removeNeedsOnline": "ಅವರನ್ನು ತೆಗೆಯಲು ಇಂಟರ್ನೆಟ್ ಬೇಕು.",
@@ -375,7 +379,7 @@ const LangData kLangKn = LangData(
     "kind_activity": "ಚಟುವಟಿಕೆ",
     "kind_appointment": "ಭೇಟಿ",
     "addReminder": "ನೆನಪೋಲೆ ಸೇರಿಸಿ",
-    "reminderLabel": "ವಿವರಗಳು (ಈ ಆ್ಯಪ್‌ನ ಒಳಗೆ ಮಾತ್ರ ಕಾಣಿಸುತ್ತದೆ)",
+    "reminderLabel": "ಶೀರ್ಷಿಕೆ",
     "pickTime": "ಸಮಯ ಆರಿಸಿ",
     "pickDate": "ದಿನಾಂಕ ಆರಿಸಿ",
     "everyDay": "ಪ್ರತಿ ದಿನ",

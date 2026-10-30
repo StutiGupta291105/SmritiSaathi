@@ -78,7 +78,8 @@ class ApiClient {
     required String baseUrl,
     http.Client? client,
     TokenStore? tokens,
-    this.timeout = const Duration(seconds: 15),
+    // A free test server sleeps when idle and takes up to a minute to wake.
+    this.timeout = const Duration(seconds: 45),
   })  : baseUri = _validated(baseUrl),
         _http = client ?? http.Client(),
         _tokens = tokens ?? const SecureTokenStore();
@@ -135,6 +136,7 @@ class ApiClient {
     Object? body,
     bool auth = true,
     bool retried = false,
+    Duration? wait,
   }) async {
     final target = Uri.parse(path); // may carry a query string
     final uri = baseUri.replace(
@@ -152,7 +154,8 @@ class ApiClient {
     try {
       final req = http.Request(method, uri)..headers.addAll(headers);
       if (body != null) req.body = jsonEncode(body);
-      res = await http.Response.fromStream(await _http.send(req).timeout(timeout));
+      res = await http.Response.fromStream(
+          await _http.send(req).timeout(wait ?? timeout));
     } on TimeoutException {
       throw ApiException(0, 'timeout');
     } on http.ClientException {
@@ -163,7 +166,7 @@ class ApiClient {
 
     if (res.statusCode == 401 && auth && !retried && path != '/v1/auth/refresh') {
       if (await _refresh()) {
-        return _raw(method, path, body: body, auth: auth, retried: true);
+        return _raw(method, path, body: body, auth: auth, retried: true, wait: wait);
       }
     }
     if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -325,7 +328,17 @@ class ApiClient {
         'first_name': firstName,
         'now_text': nowText,
         'today': today,
-      });
+      }, wait: const Duration(seconds: 70));
+
+  /// Wakes a sleeping test server in the background so the first real request
+  /// does not wait for it. Never throws.
+  Future<void> wake() async {
+    try {
+      await _http
+          .get(baseUri.replace(path: '${baseUri.path}/healthz'))
+          .timeout(const Duration(seconds: 70));
+    } catch (_) {}
+  }
 
   Future<void> registerDevice(String token, String platform) =>
       _raw('POST', '/v1/devices', body: {'token': token, 'platform': platform});

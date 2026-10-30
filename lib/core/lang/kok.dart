@@ -4,6 +4,10 @@ import '../lang_data.dart';
 const LangData kLangKok = LangData(
   strings: {
     "appName": "स्मृती साथी",
+    "chatAiNotOn": "ऑनलायन सहाय्यक अजून चालू जावंक ना. सेवा चलोवपी मनशाक तो चालू करपाक सांगात.",
+    "chatDailyLimit": "आजच्या खातीर इतले प्रस्न पुरो. फाल्यां परतून यत्न करात, वा कुटुंबाक विचारात.",
+    "chatNeedsLogin": "ऑनलायन सहाय्यक वापरपाक लॉग आउट करून परतून साइन इन करात, म्हणजे हो फोन सेवेकडेन जुडतलो.",
+    "addedBy": "{a} न जोडलें",
     "removePerson": "काडून उडय",
     "removeConfirm": "{a} क काडून उडोवंक? ते आतां तुमची प्रगती पळोवंक वा तुमचे कडेन चॅट करूंक शकचे ना.",
     "removeNeedsOnline": "तांकां काडून उडोवपाक इंटरनेट जाय.",
@@ -375,7 +379,7 @@ const LangData kLangKok = LangData(
     "kind_activity": "हालचाल",
     "kind_appointment": "भेट",
     "addReminder": "याद दिवपी जोडात",
-    "reminderLabel": "तपशील (फकत ह्या अॅपांत दिसतलो)",
+    "reminderLabel": "मथळो",
     "pickTime": "वेळ वेंचात",
     "pickDate": "तारीख वेंचात",
     "everyDay": "दर दिसा",

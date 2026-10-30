@@ -176,6 +176,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.api?.wake(); // a sleeping test server needs a head start
     _load();
   }
 

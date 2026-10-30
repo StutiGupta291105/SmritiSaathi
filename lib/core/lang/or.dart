@@ -4,6 +4,10 @@ import '../lang_data.dart';
 const LangData kLangOr = LangData(
   strings: {
     "appName": "ସ୍ମୃତି ସାଥୀ",
+    "chatAiNotOn": "ଅନଲାଇନ୍ ସହାୟକ ଏପର୍ଯ୍ୟନ୍ତ ଚାଲୁ ହୋଇନାହିଁ। ସେବା ଚଳାଉଥିବା ବ୍ୟକ୍ତିଙ୍କୁ ଏହାକୁ ଚାଲୁ କରିବାକୁ କୁହନ୍ତୁ।",
+    "chatDailyLimit": "ଆଜି ପାଇଁ ଏତିକି ପ୍ରଶ୍ନ ଯଥେଷ୍ଟ। କାଲି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ, କିମ୍ବା ପରିବାରକୁ ପଚାରନ୍ତୁ।",
+    "chatNeedsLogin": "ଅନଲାଇନ୍ ସହାୟକ ବ୍ୟବହାର ପାଇଁ ଲଗ୍ ଆଉଟ୍ କରି ପୁଣି ସାଇନ୍ ଇନ୍ କରନ୍ତୁ, ଯେପରି ଏହି ଫୋନ୍ ସେବା ସହ ଯୋଡ଼ି ହେବ।",
+    "addedBy": "{a} ଯୋଡ଼ିଛନ୍ତି",
     "removePerson": "ହଟାନ୍ତୁ",
     "removeConfirm": "{a} ଙ୍କୁ ହଟାଇବେ? ସେ ଆଉ ଆପଣଙ୍କ ପ୍ରଗତି ଦେଖିପାରିବେ ନାହିଁ କିମ୍ବା ଆପଣଙ୍କ ସହ ଚାଟ୍ କରିପାରିବେ ନାହିଁ।",
     "removeNeedsOnline": "ତାଙ୍କୁ ହଟାଇବାକୁ ଇଣ୍ଟରନେଟ୍ ଦରକାର।",
@@ -375,7 +379,7 @@ const LangData kLangOr = LangData(
     "kind_activity": "କାର୍ଯ୍ୟକଳାପ",
     "kind_appointment": "ସାକ୍ଷାତ",
     "addReminder": "ସ୍ମାରକ ଯୋଡ଼ନ୍ତୁ",
-    "reminderLabel": "ବିବରଣୀ (କେବଳ ଏହି ଆପ୍ ଭିତରେ ଦେଖାଯିବ)",
+    "reminderLabel": "ଶୀର୍ଷକ",
     "pickTime": "ସମୟ ବାଛନ୍ତୁ",
     "pickDate": "ତାରିଖ ବାଛନ୍ତୁ",
     "everyDay": "ପ୍ରତିଦିନ",

@@ -4,6 +4,10 @@ import '../lang_data.dart';
 const LangData kLangUr = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "chatAiNotOn": "آن لائن مددگار ابھی چالو نہیں ہے۔ سروس چلانے والے سے اسے چالو کرنے کو کہیں۔",
+    "chatDailyLimit": "آج کے لیے اتنے سوال کافی ہیں۔ کل دوبارہ کوشش کریں، یا گھر والوں سے پوچھیں۔",
+    "chatNeedsLogin": "آن لائن مددگار استعمال کرنے کے لیے لاگ آؤٹ کر کے دوبارہ سائن ان کریں تاکہ یہ فون سروس سے جڑ جائے۔",
+    "addedBy": "{a} نے شامل کیا",
     "removePerson": "ہٹائیں",
     "removeConfirm": "{a} کو ہٹائیں؟ وہ اب آپ کی پیش رفت نہیں دیکھ سکیں گے اور نہ آپ سے چیٹ کر سکیں گے۔",
     "removeNeedsOnline": "انہیں ہٹانے کے لیے انٹرنیٹ درکار ہے۔",
@@ -375,7 +379,7 @@ const LangData kLangUr = LangData(
     "kind_activity": "سرگرمی",
     "kind_appointment": "ملاقات",
     "addReminder": "یاددہانی شامل کریں",
-    "reminderLabel": "تفصیل (صرف اس ایپ کے اندر نظر آئے گی)",
+    "reminderLabel": "عنوان",
     "pickTime": "وقت چنیں",
     "pickDate": "تاریخ چنیں",
     "everyDay": "ہر دن",

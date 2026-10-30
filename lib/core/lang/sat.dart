@@ -4,6 +4,10 @@ import '../lang_data.dart';
 const LangData kLangSat = LangData(
   strings: {
     "appName": "ᱥᱚᱢᱨᱤᱛᱤ ᱥᱟᱛᱷᱤ",
+    "chatAiNotOn": "ᱚᱱᱞᱟᱭᱤᱱ ᱜᱚᱲᱚ ᱫᱚ ᱱᱤᱛᱚᱜ ᱪᱟᱞᱩ ᱵᱟᱝ ᱦᱩᱭ ᱞᱮᱱᱟ᱾ ᱥᱮᱣᱟ ᱪᱟᱞᱟᱣ ᱦᱚᱲ ᱥᱟᱶᱛᱮ ᱪᱟᱞᱩ ᱠᱟᱛᱮ ᱢᱮ᱾",
+    "chatDailyLimit": "ᱛᱮᱱᱮ ᱞᱟᱹᱜᱤᱫ ᱟᱹᱰᱤ ᱞᱟᱹᱠᱛᱤ ᱥᱟᱹᱠᱛᱤ ᱠᱷᱟᱱ ᱥᱟᱹᱠᱛᱤ᱾ ᱛᱟᱜᱟᱨ ᱫᱩᱦᱲᱟᱹ ᱠᱩᱨᱩᱢᱩᱴᱩ ᱢᱮ ᱵᱟᱝᱠᱷᱟᱱ ᱯᱚᱨᱤᱣᱟᱨ ᱥᱮᱸᱫᱽᱨᱟ ᱢᱮ᱾",
+    "chatNeedsLogin": "ᱚᱱᱞᱟᱭᱤᱱ ᱜᱚᱲᱚ ᱵᱮᱵᱷᱟᱨ ᱞᱟᱹᱜᱤᱫ ᱞᱚᱜ ᱟᱣᱴ ᱠᱟᱛᱮ ᱫᱩᱦᱲᱟᱹ ᱥᱟᱭᱤᱱ ᱤᱱ ᱢᱮ᱾",
+    "addedBy": "{a} ᱦᱚᱛᱮᱛ ᱥᱮᱞᱮᱫ",
     "removePerson": "ᱚᱪᱚᱜᱽ ᱢᱮ",
     "removeConfirm": "{a} ᱫᱚ ᱚᱪᱚᱜᱽ ᱟᱢ? ᱩᱱᱤ ᱫᱚ ᱟᱢᱟᱜ ᱞᱟᱦᱟᱱᱛᱤ ᱧᱮᱞ ᱵᱟᱝ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱟᱨ ᱟᱢ ᱥᱟᱶᱛᱮ ᱪᱮᱴ ᱵᱟᱝ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ᱾",
     "removeNeedsOnline": "ᱩᱱᱤᱭᱟᱹ ᱚᱪᱚᱜᱽ ᱞᱟᱹᱜᱤᱫ ᱤᱱᱴᱟᱨᱱᱮᱴ ᱞᱟᱹᱠᱛᱤ ᱛᱟᱦᱮᱱᱟ᱾",
@@ -375,7 +379,7 @@ const LangData kLangSat = LangData(
     "kind_activity": "ᱠᱟᱹᱢᱤ",
     "kind_appointment": "ᱧᱟᱢ ᱡᱚᱲᱟᱣ",
     "addReminder": "ᱦᱚᱨ ᱨᱟᱠᱟᱣ ᱥᱮᱞᱮᱫ ᱢᱮ",
-    "reminderLabel": "ᱵᱷᱟᱹᱜᱤᱛ (ᱱᱚᱶᱟ ᱮᱯ ᱵᱷᱤᱛᱨᱤ ᱨᱮᱜᱮ ᱩᱫᱩᱜ ᱟ)",
+    "reminderLabel": "ᱴᱟᱭᱴᱮᱞ",
     "pickTime": "ᱚᱠᱛᱚ ᱪᱚᱠᱚᱭ ᱢᱮ",
     "pickDate": "ᱢᱟᱦᱟ ᱪᱚᱠᱚᱭ ᱢᱮ",
     "everyDay": "ᱡᱚᱛᱚ ᱢᱟᱦᱟ",

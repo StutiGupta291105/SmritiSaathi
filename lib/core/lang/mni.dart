@@ -4,6 +4,10 @@ import '../lang_data.dart';
 const LangData kLangMni = LangData(
   strings: {
     "appName": "ꯁ꯭ꯃꯔꯤꯇꯤ ꯁꯥꯊꯤ",
+    "chatAiNotOn": "ꯑꯣꯟꯂꯥꯏꯟ ꯃꯇꯦꯡ ꯄꯤꯕꯥ ꯍꯧꯖꯤꯛ ꯍꯥꯟꯅꯗ꯭ꯔꯦ꯫ ꯁꯦꯕꯥ ꯊꯧꯒꯠꯂꯤꯕꯥ ꯃꯤꯗꯥ ꯍꯥꯡꯗꯣꯛꯅꯕꯥ ꯍꯥꯌꯌꯨ꯫",
+    "chatDailyLimit": "ꯉꯁꯤꯒꯤꯗꯃꯛ ꯄꯥꯎꯈꯨꯝ ꯃꯁꯤ ꯃꯇꯧ ꯐꯪꯕꯅꯤ꯫ ꯍꯌꯦꯡ ꯑꯃꯨꯛ ꯍꯟꯅꯥ ꯍꯣꯠꯅꯧ, ꯅꯠꯇ꯭ꯔꯒꯥ ꯏꯃꯨꯡꯗꯥ ꯍꯥꯌꯖꯧ꯫",
+    "chatNeedsLogin": "ꯑꯣꯟꯂꯥꯏꯟ ꯃꯇꯦꯡ ꯁꯤꯖꯤꯟꯅꯅꯕꯥ ꯂꯣꯒꯥꯎꯠ ꯇꯧꯗꯨꯅꯥ ꯑꯃꯨꯛ ꯁꯥꯏꯟ ꯏꯟ ꯇꯧꯕꯤꯌꯨ꯫",
+    "addedBy": "{a} ꯅꯥ ꯍꯥꯄꯈꯤꯕꯥ",
     "removePerson": "ꯂꯧꯊꯣꯛ",
     "removeConfirm": "{a} ꯕꯨ ꯂꯧꯊꯣꯛꯀꯒꯦ? ꯃꯍꯥꯛꯅꯥ ꯍꯧꯖꯤꯛꯇꯒꯤ ꯅꯍꯥꯛꯀꯤ ꯍꯦꯟꯅꯥ ꯌꯥꯎꯕꯥ ꯅꯠꯇꯒꯥ ꯅꯍꯥꯛꯀꯥ ꯆꯦꯠ ꯇꯧꯕꯥ ꯉꯃꯂꯣꯏ꯫",
     "removeNeedsOnline": "ꯃꯍꯥꯀꯄꯨ ꯂꯧꯊꯣꯛꯅꯕꯥ ꯏꯟꯇꯔꯅꯦꯠ ꯃꯊꯧ ꯇꯥꯏ꯫",
@@ -375,7 +379,7 @@ const LangData kLangMni = LangData(
     "kind_activity": "ꯊꯕꯛ",
     "kind_appointment": "ꯎꯅꯕ",
     "addReminder": "ꯅꯤꯡꯁꯤꯡꯍꯅꯕ ꯍꯥꯄꯆꯤꯟꯕꯤꯌꯨ",
-    "reminderLabel": "ꯃꯇꯥꯡ (ꯑꯦꯞ ꯑꯁꯤꯒꯤ ꯃꯅꯨꯡꯗꯥ ꯈꯛꯇꯥ ꯎꯕꯥ ꯐꯪꯒꯅꯤ)",
+    "reminderLabel": "ꯇꯥꯏꯇꯦꯜ",
     "pickTime": "ꯃꯇꯝ ꯈꯅꯕꯤꯌꯨ",
     "pickDate": "ꯅꯨꯃꯤꯠ ꯈꯅꯕꯤꯌꯨ",
     "everyDay": "ꯅꯨꯃꯤꯠ ꯈꯨꯗꯤꯡꯃꯛ",
