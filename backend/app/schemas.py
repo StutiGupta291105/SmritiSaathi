@@ -154,6 +154,17 @@ class SyncOut(BaseModel):
     marks: int
 
 
+class CareReminderPatch(BaseModel):
+    """Every field optional: only what is sent changes."""
+    kind: Literal["medicine", "hydration", "activity", "appointment", "birthday", "event"] | None = None
+    label: str | None = Field(default=None, max_length=120)
+    hour: int | None = Field(default=None, ge=0, le=23)
+    minute: int | None = Field(default=None, ge=0, le=59)
+    days_mask: int | None = Field(default=None, ge=1, le=127)
+    on_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    clear_date: bool = False
+
+
 class CareReminderIn(BaseModel):
     kind: Literal["medicine", "hydration", "activity", "appointment", "birthday", "event"]
     label: str = Field(default="", max_length=120)

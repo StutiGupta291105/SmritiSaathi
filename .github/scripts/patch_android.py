@@ -53,4 +53,13 @@ patch(
         </receiver>
     </application>""",
 )
+# Firebase push: only when the build has a google-services.json (repository secret
+# GOOGLE_SERVICES_JSON). Without it the app builds exactly as before.
+if (root / "google-services.json").exists():
+    settings = root.parent / "settings.gradle.kts"
+    patch(settings, 'id("org.jetbrains.kotlin.android")',
+          'id("com.google.gms.google-services") version "4.4.2" apply false\n    id("org.jetbrains.kotlin.android")')
+    patch(gradle, 'id("dev.flutter.flutter-gradle-plugin")',
+          'id("dev.flutter.flutter-gradle-plugin")\n    id("com.google.gms.google-services")')
+    print("Firebase configured")
 print("Android patches applied")

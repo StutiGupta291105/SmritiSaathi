@@ -11,7 +11,7 @@ import '../../core/ui.dart';
 import '../../services/api_client.dart';
 import '../chat/messages_screen.dart';
 import '../reminders/reminder_style.dart';
-import '../reminders/reminders_screen.dart' show showAddReminderDialog;
+import '../reminders/reminders_screen.dart' show showAddReminderDialog, NewReminder;
 import '../shell/settings_pages.dart';
 
 /// Blue for doctors, green for caretakers, as on the design sheet.
@@ -916,6 +916,37 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
     await _reloadCare();
   }
 
+  Future<void> _editCare(Map<String, dynamic> x) async {
+    final kind = ReminderKind.values.firstWhere((k) => k.name == x['kind'],
+        orElse: () => ReminderKind.activity);
+    final d = x['on_date'] == null ? null : DateTime.tryParse('${x['on_date']}');
+    final r = await showAddReminderDialog(context,
+        language: widget.lang,
+        title: t('editDetails'),
+        kinds: [
+          for (final k in ReminderKind.values)
+            if (widget.canPrescribe || k != ReminderKind.medicine) k
+        ],
+        initial: NewReminder(kind, '${x['label']}',
+            TimeOfDay(hour: x['hour'] as int, minute: x['minute'] as int), d, ''));
+    if (r == null) return;
+    final nd = r.date;
+    try {
+      await widget.api.editCareReminder(widget.patientId, '${x['id']}',
+          kind: r.kind.name,
+          label: r.label,
+          hour: r.time.hour,
+          minute: r.time.minute,
+          onDate: nd == null
+              ? null
+              : '${nd.year.toString().padLeft(4, '0')}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}');
+    } on ApiException catch (e) {
+      if (mounted) _fail(e);
+      return;
+    }
+    await _reloadCare();
+  }
+
   Future<void> _deleteCare(String id) async {
     try {
       await widget.api.deleteCareReminder(widget.patientId, id);
@@ -1297,6 +1328,13 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
                                 color: widget.accent)),
                       ]),
                 ),
+                if (x['mine'] == true)
+                  IconButton(
+                    key: ValueKey('editCare_${x['id']}'),
+                    tooltip: t('editDetails'),
+                    icon: Icon(Icons.edit_outlined, color: widget.accent),
+                    onPressed: () => _editCare(x),
+                  ),
                 if (x['mine'] == true)
                   IconButton(
                     key: ValueKey('deleteCare_${x['id']}'),

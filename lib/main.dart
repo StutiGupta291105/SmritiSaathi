@@ -18,6 +18,7 @@ import 'features/splash/splash_screen.dart';
 import 'core/config.dart';
 import 'services/api_client.dart';
 import 'services/otp_service.dart';
+import 'services/firebase_push.dart';
 import 'services/push_service.dart';
 import 'services/reminder_notifier.dart';
 import 'services/sync_service.dart';
@@ -161,7 +162,7 @@ class Root extends StatefulWidget {
 class _RootState extends State<Root> with WidgetsBindingObserver {
   ServerUser? _serverUser;
   late final PushRegistrar? _push =
-      widget.api == null ? null : PushRegistrar(widget.api!, const NoPush());
+      widget.api == null ? null : PushRegistrar(widget.api!, const FirebasePushSource());
   Map<String, dynamic>? _restoreOffer; // server already has this person's data
   bool _skipRestore = false;
   bool _syncing = false;

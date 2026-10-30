@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   sqflite_sqlcipher: ^3.1.0   # AES-encrypted local DB (CERT-In: encryption at rest, offline too)
   path: ^1.9.0
+  firebase_core: ^3.15.2       # push: only starts when a Firebase project's file is in the build
+  firebase_messaging: ^15.2.10
   flutter_secure_storage: ^9.2.2  # DB key lives in Android Keystore / iOS Keychain
   uuid: ^4.4.0
   crypto: ^3.0.3                 # SHA-256 hash chain for tamper-evident audit log

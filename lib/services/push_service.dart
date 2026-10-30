@@ -2,11 +2,9 @@ import 'dart:io' show Platform;
 
 import 'api_client.dart';
 
-/// Where a phone's push token comes from. The Firebase plugin is not part of
-/// the build yet (it needs your Firebase project's `google-services.json`), so
-/// the app ships [NoPush]. To turn push on: add `firebase_messaging`, write a
-/// `PushTokenSource` that returns `FirebaseMessaging.instance.getToken()`, and
-/// pass it to [PushRegistrar] in `main.dart`.
+/// Where a phone's push token comes from. The app uses `FirebasePushSource`
+/// (see `firebase_push.dart`), which returns null when the build has no Firebase
+/// project; [NoPush] is the same thing for tests.
 abstract class PushTokenSource {
   Future<String?> token();
 }

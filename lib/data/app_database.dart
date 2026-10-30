@@ -728,7 +728,36 @@ class AppDatabase {
     final remoteIds = {for (final r in remote) r['id'] as String};
     for (final r in remote) {
       final id = r['id'] as String;
-      if (seen.contains(id)) continue;
+      if (seen.contains(id)) {
+        // An edit on the server: bring the phone's copy up to date.
+        final onDate = r['on_date'] == null
+            ? null
+            : DateTime.parse(r['on_date'] as String).toIso8601String();
+        final n = await _db.update(
+            'reminders',
+            {
+              'kind': r['kind'],
+              'label': r['label'] ?? '',
+              'hour': r['hour'],
+              'minute': r['minute'],
+              'days_mask': r['days_mask'] ?? 127,
+              'on_date': onDate,
+            },
+            where:
+                'patient_id = ? AND remote_id = ? AND (kind != ? OR label != ? OR hour != ? OR minute != ? OR days_mask != ? OR IFNULL(on_date, \'\') != ?)',
+            whereArgs: [
+              patientId,
+              id,
+              r['kind'],
+              r['label'] ?? '',
+              r['hour'],
+              r['minute'],
+              r['days_mask'] ?? 127,
+              onDate ?? '',
+            ]);
+        if (n > 0) changed = true;
+        continue;
+      }
       await _db.insert('reminders', {
         'id': _uuid.v4(),
         'patient_id': patientId,

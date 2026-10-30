@@ -122,3 +122,52 @@ def test_doctor_gets_it_too_and_a_calm_patient_triggers_nothing():
     m2 = env2.link_member(a2, pid2, "caretaker")
     register(env2, m2)
     assert run(env2, DevPush()) == 0
+
+
+def test_fcm_sender_maps_google_answers(monkeypatch):
+    """Against a stub of Google's endpoint (no live Firebase project here)."""
+    import requests
+    from app.push import FAILED, INVALID, OK, FcmPush
+
+    class Creds:
+        valid, token = True, "tok"
+
+    sent = {}
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        sent["url"], sent["auth"], sent["msg"] = url, headers["Authorization"], json
+        return type("R", (), {"status_code": fake_post.code})()
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    p = FcmPush("proj-1", creds=Creds())
+    fake_post.code = 200
+    assert p.send("device-token", "Smriti Sathi", "You have a new message.") == OK
+    assert sent["url"].endswith("/projects/proj-1/messages:send") and sent["auth"] == "Bearer tok"
+    assert sent["msg"]["message"]["token"] == "device-token"
+    assert "data" not in sent["msg"]["message"]  # nothing but the generic text
+    fake_post.code = 404
+    assert p.send("t", "a", "b") == INVALID
+    fake_post.code = 500
+    assert p.send("t", "a", "b") == FAILED
+
+    def boom(*a, **k):
+        raise requests.ConnectionError()
+
+    monkeypatch.setattr(requests, "post", boom)
+    assert p.send("t", "a", "b") == FAILED
+
+
+def test_the_patient_gets_a_generic_push_when_the_care_team_changes_a_routine(env):
+    from tests.test_chat import _setup
+    a, pid, m, link = _setup(env)
+    prov = env.client.app.state.push
+    from app.models import DeviceToken
+    with env.client.app.state.sessionmaker() as s:
+        uid = a.user["id"]
+        s.add(DeviceToken(user_id=uid, token="t" * 30, platform="android"))
+        s.commit()
+    r = env.client.post(f"/v1/patients/{pid}/care-reminders", headers=m.headers,
+                        json={"kind": "hydration", "label": "Secret title", "hour": 9, "minute": 0})
+    assert r.status_code == 201
+    assert prov.outbox and prov.outbox[-1][2] == "Your daily routine was updated."
+    assert "Secret" not in str(prov.outbox)

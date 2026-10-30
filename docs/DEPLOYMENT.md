@@ -39,21 +39,27 @@ Then open `https://<your-service>.onrender.com/healthz`: `"ai":true` means a rea
 connected, `"ai":false` means no key (the app uses its on-device helper). On the patient's
 phone: Talk to Smriti > allow the online helper once, then ask away.
 
-# Turning on push notifications for new chat messages
+# Turning on push notifications (new chat messages, routine changes)
 
-The server already sends a push on every new message (`SMRITI_PUSH_PROVIDER=fcm`), and
-the app already registers a token when one is available. Two things are yours to do,
-because they need your Firebase project:
+Everything in the code is done: the server sends a generic push ("You have a new
+message." / "Your daily routine was updated.") and the app registers its token. What is
+left needs *your* Firebase project, so these are yours to do once:
 
-1. Create a Firebase project, add an Android app with package `in.smritisathi.app`, and
-   download `google-services.json`.
-2. Create a service-account key (Project settings > Service accounts) and set on the
-   server: `SMRITI_PUSH_PROVIDER=fcm`, `SMRITI_FCM_PROJECT_ID`, and
-   `SMRITI_FCM_CREDENTIALS_FILE` (plus `pip install google-auth requests`).
-3. In the app: add `firebase_core` and `firebase_messaging`, put `google-services.json` in
-   `android/app/` (the APK workflow must copy it in), and implement `PushTokenSource`
-   with `FirebaseMessaging.instance.getToken()` as described in
-   `lib/services/push_service.dart`.
+1. Create a Firebase project (console.firebase.google.com), add an **Android app** with
+   package name `in.smritisathi.app`, and download `google-services.json`.
+2. In GitHub: Settings > Secrets and variables > Actions > New repository secret, name
+   `GOOGLE_SERVICES_JSON`, value = the whole contents of that file. The next APK build
+   adds Firebase automatically (the build log says "Firebase configured"). Without the
+   secret the app builds exactly as before, with no background push.
+3. In Firebase: Project settings > Service accounts > Generate new private key. In the
+   Render dashboard (Environment) set `SMRITI_PUSH_PROVIDER` = `fcm`,
+   `SMRITI_FCM_PROJECT_ID` = your project id, and `SMRITI_FCM_CREDENTIALS_JSON` = the whole
+   contents of the key file.
+4. Install the new APK, sign in, close the app, and have someone send a message. The
+   first push after the server wakes can be slow on Render's free tier.
+
+This has been tested only against a stub of Google's endpoint, not a live project, and
+iOS push (needs an Apple APNs key) is not set up.
 
 Until then messages still arrive: open chats refresh every few seconds, dashboards and the
 patient's home refresh every 20 seconds and show a banner, and unread counts are always
@@ -114,7 +120,7 @@ Phone app --HTTPS--> Load balancer (TLS, WAF) --> container(s) --> PostgreSQL
 | `SMRITI_SMS_PROVIDER` | name of the real provider |
 | `SMRITI_TRUST_PROXY` | `true` only behind your own proxy |
 | `SMRITI_COMPANION_PROVIDER`, `SMRITI_COMPANION_MODEL`, `SMRITI_COMPANION_DAILY_LIMIT`, `ANTHROPIC_API_KEY` | "Talk to Smriti": `dev` (default, fixed reply) or `anthropic`. Read the companion section of `SECURITY.md` first |
-| `SMRITI_PUSH_PROVIDER`, `SMRITI_FCM_PROJECT_ID`, `SMRITI_FCM_CREDENTIALS_FILE` | push: `dev` (default) or `fcm`. Needs `pip install google-auth requests` too |
+| `SMRITI_PUSH_PROVIDER`, `SMRITI_FCM_PROJECT_ID`, `SMRITI_FCM_CREDENTIALS_JSON` (or `_FILE`) | push: `dev` (default) or `fcm` |
 | `SMRITI_OTP_TTL_SECONDS`, `SMRITI_OTP_MAX_ATTEMPTS`, `SMRITI_OTP_PER_HOUR_PHONE`, `SMRITI_OTP_PER_HOUR_IP`, `SMRITI_ACCESS_TTL_MINUTES`, `SMRITI_REFRESH_TTL_DAYS`, `SMRITI_REQUESTS_PER_MINUTE_IP`, `SMRITI_MAX_BODY_BYTES` | tuning, defaults in `backend/app/config.py` |
 
 ## Database changes (migrations)

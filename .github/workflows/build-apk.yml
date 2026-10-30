@@ -34,6 +34,17 @@ jobs:
         run: flutter create . --project-name smriti_assist --platforms android
       - name: Remove the generated sample test (it targets a class we do not have)
         run: rm -f test/widget_test.dart
+      # Optional: background push. Add the repository secret GOOGLE_SERVICES_JSON
+      # (the google-services.json from your Firebase project) to turn it on.
+      - name: Firebase config (if provided)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          else
+            echo "No Firebase config; building without background push."
+          fi
       - name: Apply Android settings
         run: python3 .github/scripts/patch_android.py
       - run: flutter pub get

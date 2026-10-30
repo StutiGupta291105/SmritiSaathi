@@ -319,6 +319,7 @@ Future<NewReminder?> showAddReminderDialog(
   List<ReminderKind>? kinds,
   String? title,
   String defaultBy = '',
+  NewReminder? initial,
 }) =>
     showDialog<NewReminder>(
       context: context,
@@ -326,7 +327,8 @@ Future<NewReminder?> showAddReminderDialog(
           language: language,
           kinds: kinds ?? ReminderKind.values,
           title: title,
-          defaultBy: defaultBy),
+          defaultBy: defaultBy,
+          initial: initial),
     );
 
 class _AddReminderDialog extends StatefulWidget {
@@ -335,7 +337,9 @@ class _AddReminderDialog extends StatefulWidget {
     required this.kinds,
     this.title,
     this.defaultBy = '',
+    this.initial,
   });
+  final NewReminder? initial;
   final String language;
   final List<ReminderKind> kinds;
   final String? title;
@@ -346,10 +350,11 @@ class _AddReminderDialog extends StatefulWidget {
 }
 
 class _AddReminderDialogState extends State<_AddReminderDialog> {
-  late ReminderKind _kind = widget.kinds.first;
-  TimeOfDay _time = const TimeOfDay(hour: 9, minute: 0);
-  DateTime? _date;
-  final _label = TextEditingController();
+  late ReminderKind _kind = widget.initial?.kind ?? widget.kinds.first;
+  late TimeOfDay _time =
+      widget.initial?.time ?? const TimeOfDay(hour: 9, minute: 0);
+  late DateTime? _date = widget.initial?.date;
+  late final _label = TextEditingController(text: widget.initial?.label ?? '');
 
   String t(String k) => tr(widget.language, k);
 

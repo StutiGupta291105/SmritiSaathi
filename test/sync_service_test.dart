@@ -210,6 +210,29 @@ void main() {
     expect(await db.listReminders(pid), isEmpty);
   });
 
+  test('an edit made by the caregiver or doctor reaches the phone', () async {
+    careList = [
+      {'id': 'c1', 'kind': 'medicine', 'label': 'Metformin 500 mg', 'hour': 9, 'minute': 0,
+       'days_mask': 127, 'on_date': null, 'created_by_name': 'Dr Rao', 'created_by_role': 'doctor', 'mine': false},
+    ];
+    await db.recordConsent(patientId: pid, purposes: {'reminders': true},
+        givenByName: 'Asha', givenByRelation: 'self', noticeVersion: 'v2');
+    await make().run(pid);
+    final id = (await db.listReminders(pid)).single.id;
+    careList = [
+      {'id': 'c1', 'kind': 'medicine', 'label': 'Metformin 1000 mg', 'hour': 20, 'minute': 15,
+       'days_mask': 127, 'on_date': null, 'created_by_name': 'Dr Rao', 'created_by_role': 'doctor', 'mine': false},
+    ];
+    final s2 = make();
+    await s2.run(pid);
+    expect(s2.remindersChanged, isTrue);
+    final r = (await db.listReminders(pid)).single;
+    expect([r.id == id, r.label, r.hour, r.minute], [true, 'Metformin 1000 mg', 20, 15]);
+    final s3 = make();
+    await s3.run(pid); // nothing changed: nothing to reschedule
+    expect(s3.remindersChanged, isFalse);
+  });
+
   test('deleting one here tells the server, and it does not come back', () async {
     careList = [
       {'id': 'c1', 'kind': 'hydration', 'label': 'Water', 'hour': 10, 'minute': 0,

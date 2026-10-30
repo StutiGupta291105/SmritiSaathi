@@ -6,3 +6,5 @@ pydantic>=2.6,<3
 pyjwt>=2.8,<3
 alembic>=1.13,<2          # database migrations
 anthropic>=1,<3           # "Talk to Smriti" (only used when the companion provider is anthropic)
+google-auth>=2.29,<3     # push through Firebase (only used when the push provider is fcm)
+requests>=2.31,<3

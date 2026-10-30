@@ -31,6 +31,7 @@ VOICE_TYPES = {"audio/mp4", "audio/aac", "audio/m4a", "audio/x-m4a", "audio/mpeg
                "audio/ogg", "audio/webm", "audio/3gpp"}
 PUSH_TITLE = "Smriti Sathi"
 PUSH_BODY = "You have a new message."
+ROUTINE_BODY = "Your daily routine was updated."
 PAGE = 50
 
 
@@ -170,7 +171,7 @@ def send(link_id: str, body: MessageIn, request: Request,
     db.flush()
     audit.record(db, user.id, "message_sent", f"link={link.id} kind={body.kind}")
     recipient_id = link.member_user_id if user.role == "patient" else p.user_id
-    _push(request, db, recipient_id)
+    notify_user(request, db, recipient_id)
     return _out(m, user)
 
 
@@ -179,15 +180,16 @@ def _looks_like_image(b: bytes) -> bool:
             or (b[:4] == b"RIFF" and b[8:12] == b"WEBP"))
 
 
-def _push(request: Request, db: Session, user_id: str | None) -> None:
-    """Best effort: a failed push never fails the message."""
+def notify_user(request: Request, db: Session, user_id: str | None, body: str = PUSH_BODY) -> None:
+    """Best effort: a failed push never fails the action that caused it. The text is
+    generic on purpose: lock screens are visible to other people."""
     if not user_id:
         return
     provider = request.app.state.push
     tokens = db.execute(select(DeviceToken).where(DeviceToken.user_id == user_id)).scalars().all()
     for t in tokens:
         try:
-            result = provider.send(t.token, PUSH_TITLE, PUSH_BODY)
+            result = provider.send(t.token, PUSH_TITLE, body)
         except Exception:
             continue
         if result == INVALID:

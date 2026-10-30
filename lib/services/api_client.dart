@@ -439,6 +439,24 @@ class ApiClient {
         if (onDate != null) 'on_date': onDate,
       });
 
+  /// Changes a routine the signed-in caretaker or doctor set earlier.
+  Future<Map<String, dynamic>> editCareReminder(
+    String patientId,
+    String reminderId, {
+    required String kind,
+    required String label,
+    required int hour,
+    required int minute,
+    String? onDate, // yyyy-mm-dd; null clears it
+  }) =>
+      _raw('PATCH', '/v1/patients/$patientId/care-reminders/$reminderId', body: {
+        'kind': kind,
+        'label': label,
+        'hour': hour,
+        'minute': minute,
+        if (onDate != null) 'on_date': onDate else 'clear_date': true,
+      });
+
   Future<void> deleteCareReminder(String patientId, String reminderId) =>
       _raw('DELETE', '/v1/patients/$patientId/care-reminders/$reminderId');
 

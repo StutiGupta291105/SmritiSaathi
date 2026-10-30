@@ -251,6 +251,7 @@ void main() {
        'days_mask': 127, 'on_date': null, 'created_by_name': 'Dr Rao', 'created_by_role': 'doctor', 'mine': false},
     ];
     Map<String, dynamic>? posted;
+    Map<String, dynamic>? edited;
     final deleted = <String>[];
     final api = _api((r) async {
       final p = r.url.path;
@@ -263,6 +264,12 @@ void main() {
         care.add({'id': 'x2', ...posted!, 'days_mask': 127, 'created_by_name': 'Ravi',
                   'created_by_role': 'caretaker', 'mine': true});
         return _j(201, care.last);
+      }
+      if (p.startsWith('/v1/patients/p1/care-reminders/') && r.method == 'PATCH') {
+        edited = jsonDecode(r.body) as Map<String, dynamic>;
+        final i = care.indexWhere((x) => x['id'] == p.split('/').last);
+        care[i] = {...care[i], ...edited!};
+        return _j(200, care[i]);
       }
       if (p.startsWith('/v1/patients/p1/care-reminders/') && r.method == 'DELETE') {
         deleted.add(p.split('/').last);
@@ -299,10 +306,21 @@ void main() {
     expect(posted!['kind'], 'hydration'); // a caregiver cannot prescribe medicines
     expect([posted!['hour'], posted!['minute']], [9, 0]);
     expect(find.text('Added by Ravi'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('editCare_x2')));
+    await t.pumpAndSettle();
+    expect(find.text('Morning tablet'), findsWidgets); // the dialog is filled in
+    await t.enterText(find.byType(TextField).last, 'Morning walk');
+    await t.pump();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    await t.pumpAndSettle();
+    expect(edited!['label'], 'Morning walk');
+    expect(edited!['kind'], 'hydration');
+    expect(find.text('Morning walk'), findsOneWidget);
+    expect(find.byKey(const ValueKey('editCare_x1')), findsNothing); // not theirs
     await t.tap(find.byKey(const ValueKey('deleteCare_x2')));
     await t.pumpAndSettle();
     expect(deleted, ['x2']);
-    expect(find.text('Morning tablet'), findsNothing);
+    expect(find.text('Morning walk'), findsNothing);
   });
 
   testWidgets('a doctor prescribes a medicine and schedules an appointment', (t) async {

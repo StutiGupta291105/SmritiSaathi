@@ -94,3 +94,31 @@ def test_only_a_doctor_prescribes_medicine(env):
     url = f"/v1/patients/{pid}/care-reminders/{ok.json()['id']}"
     assert env.client.delete(url, headers=cg.headers).status_code == 404
     assert env.client.delete(url, headers=a.headers).status_code == 204
+
+
+def test_the_creator_can_edit_and_others_cannot(env):
+    a, pid = env.make_patient(PATIENT)
+    cg = env.link_member(a, pid, "caretaker", CARER)
+    dr = env.link_member(a, pid, "doctor", DOCTOR)
+    rid = _add(env, dr, pid, label="Metformin 500 mg", hour=9).json()["id"]
+    url = f"/v1/patients/{pid}/care-reminders/{rid}"
+    ok = env.client.patch(url, headers=dr.headers, json={"label": "Metformin 1000 mg", "hour": 20, "minute": 15})
+    assert ok.status_code == 200, ok.text
+    got = env.client.get(f"/v1/patients/{pid}/care-reminders", headers=a.headers).json()
+    assert [(x["label"], x["hour"], x["minute"], x["kind"]) for x in got] == [("Metformin 1000 mg", 20, 15, "medicine")]
+    assert env.client.patch(url, headers=cg.headers, json={"hour": 1}).status_code == 404   # not theirs
+    assert env.client.patch(url, headers=a.headers, json={"hour": 1}).status_code == 403    # patient edits on the phone
+    assert env.client.patch(url, headers=dr.headers, json={"hour": 25}).status_code == 422
+    assert env.client.patch(url + "x", headers=dr.headers, json={"hour": 1}).status_code == 404
+
+
+def test_a_caretaker_cannot_edit_a_routine_into_a_prescription_and_dates_can_be_cleared(env):
+    a, pid = env.make_patient(PATIENT)
+    cg = env.link_member(a, pid, "caretaker", CARER)
+    rid = _add(env, cg, pid, kind="appointment", label="Visit", on_date="2026-12-01").json()["id"]
+    url = f"/v1/patients/{pid}/care-reminders/{rid}"
+    assert env.client.patch(url, headers=cg.headers, json={"kind": "medicine"}).status_code == 403
+    ok = env.client.patch(url, headers=cg.headers, json={"kind": "activity", "clear_date": True})
+    assert ok.status_code == 200 and ok.json()["on_date"] is None and ok.json()["kind"] == "activity"
+    env.consent(a, pid, "caregiver_share", False)
+    assert env.client.patch(url, headers=cg.headers, json={"hour": 3}).status_code == 404

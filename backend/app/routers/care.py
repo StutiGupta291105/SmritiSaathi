@@ -10,7 +10,8 @@ from ..deps import (consent_granted, current_user, get_db, patient_for_viewer,
                     require_role)
 from ..models import (ROLE_PURPOSE, CareReminder, GameSession, Link, Patient,
                       ReminderMark, ReminderSchedule, User)
-from ..schemas import CareReminderIn, InviteForMe
+from .chat import ROUTINE_BODY, notify_user
+from ..schemas import CareReminderIn, CareReminderPatch, InviteForMe
 
 router = APIRouter(prefix="/v1", tags=["care"])
 
@@ -209,7 +210,7 @@ def list_care_reminders(patient_id: str, user: User = Depends(current_user),
 
 
 @router.post("/patients/{patient_id}/care-reminders", status_code=201)
-def add_care_reminder(patient_id: str, body: CareReminderIn,
+def add_care_reminder(patient_id: str, body: CareReminderIn, request: Request,
                       user: User = Depends(require_role("caretaker", "doctor")),
                       db: Session = Depends(get_db)):
     p, _ = patient_for_viewer(db, user, patient_id)  # accepted link and sharing consent
@@ -223,6 +224,38 @@ def add_care_reminder(patient_id: str, body: CareReminderIn,
     db.add(r)
     db.flush()
     audit.record(db, user.id, "care_reminder_added", f"patient={p.id} reminder={r.id} kind={r.kind}")
+    notify_user(request, db, p.user_id, ROUTINE_BODY)
+    return _care_reminder_out(r, user)
+
+
+@router.patch("/patients/{patient_id}/care-reminders/{reminder_id}")
+def edit_care_reminder(patient_id: str, reminder_id: str, body: CareReminderPatch,
+                       request: Request, user: User = Depends(require_role("caretaker", "doctor")),
+                       db: Session = Depends(get_db)):
+    """Whoever set a routine can change it; the patient's phone picks the change up
+    on its next sync. A caretaker still cannot turn anything into a prescription."""
+    p, _ = patient_for_viewer(db, user, patient_id)
+    r = db.get(CareReminder, reminder_id)
+    if r is None or r.patient_id != p.id or r.deleted or r.created_by != user.id:
+        raise HTTPException(404, "not_found")
+    kind = body.kind or r.kind
+    if kind == "medicine" and user.role != "doctor":
+        raise HTTPException(403, "only_doctor_prescribes")
+    r.kind = kind
+    if body.label is not None:
+        r.label = body.label.strip()
+    if body.hour is not None:
+        r.hour = body.hour
+    if body.minute is not None:
+        r.minute = body.minute
+    if body.days_mask is not None:
+        r.days_mask = body.days_mask
+    if body.clear_date:
+        r.on_date = None
+    elif body.on_date is not None:
+        r.on_date = body.on_date
+    audit.record(db, user.id, "care_reminder_edited", f"patient={p.id} reminder={r.id}")
+    notify_user(request, db, p.user_id, ROUTINE_BODY)
     return _care_reminder_out(r, user)
 
 

@@ -37,6 +37,14 @@ services:
         value: gemini-flash-latest
       - key: SMRITI_COMPANION_API_KEY
         sync: false
+      # Background push (see docs/DEPLOYMENT.md): set provider to fcm and fill the two
+      # values below in the Render dashboard once you have a Firebase project.
+      - key: SMRITI_PUSH_PROVIDER
+        value: dev
+      - key: SMRITI_FCM_PROJECT_ID
+        sync: false
+      - key: SMRITI_FCM_CREDENTIALS_JSON
+        sync: false
       - key: SMRITI_SECRET_KEY
         generateValue: true
       - key: SMRITI_PHONE_HMAC_KEY
