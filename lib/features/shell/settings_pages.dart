@@ -64,17 +64,17 @@ class AboutAppScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 15, color: Palette.muted)),
             const SizedBox(height: 4),
-            Text('v$kAppVersion',
-                style: const TextStyle(fontSize: 13, color: Palette.muted)),
+            const Text('v$kAppVersion',
+                style: TextStyle(fontSize: 13, color: Palette.muted)),
           ]),
         ),
         const SizedBox(height: 12),
         _textCard(Icons.info_outline_rounded, Palette.purple,
             Palette.tilePurple, tr(lang, 'aboutBody')),
         const SizedBox(height: 16),
-        Center(
+        const Center(
             child: Text(kFooterLine,
-                style: const TextStyle(fontSize: 13, color: Palette.muted))),
+                style: TextStyle(fontSize: 13, color: Palette.muted))),
       ]);
 }
 
@@ -191,12 +191,14 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     final f = await widget.db.listFamily(widget.patientId);
     final l = await widget.db.listCareLinks(widget.patientId);
     final r = await widget.db.listReminders(widget.patientId);
-    if (mounted) setState(() {
+    if (mounted) {
+      setState(() {
       _p = p;
       _family = f;
       _links = l.where((x) => x['status'] != 'revoked').toList();
       _reminders = r.length;
-    });
+      });
+    }
   }
 
   Future<void> _changed() async {
@@ -388,7 +390,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
             AppCard(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Row(children: [
-                IconBadge(
+                const IconBadge(
                     icon: Icons.record_voice_over_rounded,
                     fg: Palette.sky,
                     bg: Palette.tileSky,

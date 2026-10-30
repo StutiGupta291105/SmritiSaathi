@@ -75,12 +75,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
   }
 
   Future<void> _add() async {
-    final result =
-        await showAddReminderDialog(context,
-            language: widget.language,
-            defaultBy: ((await widget.db.patientById(widget.patientId))?['display_name']
-                    as String?) ??
-                '');
+    final by = ((await widget.db.patientById(widget.patientId))?['display_name']
+            as String?) ??
+        '';
+    if (!mounted) return;
+    final result = await showAddReminderDialog(context,
+        language: widget.language, defaultBy: by);
     if (result == null) return;
     await widget.db.addReminder(
       patientId: widget.patientId,

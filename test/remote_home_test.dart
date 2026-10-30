@@ -4,17 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:smriti_assist/core/reminder_schedule.dart';
 import 'package:smriti_assist/features/remote/remote_home.dart';
 import 'package:smriti_assist/services/api_client.dart';
 
 http.Response _j(int s, Object b) =>
     http.Response(jsonEncode(b), s, headers: {'content-type': 'application/json'});
 
-Widget _app(ApiClient api, {VoidCallback? signedOut}) => MaterialApp(
+Widget _app(ApiClient api, {VoidCallback? signedOut, String role = 'caretaker'}) => MaterialApp(
     home: RemoteHome(
         key: UniqueKey(),
         api: api,
-        user: const ServerUser('u', 'caretaker', 'Ravi'),
+        user: ServerUser('u', role, 'Ravi'),
         lang: 'en',
         onLogout: () {},
         onSignedOut: signedOut));
@@ -284,17 +285,62 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Title'), findsOneWidget);
     expect(find.textContaining('Your name'), findsNothing);
+    await t.tap(find.byType(DropdownButtonFormField<ReminderKind>));
+    await t.pumpAndSettle();
+    expect(find.text('Medicine'), findsNothing);
+    expect(find.text('Appointment'), findsWidgets);
+    await t.tap(find.text('Water').last);
+    await t.pumpAndSettle();
     await t.enterText(find.byType(TextField).last, 'Morning tablet');
     await t.pump();
     await t.tap(find.widgetWithText(FilledButton, 'Save'));
     await t.pumpAndSettle();
     expect(posted!['label'], 'Morning tablet');
-    expect(posted!['kind'], 'medicine');
+    expect(posted!['kind'], 'hydration'); // a caregiver cannot prescribe medicines
     expect([posted!['hour'], posted!['minute']], [9, 0]);
     expect(find.text('Added by Ravi'), findsOneWidget);
     await t.tap(find.byKey(const ValueKey('deleteCare_x2')));
     await t.pumpAndSettle();
     expect(deleted, ['x2']);
     expect(find.text('Morning tablet'), findsNothing);
+  });
+
+  testWidgets('a doctor prescribes a medicine and schedules an appointment', (t) async {
+    final posts = <Map<String, dynamic>>[];
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/reminders') return _j(200, []);
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      if (p == '/v1/patients/p1/care-reminders' && r.method == 'POST') {
+        posts.add(jsonDecode(r.body) as Map<String, dynamic>);
+        return _j(201, {'id': 'd${posts.length}', ...posts.last, 'days_mask': 127,
+                        'created_by_name': 'Ravi', 'created_by_role': 'doctor', 'mine': true});
+      }
+      if (p == '/v1/patients/p1/care-reminders') return _j(200, []);
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(_app(api, role: 'doctor'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Asha'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Reminders').last);
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('addCareReminder')));
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField).last, 'Metformin 500 mg, after food');
+    await t.pump();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    await t.pumpAndSettle();
+    expect(posts.single['kind'], 'medicine'); // a doctor's first choice
+    expect(posts.single['label'], 'Metformin 500 mg, after food');
+    await t.tap(find.byKey(const ValueKey('addCareReminder')));
+    await t.pumpAndSettle();
+    await t.tap(find.byType(DropdownButtonFormField<ReminderKind>));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Appointment').last);
+    await t.pumpAndSettle();
+    expect(find.text('Medicine'), findsNothing);
   });
 }

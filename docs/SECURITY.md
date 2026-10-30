@@ -136,6 +136,10 @@ end).
   own reminders, whose text never leaves the phone, the **title is stored on the server**,
   because the patient's phone must receive it. The audit log records only that one was
   added or removed.
+- **Only a doctor prescribes.** A reminder of kind `medicine` is refused (403
+  `only_doctor_prescribes`) from a caretaker, who can add every other kind (water,
+  activity, appointment, birthday, event). A caretaker cannot delete a doctor's
+  prescription; the patient can.
 - The patient's phone copies them when it syncs (about once a minute while the app is
   open and when it is opened), needs the patient's `reminders` consent, sets up the
   local notification, and shows "Added by <name>". The patient can delete any of them;

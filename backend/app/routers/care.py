@@ -213,6 +213,9 @@ def add_care_reminder(patient_id: str, body: CareReminderIn,
                       user: User = Depends(require_role("caretaker", "doctor")),
                       db: Session = Depends(get_db)):
     p, _ = patient_for_viewer(db, user, patient_id)  # accepted link and sharing consent
+    if body.kind == "medicine" and user.role != "doctor":
+        # Only a doctor prescribes. A caretaker may add every other routine.
+        raise HTTPException(403, "only_doctor_prescribes")
     r = CareReminder(patient_id=p.id, created_by=user.id, created_by_name=user.name,
                      created_by_role=user.role, kind=body.kind, label=body.label.strip(),
                      hour=body.hour, minute=body.minute, days_mask=body.days_mask,

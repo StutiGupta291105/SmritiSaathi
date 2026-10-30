@@ -159,6 +159,7 @@ class _RemoteHomeState extends State<RemoteHome> {
               patientId: p['patient_id'] as String,
               name: '${p['display_name']}',
               canSetBaseline: widget.user.role == 'caretaker',
+              canPrescribe: widget.user.role == 'doctor',
               accent: _accent,
               lang: widget.lang,
               byName: widget.user.name,
@@ -787,6 +788,7 @@ class RemotePatientScreen extends StatefulWidget {
     required this.name,
     required this.lang,
     this.canSetBaseline = false,
+    this.canPrescribe = false,
     this.accent = Palette.action,
     this.onSignedOut,
     this.onMessage,
@@ -801,6 +803,9 @@ class RemotePatientScreen extends StatefulWidget {
   final ApiClient api;
   final String patientId, name, lang;
   final bool canSetBaseline;
+
+  /// Only a doctor prescribes medicines; a caregiver adds every other routine.
+  final bool canPrescribe;
   final Color accent;
   final VoidCallback? onSignedOut;
 
@@ -888,7 +893,10 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
   Future<void> _addCare() async {
     final r = await showAddReminderDialog(context,
         language: widget.lang,
-        kinds: ReminderKind.values,
+        kinds: [
+          for (final k in ReminderKind.values)
+            if (widget.canPrescribe || k != ReminderKind.medicine) k
+        ],
         defaultBy: widget.byName);
     if (r == null) return;
     final d = r.date;
