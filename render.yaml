@@ -37,6 +37,12 @@ services:
         value: gemini-flash-latest
       - key: SMRITI_COMPANION_API_KEY
         sync: false
+      # Gemini 'thinks' before it answers and Indian-language text is long: give it room,
+      # and ask it to think little. (Remove the second line for a provider that rejects it.)
+      - key: SMRITI_COMPANION_MAX_TOKENS
+        value: "4096"
+      - key: SMRITI_COMPANION_REASONING_EFFORT
+        value: low
       # Background push (see docs/DEPLOYMENT.md): set provider to fcm and fill the two
       # values below in the Render dashboard once you have a Firebase project.
       - key: SMRITI_PUSH_PROVIDER

@@ -307,3 +307,101 @@ def test_openai_compatible_failures_become_unavailable_and_need_a_key(monkeypatc
     assert isinstance(get_provider("openai_compat", "m"), UnavailableCompanion)
     monkeypatch.setenv("SMRITI_COMPANION_BASE_URL", "https://ok.test/v1")
     assert isinstance(get_provider("openai_compat", "m"), OpenAICompatCompanion)
+
+
+# ---- the compatible provider (Gemini, Groq...) answers dependably ----------------
+import io
+import urllib.error
+
+
+class _Resp(io.BytesIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def _ok(text, finish="stop"):
+    import json
+    return _Resp(json.dumps({"choices": [{"message": {"content": text}, "finish_reason": finish}]}).encode())
+
+
+def _http(code, body=b'{"error":{"message":"nope"}}'):
+    return urllib.error.HTTPError("https://x", code, "err", {}, io.BytesIO(body))
+
+
+def _provider(monkeypatch, answers, **kw):
+    seen = []
+
+    def fake(req, timeout=None):
+        import json
+        seen.append(json.loads(req.data))
+        a = answers.pop(0)
+        if isinstance(a, Exception):
+            raise a
+        return a
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake)
+    return companion.OpenAICompatCompanion("https://api.example/v1", "k", "m", **kw), seen
+
+
+def test_an_empty_answer_is_asked_again_with_a_bigger_budget(monkeypatch):
+    p, seen = _provider(monkeypatch, [_ok("", "length"), _ok("The sun is a star.")], max_tokens=2000,
+                        reasoning_effort="low")
+    assert p.reply("sys", [{"role": "user", "content": "q"}]) == "The sun is a star."
+    assert seen[0]["max_tokens"] == 2000 and seen[0]["reasoning_effort"] == "low"
+    assert seen[1]["max_tokens"] == 4000 and "reasoning_effort" not in seen[1]
+
+
+def test_a_provider_that_rejects_the_reasoning_setting_is_asked_without_it(monkeypatch):
+    p, seen = _provider(monkeypatch, [_http(400), _ok("Fine.")], reasoning_effort="low")
+    assert p.reply("s", [{"role": "user", "content": "q"}]) == "Fine."
+    assert "reasoning_effort" in seen[0] and "reasoning_effort" not in seen[1]
+
+
+def test_answers_in_parts_are_joined(monkeypatch):
+    import json
+    parts = _Resp(json.dumps({"choices": [{"message": {"content": [{"type": "text", "text": "Hello "},
+                                                                      {"type": "text", "text": "there"}]}}]}).encode())
+    p, _ = _provider(monkeypatch, [parts])
+    assert p.reply("s", [{"role": "user", "content": "q"}]) == "Hello there"
+
+
+def test_failures_say_why_without_the_persons_words(monkeypatch):
+    p, _ = _provider(monkeypatch, [_http(429, b'{"error":{"message":"quota exceeded"}}')])
+    with pytest.raises(CompanionUnavailable, match="http_429"):
+        p.reply("s", [{"role": "user", "content": "my secret question"}])
+    assert "quota exceeded" in p.last_error and "secret" not in p.last_error
+    p2, _ = _provider(monkeypatch, [_ok(""), _ok("", "content_filter")])
+    assert p2.reply("s", [{"role": "user", "content": "q"}]) == ""
+    assert "empty_answer" in p2.last_error and "content_filter" in p2.last_error
+
+
+def test_ai_check_reports_working_and_broken_helpers(monkeypatch):
+    p, _ = _provider(monkeypatch, [_ok("Hello! The sun is huge.")])
+    r = companion.ai_check(p)
+    assert r["ok"] is True and "sun" in r["reply"] and r["error"] == ""
+    p2, _ = _provider(monkeypatch, [_http(403, b'{"error":{"message":"API key not valid"}}')])
+    r2 = companion.ai_check(p2)
+    assert r2["ok"] is False and "http_403" in r2["error"] and "not valid" in r2["error"]
+    assert companion.ai_check(companion.UnavailableCompanion())["error"].startswith("no_api_key")
+
+
+def test_not_set_up_and_failing_are_told_apart(cenv):
+    a, pid = cenv.make_patient(consents=("gameplay", "companion"))
+    cenv.app.state.companion = companion.UnavailableCompanion()
+    r = cenv.client.post(URL.format(pid), headers=a.headers, json={
+        "messages": [{"role": "user", "content": "tell me about the moon"}], "lang": "en", "first_name": "A",
+        "now_text": "x", "today": []})
+    assert r.status_code == 503 and r.json()["detail"] == "ai_not_configured"
+
+    class Quota:
+        def reply(self, system, messages):
+            raise CompanionUnavailable("http_429")
+
+    cenv.app.state.companion = Quota()
+    r = cenv.client.post(URL.format(pid), headers=a.headers, json={
+        "messages": [{"role": "user", "content": "tell me about the moon"}], "lang": "en", "first_name": "A",
+        "now_text": "x", "today": []})
+    assert r.status_code == 503 and r.json()["detail"] == "companion_unavailable"

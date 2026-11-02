@@ -20,6 +20,24 @@ class OverviewPage extends StatefulWidget {
 class _OverviewPageState extends State<OverviewPage> {
   Map<String, dynamic>? _d;
   Object? _error;
+  Map<String, dynamic>? _ai;
+  bool _aiBusy = false;
+
+  Future<void> _testAi() async {
+    setState(() {
+      _aiBusy = true;
+      _ai = null;
+    });
+    try {
+      final r = await widget.api.aiCheck();
+      if (mounted) setState(() => _ai = r);
+    } catch (e) {
+      widget.onError(e);
+      if (mounted) setState(() => _ai = {'ok': false, 'error': errorText(e), 'reply': '', 'ms': 0, 'provider': ''});
+    } finally {
+      if (mounted) setState(() => _aiBusy = false);
+    }
+  }
 
   @override
   void initState() {
@@ -78,6 +96,28 @@ class _OverviewPageState extends State<OverviewPage> {
         StatCard('Care routines set', '${d['care_reminders']}',
             hint: 'by caregivers and doctors'),
       ]),
+      const SizedBox(height: 22),
+      Panel(
+        title: 'AI helper',
+        actions: [
+          FilledButton(
+            key: const ValueKey('testAi'),
+            onPressed: _aiBusy ? null : _testAi,
+            child: Text(_aiBusy ? 'Asking…' : 'Test the AI helper'),
+          ),
+        ],
+        child: _ai == null
+            ? const Text(
+                'The health check only proves a key exists. This asks the helper one made-up question and shows whether it really answers.',
+                style: TextStyle(color: Pal.muted))
+            : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_ai!['ok'] == true ? 'Working (${_ai!['ms']} ms, ${_ai!['provider']})' : 'Not answering',
+                    key: const ValueKey('aiResult'),
+                    style: TextStyle(fontWeight: FontWeight.w800, color: _ai!['ok'] == true ? Pal.ok : Pal.bad)),
+                if ('${_ai!['reply']}'.isNotEmpty) Text('Reply: ${_ai!['reply']}'),
+                if ('${_ai!['error']}'.isNotEmpty) Text('Why: ${_ai!['error']}', style: const TextStyle(color: Pal.bad)),
+              ]),
+      ),
       const SizedBox(height: 22),
       Row(children: [
         const Text('Security (24h)',

@@ -70,8 +70,11 @@ def chat(patient_id: str, body: ChatIn, request: Request,
     try:
         reply = request.app.state.companion.reply(
             system, [{"role": t.role, "content": t.content} for t in turns])
-    except companion.CompanionUnavailable:
-        raise HTTPException(503, "companion_unavailable")
+    except companion.CompanionUnavailable as e:
+        # "Not set up" and "set up but the service failed (quota, bad key, outage)"
+        # need different fixes, so the app is told which.
+        raise HTTPException(503, "ai_not_configured" if str(e) == "no_api_key"
+                            else "companion_unavailable")
 
     if usage is None:
         db.add(ChatUsage(patient_id=p.id, day=today, count=1))

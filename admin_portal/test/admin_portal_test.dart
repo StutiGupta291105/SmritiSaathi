@@ -70,6 +70,9 @@ Future<http.Response> _server(http.Request r) async {
   if (p == '/v1/admin/links') {
     return _j(200, {'total': 1, 'items': [_link]});
   }
+  if (p == '/v1/admin/ai-check') {
+    return _j(200, {'provider': 'OpenAICompatCompanion', 'ok': false, 'reply': '', 'error': 'http_429: quota exceeded', 'ms': 812});
+  }
   if (p == '/v1/admin/audit/verify') return _j(200, {'ok': true, 'head': '8:abc', 'entries': 412});
   if (p == '/v1/admin/audit') {
     return _j(200, {'total': 2, 'items': _audit, 'actions': ['access_denied', 'login']});
@@ -181,6 +184,15 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Dr Rao (doctor)'), findsWidgets);
     expect(find.textContaining('9 views'), findsOneWidget);
+  });
+
+  testWidgets('the admin can test the AI helper and sees why it fails', (t) async {
+    await _signIn(t);
+    await t.scrollUntilVisible(find.byKey(const ValueKey('testAi')), 200);
+    await t.tap(find.byKey(const ValueKey('testAi')));
+    await t.pumpAndSettle();
+    expect(find.text('Not answering'), findsOneWidget);
+    expect(find.textContaining('http_429: quota exceeded'), findsOneWidget);
   });
 
   testWidgets('after signing in, the portal only ever sends GET requests', (t) async {

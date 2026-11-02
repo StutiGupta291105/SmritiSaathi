@@ -13,7 +13,9 @@ Safety design, in order of importance:
      count per day is kept (to limit use).
 """
 import json
+import logging
 import os
+import time
 import re
 import unicodedata
 import urllib.error
@@ -27,6 +29,11 @@ from .safety_data import (EMERGENCY_REPLY, EMERGENCY_WORDS, LANGUAGES as LANGUAG
 MAX_TURNS = 12
 MAX_CHARS = 1000
 MAX_REPLY_TOKENS = 1024  # adaptive thinking shares this budget; replies stay short by prompt
+# 'Thinking' models (Gemini 2.5 and others) spend this budget on hidden reasoning before the
+# first word of the answer, and Indian-language text needs many more tokens than English.
+# 1024 left open questions with an empty answer, so the compatible provider gets more.
+COMPAT_REPLY_TOKENS = 4096
+log = logging.getLogger("smriti.companion")
 
 
 
@@ -216,27 +223,79 @@ class OpenAICompatCompanion:
     """Any service that speaks the common 'chat completions' protocol, which
     includes several with a free tier (Google Gemini, Groq, OpenRouter). Uses only
     the standard library. Free tiers may keep and learn from what is sent: test
-    with made-up data, and read the provider's terms before real use."""
+    with made-up data, and read the provider's terms before real use.
 
-    def __init__(self, base_url: str, api_key: str, model: str) -> None:
+    Making it dependable: a model can answer with an EMPTY message (its hidden
+    reasoning used the whole token budget, or a safety filter stopped it), so an
+    empty answer is asked again once with a bigger budget and without the
+    reasoning setting. A provider that does not know `reasoning_effort` (HTTP 400)
+    is asked again without it. Why a call failed (status and the provider's own
+    short error, never what the person said) is kept in `last_error` and logged,
+    so a server whose health says 'ai: true' but that does not answer can be
+    diagnosed (admin portal, or `python -m app.cli ai-check`)."""
+
+    def __init__(self, base_url: str, api_key: str, model: str,
+                 max_tokens: int = COMPAT_REPLY_TOKENS, reasoning_effort: str = "") -> None:
         self._url = base_url.rstrip("/") + "/chat/completions"
         self._key, self._model = api_key, model
+        self._max_tokens, self._effort = max_tokens, reasoning_effort.strip()
+        self.last_error = ""
 
-    def reply(self, system: str, messages: list[dict]) -> str:
-        body = json.dumps({
-            "model": self._model, "max_tokens": MAX_REPLY_TOKENS, "temperature": 0.6,
-            "messages": [{"role": "system", "content": system}, *messages]}).encode()
-        req = urllib.request.Request(self._url, data=body, headers={
+    @staticmethod
+    def _text(message: dict) -> str:
+        c = message.get("content")
+        if isinstance(c, list):  # some providers answer in parts
+            c = "".join(p.get("text", "") for p in c if isinstance(p, dict))
+        return (c or "").strip() if isinstance(c, str) else ""
+
+    def _call(self, system: str, messages: list[dict], max_tokens: int,
+              effort: str) -> tuple[str, str]:
+        payload = {"model": self._model, "max_tokens": max_tokens, "temperature": 0.6,
+                   "messages": [{"role": "system", "content": system}, *messages]}
+        if effort:
+            payload["reasoning_effort"] = effort
+        req = urllib.request.Request(self._url, data=json.dumps(payload).encode(), headers={
             "Authorization": f"Bearer {self._key}", "Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=25) as r:
+            with urllib.request.urlopen(req, timeout=40) as r:
                 data = json.load(r)
+        except urllib.error.HTTPError as e:
+            try:
+                snippet = e.read().decode("utf-8", "replace")[:300]
+            except Exception:
+                snippet = ""
+            self.last_error = f"http_{e.code}: {snippet}"
+            log.warning("companion provider answered %s: %s", e.code, snippet)
+            raise CompanionUnavailable(f"http_{e.code}") from None
         except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+            self.last_error = type(e).__name__
+            log.warning("companion provider unreachable: %s", type(e).__name__)
             raise CompanionUnavailable(type(e).__name__) from None
         try:
-            return (data["choices"][0]["message"]["content"] or "").strip()
-        except (KeyError, IndexError, TypeError):
-            return ""
+            choice = data["choices"][0]
+            return self._text(choice.get("message") or {}), str(choice.get("finish_reason") or "")
+        except (KeyError, IndexError, TypeError, AttributeError):
+            self.last_error = "unexpected_response_shape"
+            return "", ""
+
+    def reply(self, system: str, messages: list[dict]) -> str:
+        effort = self._effort
+        try:
+            text, finish = self._call(system, messages, self._max_tokens, effort)
+        except CompanionUnavailable as e:
+            if effort and str(e) == "http_400":
+                effort = ""  # this provider does not take the reasoning setting
+                text, finish = self._call(system, messages, self._max_tokens, "")
+            else:
+                raise
+        if not text:
+            log.warning("companion answered with nothing (finish_reason=%s); asking again", finish)
+            text, finish = self._call(system, messages, self._max_tokens * 2, "")
+            if not text:
+                self.last_error = f"empty_answer (finish_reason={finish})"
+        else:
+            self.last_error = ""
+        return text
 
 
 class AnthropicCompanion:
@@ -277,5 +336,26 @@ def get_provider(provider: str, model: str) -> CompanionProvider:
         base = os.environ.get("SMRITI_COMPANION_BASE_URL", "")
         if not key or not base.startswith("https://"):
             return UnavailableCompanion()
-        return OpenAICompatCompanion(base, key, model)
+        return OpenAICompatCompanion(
+            base, key, model,
+            int(os.environ.get("SMRITI_COMPANION_MAX_TOKENS", COMPAT_REPLY_TOKENS)),
+            os.environ.get("SMRITI_COMPANION_REASONING_EFFORT", ""))
     raise RuntimeError(f"Unknown companion provider: {provider}")
+
+
+def ai_check(provider) -> dict:
+    """One small real question with made-up content, to see whether the helper truly
+    answers (a health check only proves a key exists). Changes nothing."""
+    started = time.monotonic()
+    out = {"provider": type(provider).__name__, "ok": False, "reply": "", "error": "", "ms": 0}
+    try:
+        text = provider.reply("You are a test. Answer in one short sentence.",
+                              [{"role": "user", "content": "Say hello and tell me one interesting fact about the sun."}])
+        out["reply"] = text[:160]
+        out["ok"] = bool(text)
+        if not text:
+            out["error"] = getattr(provider, "last_error", "") or "empty_answer"
+    except CompanionUnavailable as e:
+        out["error"] = f"{e}: {getattr(provider, 'last_error', '')}".strip(": ")
+    out["ms"] = int((time.monotonic() - started) * 1000)
+    return out

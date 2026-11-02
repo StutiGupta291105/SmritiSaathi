@@ -67,6 +67,14 @@ def login(body: AdminLogin, request: Request, db: Session = Depends(get_db)):
             "username": s.admin_username, "expires_in": 1800}
 
 
+@router.get("/ai-check")
+def ai_check(request: Request, admin: str = Depends(current_admin)):
+    """Asks the AI helper one made-up question and reports what happened. Changes
+    nothing; shows whether 'ai: true' on /healthz really means it answers."""
+    from .. import companion
+    return companion.ai_check(request.app.state.companion)
+
+
 # ---- helpers ------------------------------------------------------------------
 
 def _iso(dt):

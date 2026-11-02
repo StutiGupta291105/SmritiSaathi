@@ -106,4 +106,7 @@ class AdminApi {
       });
   Future<Map<String, dynamic>> verifyAudit() => _get('/v1/admin/audit/verify');
   Future<Map<String, dynamic>> security() => _get('/v1/admin/security');
+
+  /// Asks the server's AI helper one made-up question and says what happened.
+  Future<Map<String, dynamic>> aiCheck() => _get('/v1/admin/ai-check');
 }

@@ -74,6 +74,7 @@ void main() {
     late List<String> calls;
     Map<String, dynamic>? sentBody;
     var failWith = 0;
+    var failDetail = 'x';
     var offline = false;
 
     CompanionService make({bool withApi = true, DateTime? at}) => CompanionService(
@@ -89,7 +90,7 @@ void main() {
                     calls.add(r.url.path);
                     sentBody = jsonDecode(r.body) as Map<String, dynamic>;
                     if (failWith != 0) {
-                      return http.Response(jsonEncode({'detail': 'x'}), failWith,
+                      return http.Response(jsonEncode({'detail': failDetail}), failWith,
                           headers: {'content-type': 'application/json'});
                     }
                     return http.Response(jsonEncode({'reply': 'I am here.', 'emergency': false}), 200,
@@ -207,9 +208,17 @@ void main() {
       failWith = 429;
       expect((await ask(make(), 'Hello')).text, contains('enough questions for today'));
       failWith = 503;
+      failDetail = 'ai_not_configured';
       final off = await ask(make(), 'Hello');
       expect(off.text, contains('not switched on'));
       expect(off.offline, isFalse); // the phone is online; the service has no AI yet
+      // A key is set but the provider failed (quota, bad key, outage): not "not switched on"
+      failDetail = 'companion_unavailable';
+      final broken = await ask(make(), 'Hello');
+      expect(broken.text, isNot(contains('not switched on')));
+      expect(broken.text, contains('Tap a button')); // the on-device helper answers
+      expect(broken.offline, isTrue);
+      failDetail = 'x';
       failWith = 401;
       expect((await ask(make(), 'Hello')).text, contains('sign in again'));
       failWith = 0;

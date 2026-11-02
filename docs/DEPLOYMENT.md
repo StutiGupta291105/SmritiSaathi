@@ -39,6 +39,24 @@ Then open `https://<your-service>.onrender.com/healthz`: `"ai":true` means a rea
 connected, `"ai":false` means no key (the app uses its on-device helper). On the patient's
 phone: Talk to Smriti > allow the online helper once, then ask away.
 
+# The AI helper says `"ai": true` but does not answer
+
+`/healthz` only proves a key is set. To see what really happens:
+* Admin portal > Overview > **Test the AI helper** (asks one made-up question), or on the server
+  shell `python -m app.cli ai-check`. It prints the provider's own error, for example
+  `http_429` (free quota used up), `http_403` (key not valid or not allowed), `http_404`
+  (model name wrong), or `empty_answer` (the model answered with nothing).
+* The app now tells the two cases apart: "AI not switched on" means no key; anything else
+  (quota, bad key, outage) falls back to the on-device helper and is logged on the server
+  (`companion provider answered 429: ...`, never what the person said).
+* Gemini "thinks" before it answers and Indian-language text is long, so an open question
+  could use the whole reply budget and come back empty. The server now allows 4096 tokens,
+  asks again once if an answer is empty, and retries without `reasoning_effort` if the
+  provider rejects it. Tune with `SMRITI_COMPANION_MAX_TOKENS` and
+  `SMRITI_COMPANION_REASONING_EFFORT` (`low`, or empty to leave it out).
+* Free tiers have per-minute and per-day limits, and the patient has a daily limit of 40
+  questions (`SMRITI_COMPANION_DAILY_LIMIT`).
+
 # Turning on push notifications (new chat messages, routine changes)
 
 Everything in the code is done: the server sends a generic push ("You have a new

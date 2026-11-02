@@ -104,7 +104,12 @@ class CompanionService {
           emergency: out['emergency'] == true);
     } on ApiException catch (e) {
       // Say what is actually wrong, so it can be fixed.
-      if (e.status == 503) return CompanionReply(tr(lang, 'chatAiNotOn'));
+      if (e.status == 503 && e.detail == 'ai_not_configured') {
+        return CompanionReply(tr(lang, 'chatAiNotOn'));
+      }
+      // 503 companion_unavailable (the service failed) and anything else: the
+      // on-device helper answers, and the server's logs and the admin portal's
+      // "Test the AI helper" say why.
       if (e.status == 429) return CompanionReply(tr(lang, 'chatDailyLimit'));
       if (e.status == 401) return CompanionReply(tr(lang, 'chatNeedsLogin'));
       return CompanionReply(tr(lang, 'chatOfflineHelp'), offline: true);

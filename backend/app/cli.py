@@ -6,6 +6,7 @@
   python -m app.cli verify-professional <id>   after checking the doctor's registration
   python -m app.cli unverify-professional <id>
   python -m app.cli send-alerts                push new alerts to caretakers and doctors
+  python -m app.cli ai-check                   ask the AI helper one question and show why it fails, if it does
   python -m app.cli admin-hash                 hash for SMRITI_ADMIN_PASSWORD_HASH (asks for the password)
 """
 import sys
@@ -47,7 +48,7 @@ def _admin_hash() -> int:
 def main(argv: list[str]) -> int:
     cmds = {"verify-audit": 1, "audit-head": 1, "list-unverified": 1,
             "verify-professional": 2, "unverify-professional": 2, "send-alerts": 1,
-            "admin-hash": 1}
+            "admin-hash": 1, "ai-check": 1}
     if not argv or cmds.get(argv[0]) != len(argv):
         print(__doc__)
         return 2
@@ -77,6 +78,12 @@ def main(argv: list[str]) -> int:
                     if l.professional_id}
                 print(f"{d.id}  {d.name}  ***{d.phone_last4}  claimed ids: {', '.join(sorted(ids)) or '-'}")
             return 0
+        if cmd == "ai-check":
+            from . import companion
+            r = companion.ai_check(companion.get_provider(s.companion_provider, s.companion_model))
+            for k, v in r.items():
+                print(f"{k}: {v}")
+            return 0 if r["ok"] else 1
         if cmd == "admin-hash":
             return _admin_hash()
         return _set_verified(db, argv[1], cmd == "verify-professional")

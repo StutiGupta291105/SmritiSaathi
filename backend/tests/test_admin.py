@@ -217,3 +217,15 @@ def test_cli_makes_a_hash_for_the_settings(monkeypatch, capsys):
     assert e.client.post("/v1/admin/login", json={"username": "admin", "password": PASSWORD}).status_code == 200
     monkeypatch.setenv("SMRITI_ADMIN_PASSWORD_INPUT", "short")
     assert cli._admin_hash() == 1
+
+
+def test_the_admin_can_test_the_ai_helper(env):
+    from app import companion
+    h = _headers(env)
+    env.client.app.state.companion = companion.DevCompanion()
+    r = env.client.get("/v1/admin/ai-check", headers=h).json()
+    assert r["ok"] is True and r["provider"] == "DevCompanion"
+    env.client.app.state.companion = companion.UnavailableCompanion()
+    r = env.client.get("/v1/admin/ai-check", headers=h).json()
+    assert r["ok"] is False and r["error"].startswith("no_api_key")
+    assert env.client.get("/v1/admin/ai-check").status_code == 401
