@@ -18,6 +18,7 @@ import 'features/splash/splash_screen.dart';
 import 'core/config.dart';
 import 'services/api_client.dart';
 import 'services/otp_service.dart';
+import 'features/shell/connect_online.dart';
 import 'services/firebase_push.dart';
 import 'services/push_service.dart';
 import 'services/reminder_notifier.dart';
@@ -56,7 +57,8 @@ class _Services {
   final ReminderNotifier notifier;
   final Voice voice = Voice();
   /// Null when this build has no API address (offline test build).
-  final ApiClient? api = kOnlineConfigured ? ApiClient(baseUrl: kApiBaseUrl) : null;
+  late final ApiClient? api =
+      kOnlineConfigured ? ApiClient(baseUrl: kApiBaseUrl, store: db) : null;
   // Without an API address the offline TEST MODE code is used.
   late final OtpService otp = defaultOtpService(api);
   final SessionStore session = const SessionStore();
@@ -370,6 +372,19 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
       patient: patient,
       onPatientChanged: _load,
       onLogout: _logout,
+      // Set up with no internet and not checked online yet: offer to connect.
+      onConnectOnline: api != null && _serverUser == null
+          ? (ctx) => Navigator.of(ctx).push(MaterialPageRoute<void>(
+              builder: (_) => ConnectOnlineScreen(
+                    otp: widget.otp,
+                    db: widget.db,
+                    accountId: account['id'] as String,
+                    phone: account['phone'] as String,
+                    name: account['name'] as String,
+                    lang: patient['language'] as String,
+                    onConnected: _load,
+                  )))
+          : null,
     );
   }
 }

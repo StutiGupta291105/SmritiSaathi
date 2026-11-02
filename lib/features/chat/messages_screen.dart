@@ -58,6 +58,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
   final _scroll = ScrollController();
   final List<Map<String, dynamic>> _msgs = [];
   final Map<int, Uint8List> _media = {};
+  /// Written offline, waiting to go out (negative ids = minus the outbox id).
+  final List<Map<String, dynamic>> _pending = [];
   late final VoiceRecorder _recorder = widget.recorder ?? DeviceRecorder();
   late final VoicePlayer _player = widget.player ?? DevicePlayer();
   StreamSubscription<void>? _playDone;
@@ -97,7 +99,34 @@ class _MessagesScreenState extends State<MessagesScreen> {
     super.dispose();
   }
 
+  /// Messages saved on this phone that have not been sent yet.
+  Future<void> _loadPending() async {
+    final rows = await widget.api.pendingMessages(widget.linkId);
+    final keep = <Map<String, dynamic>>[];
+    for (final r in rows) {
+      final id = -(r['id'] as int);
+      final media = r['media'] as Uint8List?;
+      if (media != null) _media[id] = media;
+      keep.add({
+        'id': id,
+        'pending': true,
+        'mine': true,
+        'kind': r['kind'],
+        'text': r['text'] ?? '',
+        'mime': r['mime'] ?? '',
+        'duration_ms': r['duration_ms'] ?? 0,
+        'created_at': r['created_at'],
+      });
+    }
+    if (mounted) {
+      setState(() => _pending
+        ..clear()
+        ..addAll(keep));
+    }
+  }
+
   Future<void> _first() async {
+    await _loadPending();
     try {
       final rows = await widget.api.chatMessages(widget.linkId);
       if (!mounted) return;
@@ -118,15 +147,27 @@ class _MessagesScreenState extends State<MessagesScreen> {
     }
   }
 
+  bool _polling = false;
+
   Future<void> _poll() async {
-    if (_loading || _sending) return;
+    // One at a time: two overlapping polls would add the same messages twice.
+    if (_loading || _sending || _polling) return;
+    _polling = true;
     try {
+      if (_pending.isNotEmpty) {
+        // Back online? Whatever was written offline goes out now.
+        final sent = await widget.api.flushOutbox();
+        await _loadPending();
+        if (sent == 0 && _pending.isNotEmpty) return;
+      }
       final rows = await widget.api.chatMessages(widget.linkId, after: _lastId);
       if (!mounted || rows.isEmpty) return;
       setState(() => _msgs.addAll(rows));
       _afterNew(rows);
     } on ApiException {
       // The next poll tries again.
+    } finally {
+      _polling = false;
     }
   }
 
@@ -169,6 +210,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
       widget.onActivity?.call();
       return true;
     } on ApiException catch (e) {
+      if (e.isNetwork && widget.api.store != null) {
+        // No signal: keep it on the phone and send it when we are back online.
+        final outboxId = await widget.api.queueChatMessage(widget.linkId,
+            kind: kind, text: text, media: media, mime: mime, durationMs: durationMs);
+        if (media != null) _media[-outboxId] = media;
+        await _loadPending();
+        _afterNew(const []);
+        return true;
+      }
       if (mounted) _snack(e.isNetwork ? 'chatNeedsOnline' : 'chatSendFailed');
       return false;
     } finally {
@@ -242,7 +292,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Future<Uint8List?> _bytesFor(int id) async {
     final have = _media[id];
-    if (have != null) return have;
+    if (have != null || id < 0) return have; // a waiting message has no server copy
     try {
       final b = await widget.api.chatMedia(id);
       _media[id] = b;
@@ -371,7 +421,16 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 Text(_time('${m['created_at']}'),
                     style: TextStyle(
                         fontSize: 11, color: fg.withValues(alpha: 0.75))),
-                if (mine) ...[
+                if (m['pending'] == true) ...[
+                  const SizedBox(width: 4),
+                  Icon(Icons.schedule_rounded,
+                      size: 14, color: fg.withValues(alpha: 0.8)),
+                  const SizedBox(width: 3),
+                  Text(t('msgWaiting'),
+                      key: ValueKey('waiting_${m['id']}'),
+                      style: TextStyle(
+                          fontSize: 11, color: fg.withValues(alpha: 0.8))),
+                ] else if (mine) ...[
                   const SizedBox(width: 4),
                   Icon(Icons.done_all_rounded,
                       size: 14,
@@ -467,10 +526,25 @@ class _MessagesScreenState extends State<MessagesScreen> {
       ),
       body: SafeArea(
         child: Column(children: [
+          ValueListenableBuilder<DateTime?>(
+            valueListenable: widget.api.staleSince,
+            builder: (_, at, __) => at == null
+                ? const SizedBox.shrink()
+                : Container(
+                    key: const ValueKey('staleBar'),
+                    width: double.infinity,
+                    color: const Color(0xFFFFF4D6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    child: Text(
+                        t('staleBar').replaceAll(
+                            '{t}', TimeOfDay.fromDateTime(at).format(context)),
+                        style: const TextStyle(fontSize: 13, color: Palette.ink)),
+                  ),
+          ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : _error != null && _msgs.isEmpty
+                : _error != null && _msgs.isEmpty && _pending.isEmpty
                     ? Center(
                         child: Padding(
                             padding: const EdgeInsets.all(24),
@@ -478,7 +552,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                     fontSize: 16, color: Palette.muted))))
-                    : _msgs.isEmpty
+                    : _msgs.isEmpty && _pending.isEmpty
                         ? Center(
                             child: Padding(
                                 padding: const EdgeInsets.all(24),
@@ -490,7 +564,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         : ListView(
                             controller: _scroll,
                             padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-                            children: [for (final m in _msgs) _bubble(m)]),
+                            children: [
+                              for (final m in _msgs) _bubble(m),
+                              for (final m in _pending) _bubble(m),
+                            ]),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),

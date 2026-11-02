@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
@@ -66,6 +67,20 @@ class MemoryTokenStore implements TokenStore {
   Future<void> delete(String key) async => data.remove(key);
 }
 
+/// Where the client keeps what it needs to work without a connection: the last
+/// answer to each read (so a caretaker or doctor still sees their patients), and
+/// chat messages written while offline (so they go out later). The app stores
+/// both in its encrypted database.
+abstract class OfflineStore {
+  Future<void> cachePut(String key, String json);
+  Future<({String json, DateTime at})?> cacheGet(String key);
+  Future<void> cacheRemove(String key);
+  Future<void> cacheClear();
+  Future<int> outboxAdd(Map<String, Object?> item);
+  Future<List<Map<String, Object?>>> outboxList();
+  Future<void> outboxRemove(int id);
+}
+
 /// HTTP client for the Smriti Sathi API.
 ///
 ///  * HTTPS only, except plain http to a machine on this computer or the
@@ -80,6 +95,7 @@ class ApiClient {
     TokenStore? tokens,
     // A free test server sleeps when idle and takes up to a minute to wake.
     this.timeout = const Duration(seconds: 45),
+    this.store,
   })  : baseUri = _validated(baseUrl),
         _http = client ?? http.Client(),
         _tokens = tokens ?? const SecureTokenStore();
@@ -88,6 +104,18 @@ class ApiClient {
   final http.Client _http;
   final TokenStore _tokens;
   final Duration timeout;
+  final OfflineStore? store;
+
+  /// null until the first call; then whether the last call reached the server.
+  final ValueNotifier<bool?> online = ValueNotifier<bool?>(null);
+
+  /// When the data on screen was saved, if it came from the phone's copy because
+  /// the server could not be reached; null when it is live.
+  final ValueNotifier<DateTime?> staleSince = ValueNotifier<DateTime?>(null);
+
+  /// Messages written offline that have not gone out yet.
+  final ValueNotifier<int> outboxCount = ValueNotifier<int>(0);
+  bool _flushing = false;
 
   static const _kAccess = 'api_access';
   static const _kRefresh = 'api_refresh';
@@ -137,6 +165,7 @@ class ApiClient {
     bool auth = true,
     bool retried = false,
     Duration? wait,
+    bool cached = false,
   }) async {
     final target = Uri.parse(path); // may carry a query string
     final uri = baseUri.replace(
@@ -156,23 +185,42 @@ class ApiClient {
       if (body != null) req.body = jsonEncode(body);
       res = await http.Response.fromStream(
           await _http.send(req).timeout(wait ?? timeout));
-    } on TimeoutException {
-      throw ApiException(0, 'timeout');
-    } on http.ClientException {
-      throw ApiException(0, 'network');
-    } on Exception {
-      throw ApiException(0, 'network');
+    } on Exception catch (e) {
+      online.value = false;
+      if (cached && method == 'GET') {
+        final saved = await _saved(path);
+        if (saved != null) return saved;
+      }
+      throw ApiException(0, e is TimeoutException ? 'timeout' : 'network');
     }
 
     if (res.statusCode == 401 && auth && !retried && path != '/v1/auth/refresh') {
       if (await _refresh()) {
-        return _raw(method, path, body: body, auth: auth, retried: true, wait: wait);
+        return _raw(method, path,
+            body: body, auth: auth, retried: true, wait: wait, cached: cached);
       }
     }
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      if (res.body.isEmpty) return const {};
-      final decoded = jsonDecode(res.body);
-      return decoded is Map<String, dynamic> ? decoded : {'data': decoded};
+      online.value = true;
+      staleSince.value = null;
+      Map<String, dynamic> out = const {};
+      if (res.body.isNotEmpty) {
+        final decoded = jsonDecode(res.body);
+        out = decoded is Map<String, dynamic> ? decoded : {'data': decoded};
+        if (cached && method == 'GET') {
+          try {
+            await store?.cachePut(path, res.body);
+          } catch (_) {}
+        }
+      }
+      _flushLater();
+      return out;
+    }
+    if (cached && method == 'GET' && (res.statusCode == 403 || res.statusCode == 404)) {
+      // Access ended (or the thing is gone): do not keep showing the old copy.
+      try {
+        await store?.cacheRemove(path);
+      } catch (_) {}
     }
     var detail = 'error';
     try {
@@ -180,6 +228,83 @@ class ApiClient {
       if (j is Map && j['detail'] is String) detail = j['detail'] as String;
     } catch (_) {}
     throw ApiException(res.statusCode, detail);
+  }
+
+  /// The last answer saved for [path], when the server cannot be reached.
+  Future<Map<String, dynamic>?> _saved(String path) async {
+    try {
+      final hit = await store?.cacheGet(path);
+      if (hit == null) return null;
+      final decoded = jsonDecode(hit.json);
+      staleSince.value = hit.at;
+      return decoded is Map<String, dynamic> ? decoded : {'data': decoded};
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Any call that gets through proves the phone is online again, so anything
+  /// written while offline goes out now.
+  void _flushLater() {
+    final st = store;
+    if (st == null || _flushing || outboxCount.value == 0) return;
+    unawaited(flushOutbox());
+  }
+
+  /// Queues a chat message to send later. The caller shows it as waiting.
+  Future<int> queueChatMessage(String linkId,
+      {required String kind,
+      String text = '',
+      Uint8List? media,
+      String mime = '',
+      int durationMs = 0}) async {
+    final id = await store!.outboxAdd({
+      'link_id': linkId,
+      'kind': kind,
+      'text': text,
+      'media': media,
+      'mime': mime,
+      'duration_ms': durationMs,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    outboxCount.value = (await store!.outboxList()).length;
+    return id;
+  }
+
+  Future<List<Map<String, Object?>>> pendingMessages([String? linkId]) async {
+    final all = await store?.outboxList() ?? const <Map<String, Object?>>[];
+    return linkId == null ? all : [for (final m in all) if (m['link_id'] == linkId) m];
+  }
+
+  /// Sends the queued messages in order. Stops at the first one that cannot be
+  /// sent for lack of a connection; drops one the server refuses for good (the
+  /// link ended, say), because retrying it can never work. Returns how many went.
+  Future<int> flushOutbox() async {
+    final st = store;
+    if (st == null || _flushing) return 0;
+    _flushing = true;
+    var sent = 0;
+    try {
+      for (final m in await st.outboxList()) {
+        try {
+          await sendChatMessage(m['link_id'] as String,
+              kind: m['kind'] as String,
+              text: (m['text'] as String?) ?? '',
+              media: m['media'] as Uint8List?,
+              mime: (m['mime'] as String?) ?? '',
+              durationMs: (m['duration_ms'] as int?) ?? 0);
+          await st.outboxRemove(m['id'] as int);
+          sent++;
+        } on ApiException catch (e) {
+          if (e.isNetwork || e.isUnauthorized) break;
+          await st.outboxRemove(m['id'] as int);
+        }
+      }
+      outboxCount.value = (await st.outboxList()).length;
+    } finally {
+      _flushing = false;
+    }
+    return sent;
   }
 
   /// A binary download (a chat photo or voice note), signed in like any call.
@@ -255,6 +380,9 @@ class ApiClient {
       }
     }
     await clearSession();
+    try {
+      await store?.cacheClear();
+    } catch (_) {}
   }
 
   // ---- patient -----------------------------------------------------------------
@@ -352,7 +480,7 @@ class ApiClient {
   // ---- caretaker / doctor -------------------------------------------------------
 
   Future<List<Map<String, dynamic>>> myInvites() async {
-    final j = await _raw('GET', '/v1/invites');
+    final j = await _raw('GET', '/v1/invites', cached: true);
     return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
@@ -360,17 +488,17 @@ class ApiClient {
   Future<void> declineInvite(String id) => _raw('POST', '/v1/invites/$id/decline');
 
   Future<List<Map<String, dynamic>>> myPatients() async {
-    final j = await _raw('GET', '/v1/my-patients');
+    final j = await _raw('GET', '/v1/my-patients', cached: true);
     return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
   Future<List<Map<String, dynamic>>> patientReminders(String patientId) async {
-    final j = await _raw('GET', '/v1/patients/$patientId/reminders');
+    final j = await _raw('GET', '/v1/patients/$patientId/reminders', cached: true);
     return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
   Future<Map<String, dynamic>> report(String patientId, int days) =>
-      _raw('GET', '/v1/patients/$patientId/report?days=$days');
+      _raw('GET', '/v1/patients/$patientId/report?days=$days', cached: true);
 
   Future<void> setBaseline(String patientId, int level) =>
       _raw('PATCH', '/v1/patients/$patientId/baseline', body: {'baseline_level': level});
@@ -381,7 +509,7 @@ class ApiClient {
 
   /// Every conversation this account can open, with unread counts.
   Future<List<Map<String, dynamic>>> chatThreads() async {
-    final j = await _raw('GET', '/v1/chat/threads');
+    final j = await _raw('GET', '/v1/chat/threads', cached: true);
     return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
@@ -389,7 +517,7 @@ class ApiClient {
   Future<List<Map<String, dynamic>>> chatMessages(String linkId,
       {int after = 0, int before = 0}) async {
     final q = after > 0 ? '?after=$after' : before > 0 ? '?before=$before' : '';
-    final j = await _raw('GET', '/v1/chat/$linkId/messages$q');
+    final j = await _raw('GET', '/v1/chat/$linkId/messages$q', cached: q.isEmpty);
     return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
@@ -416,8 +544,8 @@ class ApiClient {
 
   // ---- routines and reminders set by a caretaker or doctor -----------------
 
-  Future<List<Map<String, dynamic>>> careReminders(String patientId) async {
-    final j = await _raw('GET', '/v1/patients/$patientId/care-reminders');
+  Future<List<Map<String, dynamic>>> careReminders(String patientId, {bool cached = false}) async {
+    final j = await _raw('GET', '/v1/patients/$patientId/care-reminders', cached: cached);
     return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 

@@ -19,8 +19,12 @@ class ProfileTab extends StatelessWidget {
     required this.onChanged,
     required this.onLogout,
     this.hooks,
+    this.onConnectOnline,
   });
   final ServerHooks? hooks;
+
+  /// Set when this patient set up offline and has not checked their number yet.
+  final void Function(BuildContext context)? onConnectOnline;
   final AppDatabase db;
   final ReminderNotifier notifier;
   final Map<String, Object?> patient;
@@ -85,6 +89,29 @@ class ProfileTab extends StatelessWidget {
                 () => open(SosScreen(db: db, patientId: _id, lang: _lang))),
           ]),
         ),
+        if (onConnectOnline != null) ...[
+          const SizedBox(height: 16),
+          AppCard(
+            key: const ValueKey('connectOnlineCard'),
+            color: Palette.tileBlue,
+            onTap: () => onConnectOnline!(context),
+            padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              const Icon(Icons.cloud_sync_rounded, color: Palette.blue, size: 30),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(t('connectOnline'),
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(t('connectOnlineBody'),
+                      style: const TextStyle(fontSize: 13, color: Palette.muted)),
+                ]),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Palette.muted),
+            ]),
+          ),
+        ],
         const SizedBox(height: 16),
         AppCard(
           color: Palette.tileRed,

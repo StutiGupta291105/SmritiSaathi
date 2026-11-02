@@ -11,6 +11,7 @@ import '../../core/ui.dart';
 import '../../services/api_client.dart';
 import '../chat/messages_screen.dart';
 import '../reminders/reminder_style.dart';
+import '../shell/offline_bar.dart';
 import '../reminders/reminders_screen.dart' show showAddReminderDialog, NewReminder;
 import '../shell/settings_pages.dart';
 
@@ -216,7 +217,11 @@ class _RemoteHomeState extends State<RemoteHome> {
       ),
       child: Scaffold(
         body: SafeArea(
-          child: RefreshIndicator(onRefresh: _load, child: pages[_tab]),
+          child: Column(children: [
+            OfflineBar(api: widget.api, lang: widget.lang),
+            Expanded(
+                child: RefreshIndicator(onRefresh: _load, child: pages[_tab])),
+          ]),
         ),
         bottomNavigationBar: Padding(
           padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
@@ -867,7 +872,7 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
     if (_reminders != null) return;
     try {
       final r = await widget.api.patientReminders(widget.patientId);
-      final c = await widget.api.careReminders(widget.patientId);
+      final c = await widget.api.careReminders(widget.patientId, cached: true);
       if (mounted) {
         setState(() {
           _reminders = r;
@@ -881,7 +886,7 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
 
   Future<void> _reloadCare() async {
     try {
-      final c = await widget.api.careReminders(widget.patientId);
+      final c = await widget.api.careReminders(widget.patientId, cached: true);
       if (mounted) setState(() => _careItems = c);
     } on ApiException catch (e) {
       if (mounted) _fail(e);

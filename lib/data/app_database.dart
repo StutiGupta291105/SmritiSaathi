@@ -10,6 +10,7 @@ import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/ability_model.dart';
+import '../services/api_client.dart' show OfflineStore;
 import '../core/adherence.dart';
 import '../core/adaptive_engine.dart';
 import '../core/engagement_alerts.dart';
@@ -61,7 +62,7 @@ const int kMinLogRetentionDays = 180;
 ///    implemented from day one; data collected is minimal.
 ///  * Every sensitive action goes to [audit_log] (append-only from app code).
 ///  * `synced = 0` rows form the sync queue for when connectivity returns.
-class AppDatabase {
+class AppDatabase implements OfflineStore {
   AppDatabase._(this._db) : _clock = DateTime.now;
   final Database _db;
   final DateTime Function() _clock;
@@ -80,7 +81,7 @@ class AppDatabase {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 9;
+  static const schemaVersion = 10;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -162,6 +163,18 @@ class AppDatabase {
       )''');
     await _createCareReminderTables(db);
     await _createWaterLog(db);
+    await _createOfflineTables(db);
+  }
+
+  /// What the phone keeps to work offline: the last answer to a few server reads
+  /// (so a caregiver or doctor still sees their patients), and chat messages
+  /// written while offline, waiting to be sent. Both are in this encrypted
+  /// database and are wiped on log out.
+  static Future<void> _createOfflineTables(Database db) async {
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS api_cache(path TEXT PRIMARY KEY, json TEXT NOT NULL, fetched_at TEXT NOT NULL)');
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS chat_outbox(id INTEGER PRIMARY KEY AUTOINCREMENT, link_id TEXT NOT NULL, kind TEXT NOT NULL, text TEXT, media BLOB, mime TEXT, duration_ms INTEGER, created_at TEXT NOT NULL)');
   }
 
   /// Glasses of water drunk per day (the Water Tracker). Kept on the phone only.
@@ -241,6 +254,7 @@ class AppDatabase {
       await _createCareReminderTables(db);
     }
     if (oldVersion < 9) await _createWaterLog(db);
+    if (oldVersion < 10) await _createOfflineTables(db);
   }
 
   static Future<void> _addColumn(Database db, String table, String def) async {
@@ -1152,6 +1166,61 @@ class AppDatabase {
           where: 'server_link_id = ? AND patient_id = ?',
           whereArgs: [l['id'], patientId]);
     }
+  }
+
+  /// Closes the database file (tests that reopen it, as after an app restart).
+  Future<void> close() => _db.close();
+
+  // ---- offline store (see OfflineStore) --------------------------------------
+
+  @override
+  Future<void> cachePut(String key, String json) => _db.insert(
+      'api_cache',
+      {'path': key, 'json': json, 'fetched_at': _clock().toUtc().toIso8601String()},
+      conflictAlgorithm: ConflictAlgorithm.replace);
+
+  @override
+  Future<({String json, DateTime at})?> cacheGet(String key) async {
+    final rows = await _db.query('api_cache', where: 'path = ?', whereArgs: [key]);
+    if (rows.isEmpty) return null;
+    return (
+      json: rows.first['json'] as String,
+      at: DateTime.parse(rows.first['fetched_at'] as String).toLocal()
+    );
+  }
+
+  @override
+  Future<void> cacheRemove(String key) =>
+      _db.delete('api_cache', where: 'path = ?', whereArgs: [key]);
+
+  @override
+  Future<void> cacheClear() async {
+    await _db.delete('api_cache');
+    await _db.delete('chat_outbox'); // nothing queued for the previous person
+  }
+
+  @override
+  Future<int> outboxAdd(Map<String, Object?> item) => _db.insert('chat_outbox', item);
+
+  @override
+  Future<List<Map<String, Object?>>> outboxList() =>
+      _db.query('chat_outbox', orderBy: 'id');
+
+  @override
+  Future<void> outboxRemove(int id) =>
+      _db.delete('chat_outbox', where: 'id = ?', whereArgs: [id]);
+
+  /// How many things are waiting on this phone to go to the server: game
+  /// results, consent decisions, invites, marks done, deletions and chat
+  /// messages. Shown as "N waiting to send" while offline.
+  Future<int> pendingSyncCount(String patientId) async {
+    final b = await syncBatch(patientId);
+    return (await unsyncedConsents(patientId)).length +
+        (await unsentInvites(patientId)).length +
+        b.sessions.length +
+        b.marks.length +
+        (await pendingCareReminderDeletes()).length +
+        (await outboxList()).length;
   }
 
   // ---- water tracker -----------------------------------------------------

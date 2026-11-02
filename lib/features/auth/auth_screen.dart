@@ -47,6 +47,7 @@ class _AuthScreenState extends State<AuthScreen> {
   String? _e164; // set once the OTP has been sent
   String? _errorKey;
   bool _busy = false;
+  bool _offerOffline = false; // no connection: a new patient may start on the phone alone
 
   String t(String k) => tr(widget.lang, k);
 
@@ -72,11 +73,40 @@ class _AuthScreenState extends State<AuthScreen> {
       _errorKey = null;
     });
     final sent = await widget.otp.send(e164, role: _role, signUp: _signUp);
+    if (sent == OtpResult.offline && _signUp && _role == 'patient') {
+      // Games and reminders need no server, so do not make a new patient wait for
+      // a signal: offer to set up now and check the number later.
+      setState(() {
+        _offerOffline = true;
+        _errorKey = 'errOffline';
+        _busy = false;
+      });
+      return;
+    }
     if (sent != OtpResult.ok) return _fail(_otpErrorKey(sent));
     setState(() {
       _e164 = e164;
       _busy = false;
     });
+  }
+
+  /// A new patient with no internet: the account lives on the phone only. The
+  /// phone number is checked later (Settings > Connect online services), which
+  /// is when sharing, chat and the AI helper start.
+  Future<void> _startOffline() async {
+    final e164 = normalizePhone(_phone.text);
+    if (e164 == null) return _fail('errPhone');
+    if (_name.text.trim().isEmpty) return _fail('errName');
+    setState(() => _busy = true);
+    try {
+      final id = await widget.db
+          .createAccount(phone: e164, role: 'patient', name: _name.text.trim());
+      await widget.session.write(id);
+      await widget.db.recordLogin(id);
+      widget.onLoggedIn();
+    } on StateError {
+      _fail('errAccountExists');
+    }
   }
 
   Future<void> _verify() async {
@@ -251,6 +281,17 @@ class _AuthScreenState extends State<AuthScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.w600)),
               ),
+            if (_offerOffline) ...[
+              Text(t('offlineStartNote'),
+                  key: const ValueKey('offlineNote'),
+                  style: const TextStyle(fontSize: 14, color: Palette.muted, height: 1.35)),
+              const SizedBox(height: 10),
+              OutlinedButton(
+                key: const ValueKey('offlineStart'),
+                onPressed: _busy ? null : _startOffline,
+                child: Text(t('offlineStart')),
+              ),
+            ],
             const SizedBox(height: 8),
             FilledButton(
               onPressed: _busy ? null : (waitingForOtp ? _verify : _sendOtp),

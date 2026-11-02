@@ -154,6 +154,43 @@ void main() {
     expect([row['server_link_id'], row['status'], row['verified']], ['srv-l', 'accepted', 1]);
   });
 
+  test('a whole session with no connection stays on the phone, then goes out once online', () async {
+    offline = true;
+    // everything a patient does works with no server at all
+    await db.insertSession(patientId: pid, game: 'memory_match', startedAt: DateTime.now(),
+        startLevel: 2, endLevel: 3, trials: 5, correct: 4);
+    await db.insertSession(patientId: pid, game: 'attention', startedAt: DateTime.now(),
+        startLevel: 3, endLevel: 3, trials: 5, correct: 5);
+    await db.addReminder(patientId: pid, kind: ReminderKind.medicine, label: 'Tablet',
+        hour: 9, minute: 0, createdBy: 'Asha');
+    await db.addWater(pid);
+    await db.addWater(pid);
+    await db.addCareInvite(patientId: pid, kind: 'caregiver', name: 'Ravi',
+        professionalId: 'CG-AB23XY', by: 'Asha');
+    expect(await db.waterToday(pid), 2);
+    expect(await db.listReminders(pid), hasLength(1));
+
+    final off = make();
+    expect(await off.run(pid), SyncOutcome.offline); // tried, could not reach: no crash, no loss
+    expect(await db.unsyncedSessions(pid), hasLength(2));
+    expect(await db.unsentInvites(pid), hasLength(1));
+    expect((await db.unsyncedConsents(pid)), isNotEmpty);
+    expect(await db.pendingSyncCount(pid), greaterThanOrEqualTo(4));
+    expect(calls, isEmpty);
+
+    offline = false;
+    expect(await make().run(pid), SyncOutcome.done);
+    expect((lastSync['sessions'] as List).length, 2);
+    expect(await db.unsyncedSessions(pid), isEmpty);
+    expect(await db.unsentInvites(pid), isEmpty);
+    expect(await db.unsyncedConsents(pid), isEmpty);
+    expect(await db.pendingSyncCount(pid), 0);
+    // and nothing is sent twice by the next run
+    calls.clear();
+    await make().run(pid);
+    expect(calls.where((c) => c.endsWith('/invites') || c.endsWith('/consents')), isEmpty);
+  });
+
   test('an invite by Care ID is sent as the ID, with no phone number', () async {
     await db.addCareInvite(
         patientId: pid,

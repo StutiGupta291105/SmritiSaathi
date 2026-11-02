@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'offline_bar.dart';
 import '../chat/messages_screen.dart';
 
 import '../../services/api_client.dart';
@@ -37,6 +38,7 @@ class PatientShell extends StatefulWidget {
     required this.onLogout,
     this.hooks,
     this.api,
+    this.onConnectOnline,
   });
   final ApiClient? api;
   final ServerHooks? hooks;
@@ -48,6 +50,10 @@ class PatientShell extends StatefulWidget {
   /// Reload the patient row (language change, or erasure -> back to welcome).
   final VoidCallback onPatientChanged;
   final VoidCallback onLogout;
+
+  /// Set when the person set up with no internet and still has to check their
+  /// phone number; Settings then offers "Connect online services".
+  final void Function(BuildContext context)? onConnectOnline;
 
   @override
   State<PatientShell> createState() => _PatientShellState();
@@ -69,6 +75,7 @@ class _PatientShellState extends State<PatientShell> {
     super.initState();
     kRemindersRevision.addListener(_remindersChanged);
     if (widget.api != null) {
+      widget.api!.online.addListener(_onlineChanged);
       _loadThreads();
       _chatTimer = Timer.periodic(const Duration(seconds: 20), (_) {
         _loadThreads();
@@ -78,8 +85,19 @@ class _PatientShellState extends State<PatientShell> {
     }
   }
 
+  bool? _wasOnline;
+
+  /// Back online after being offline: send what was saved right away instead of
+  /// waiting for the next timer.
+  void _onlineChanged() {
+    final now = widget.api!.online.value;
+    if (now == true && _wasOnline == false) widget.hooks?.syncNow();
+    _wasOnline = now;
+  }
+
   @override
   void dispose() {
+    widget.api?.online.removeListener(_onlineChanged);
     kRemindersRevision.removeListener(_remindersChanged);
     _chatTimer?.cancel();
     super.dispose();
@@ -347,10 +365,18 @@ class _PatientShellState extends State<PatientShell> {
         patient: widget.patient,
         onChanged: widget.onPatientChanged,
         onLogout: widget.onLogout,
+        onConnectOnline: widget.onConnectOnline,
       ),
     ];
     return Scaffold(
-      body: SafeArea(child: pages[_tab]),
+      body: SafeArea(
+        child: Column(children: [
+          if (widget.api != null)
+            OfflineBar(
+                api: widget.api!, lang: _lang, db: widget.db, patientId: _id),
+          Expanded(child: pages[_tab]),
+        ]),
+      ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
         child: DecoratedBox(
