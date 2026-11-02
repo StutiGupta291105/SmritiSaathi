@@ -245,6 +245,21 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
       } on ApiException {
         offer = null; // none on the server, or not reachable: start normally
       }
+      // Signing in to an account that already exists goes straight to the
+      // dashboard: bring the saved progress back without asking. (The choice
+      // screen is only shown if the restore itself failed, so it can be retried.)
+      if (offer != null) {
+        final ok = await _restoreSilently(account, offer['id'] as String);
+        if (ok) {
+          patient = await widget.db.patientForAccount(account['id'] as String);
+          if (patient != null) {
+            offer = null;
+            await widget.notifier.resync(
+                patientId: patient['id'] as String,
+                lang: patient['language'] as String);
+          }
+        }
+      }
     }
     if (mounted) {
       setState(() {
@@ -256,6 +271,19 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
       });
       _sync();
       if (serverUser != null) _push?.register();
+    }
+  }
+
+  Future<bool> _restoreSilently(Map<String, Object?> account, String serverPatientId) async {
+    try {
+      final snap = await widget.api!.snapshot(serverPatientId);
+      await widget.db.restoreFromSnapshot(
+          accountId: account['id'] as String,
+          phone: account['phone'] as String,
+          snapshot: snap);
+      return true;
+    } on ApiException {
+      return false;
     }
   }
 

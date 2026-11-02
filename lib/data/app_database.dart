@@ -944,7 +944,9 @@ class AppDatabase implements OfflineStore {
         'display_name': pt['display_name'],
         'language': pt['language'],
         'baseline_level': pt['baseline_level'],
-        'setup_stage': 0,
+        // Already set up before: straight to the dashboard. Photos, contacts and
+        // profile extras that stayed on the old phone are added from Settings.
+        'setup_stage': 5,
         'server_patient_id': pt['id'],
         'server_baseline': pt['baseline_level'],
         'created_at': _now(),

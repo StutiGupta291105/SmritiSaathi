@@ -888,7 +888,7 @@ void main() {
           accountId: acc, phone: _phone, snapshot: snap);
       final p = (await db.patientById(id))!;
       expect([p['display_name'], p['language'], p['baseline_level'], p['setup_stage']],
-          ['Asha', 'hi', 3, 0]);
+          ['Asha', 'hi', 3, 5]); // already set up: restore lands on the dashboard
       expect(p['server_patient_id'], 'srv-1');
       expect(await db.hasConsent(id, 'gameplay'), isTrue);
       expect(await db.hasConsent(id, 'family_contacts'), isFalse);
