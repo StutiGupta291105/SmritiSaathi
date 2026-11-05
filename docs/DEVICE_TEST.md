@@ -47,7 +47,7 @@ phone (about 5 inch) and, if you can, with the system font size set to Large.
 
 ## Live location (two phones: patient and caregiver; a third for a family member's SMS)
 21. Patient: add a family member and tick **Include in live location** (or tap the pin icon on
-    the family row). The patient Home shows **Share my live location** at the very top.
+    the family row). The patient Home shows **Are You Lost? Tell Your Loved Ones** at the very top.
 22. Tap it: the caregiver and the ticked family member are already selected. Choose **1 hour**
     and **Start sharing**. Allow location when asked. The messaging app opens with the text and a
     link ready: press send. The Home card turns green with **Stop sharing**.

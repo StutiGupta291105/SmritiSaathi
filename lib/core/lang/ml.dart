@@ -4,7 +4,7 @@ import '../lang_data.dart';
 const LangData kLangMl = LangData(
   strings: {
     "appName": "സ്മൃതി സാഥി",
-    "shareLiveLoc": "എന്റെ ലൈവ് ലൊക്കേഷൻ പങ്കിടുക",
+    "shareLiveLoc": "വഴി തെറ്റിയോ? നിങ്ങളുടെ പ്രിയപ്പെട്ടവരെ അറിയിക്കുക",
     "shareLiveLocSub": "നിങ്ങൾ എവിടെയാണെന്ന് പരിചാരകനെയും കുടുംബത്തെയും അറിയിക്കുക",
     "liveSharingUntil": "{time} വരെ ലൈവ് ലൊക്കേഷൻ പങ്കിടുന്നു",
     "stopSharing": "പങ്കിടൽ നിർത്തുക",

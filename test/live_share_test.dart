@@ -259,7 +259,7 @@ void main() {
       final ctl = LiveShareController(provider: FakeLocation(), api: apiFor(srv));
       final opened = <Uri>[];
       await t.pumpWidget(host(ctl, srv, opened: opened));
-      expect(find.text('Share my live location'), findsOneWidget);
+      expect(find.text('Are You Lost? Tell Your Loved Ones'), findsOneWidget);
       await t.tap(find.byKey(const ValueKey('liveCardOff')));
       await t.pump();
       await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));

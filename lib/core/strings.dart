@@ -11,7 +11,7 @@ const Map<String, Map<String, String>> _kCoreStrings = {
   'as': kStringsAs,
   'en': {
     'appName': 'Smriti Sathi',
-    'shareLiveLoc': 'Share my live location',
+    'shareLiveLoc': 'Are You Lost? Tell Your Loved Ones',
     'shareLiveLocSub': 'Tell your caregiver and family where you are',
     'liveSharingUntil': 'Sharing live location until {time}',
     'stopSharing': 'Stop sharing',
@@ -596,7 +596,7 @@ const Map<String, Map<String, String>> _kCoreStrings = {
   },
   'hi': {
     'appName': 'स्मृति साथी',
-    'shareLiveLoc': 'मेरी लाइव लोकेशन भेजें',
+    'shareLiveLoc': 'क्या आप खो गए हैं? अपनों को बताएँ',
     'shareLiveLocSub': 'अपने देखभालकर्ता और परिवार को बताएँ कि आप कहाँ हैं',
     'liveSharingUntil': '{time} तक लाइव लोकेशन साझा हो रही है',
     'stopSharing': 'साझा करना रोकें',

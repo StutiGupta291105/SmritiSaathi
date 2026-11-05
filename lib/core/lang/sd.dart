@@ -4,7 +4,7 @@ import '../lang_data.dart';
 const LangData kLangSd = LangData(
   strings: {
     "appName": "سمرتي ساٿي",
-    "shareLiveLoc": "منهنجي لائيو لوڪيشن موڪليو",
+    "shareLiveLoc": "ڇا توهان گم ٿي ويا آهيو؟ پنهنجن کي ٻڌايو",
     "shareLiveLocSub": "پنهنجي سنڀاليندڙ ۽ خاندان کي ٻڌايو ته توهان ڪٿي آهيو",
     "liveSharingUntil": "{time} تائين لائيو لوڪيشن شيئر ٿي رهي آهي",
     "stopSharing": "شيئرنگ بند ڪريو",

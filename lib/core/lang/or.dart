@@ -4,7 +4,7 @@ import '../lang_data.dart';
 const LangData kLangOr = LangData(
   strings: {
     "appName": "ସ୍ମୃତି ସାଥୀ",
-    "shareLiveLoc": "ମୋ ଲାଇଭ ଲୋକେସନ ପଠାନ୍ତୁ",
+    "shareLiveLoc": "ଆପଣ ହଜିଯାଇଛନ୍ତି କି? ଆପଣଙ୍କ ପ୍ରିୟଜନଙ୍କୁ ଜଣାନ୍ତୁ",
     "shareLiveLocSub": "ଆପଣ କେଉଁଠି ଅଛନ୍ତି ଆପଣଙ୍କ ସେବକ ଓ ପରିବାରକୁ ଜଣାନ୍ତୁ",
     "liveSharingUntil": "{time} ପର୍ଯ୍ୟନ୍ତ ଲାଇଭ ଲୋକେସନ ସେୟାର ହେଉଛି",
     "stopSharing": "ସେୟାର ବନ୍ଦ କରନ୍ତୁ",
