@@ -4,6 +4,13 @@ import '../lang_data.dart';
 const LangData kLangGu = LangData(
   strings: {
     "appName": "સ્મૃતિ સાથી",
+    "consultTab": "સલાહ",
+    "consultPatients": "દર્દીઓ",
+    "consultCaregivers": "સંભાળ રાખનાર",
+    "yourPatientsChat": "તમારા દર્દીઓ",
+    "otherQueries": "અન્ય દર્દીઓના પ્રશ્નો",
+    "noPatientChats": "હજુ કોઈ વાતચીત નથી. તમારા દર્દીઓ અને અભિપ્રાય પૂછનાર અહીં દેખાશે.",
+    "noCaregiverChats": "હજુ કોઈ સંભાળ રાખનાર નથી. તમારા દર્દીના સંભાળ રાખનાર આમંત્રણ સ્વીકારે ત્યારે અહીં વાત કરી શકશો.",
     "yourDoctor": "તમારા ડૉક્ટર",
     "otherDoctors": "સ્મૃતિ સાથી પરના અન્ય ડૉક્ટર",
     "opinionNote": "અન્ય ડૉક્ટર ફક્ત તમે મોકલેલા સંદેશા જુએ છે, તમારા રિપોર્ટ, રમતો કે રિમાઇન્ડર નહીં. તેમના જવાબ અભિપ્રાય છે, નિદાન નથી.",

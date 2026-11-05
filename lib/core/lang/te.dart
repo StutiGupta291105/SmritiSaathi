@@ -4,6 +4,13 @@ import '../lang_data.dart';
 const LangData kLangTe = LangData(
   strings: {
     "appName": "స్మృతి సాథీ",
+    "consultTab": "సంప్రదింపు",
+    "consultPatients": "రోగులు",
+    "consultCaregivers": "సంరక్షకులు",
+    "yourPatientsChat": "మీ రోగులు",
+    "otherQueries": "ఇతర రోగుల ప్రశ్నలు",
+    "noPatientChats": "ఇంకా సంభాషణలు లేవు. మీ రోగులు, అభిప్రాయం అడిగేవారు ఇక్కడ కనిపిస్తారు.",
+    "noCaregiverChats": "ఇంకా సంరక్షకులు లేరు. మీ రోగి సంరక్షకుడు ఆహ్వానాన్ని అంగీకరిస్తే ఇక్కడ మాట్లాడవచ్చు.",
     "yourDoctor": "మీ వైద్యుడు",
     "otherDoctors": "స్మృతి సాథిలో ఇతర వైద్యులు",
     "opinionNote": "ఇతర వైద్యులు మీరు పంపే సందేశాలను మాత్రమే చూస్తారు; మీ నివేదికలు, ఆటలు, రిమైండర్లను కాదు. వారి సమాధానాలు అభిప్రాయాలు మాత్రమే, నిర్ధారణ కాదు.",

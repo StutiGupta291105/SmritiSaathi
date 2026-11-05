@@ -73,6 +73,11 @@ class _RemoteHomeState extends State<RemoteHome> {
     super.dispose();
   }
 
+  bool get _doctor => widget.user.role == 'doctor';
+
+  /// Where the bell goes: the alerts page.
+  int get _alertsIndex => _doctor ? 5 : 3;
+
   int get _unreadTotal =>
       _threads.fold<int>(0, (n, x) => n + ((x['unread'] as int?) ?? 0));
 
@@ -216,16 +221,36 @@ class _RemoteHomeState extends State<RemoteHome> {
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
-    final pages = [
-      _dashboard(),
-      _patientsTab(),
-      _requestsTab(),
-      _alertsTab(),
-      _settings()
-    ];
+    // A doctor's bar is Home, Patients, Consult, Requests, Profile; the alerts
+    // page is reached from the bell (tab 5). A caregiver keeps the original five.
+    final pages = _doctor
+        ? [
+            _dashboard(),
+            _patientsTab(),
+            _consultTab(),
+            _requestsTab(),
+            _settings(),
+            _alertsTab(),
+          ]
+        : [
+            _dashboard(),
+            _patientsTab(),
+            _requestsTab(),
+            _alertsTab(),
+            _settings()
+          ];
     return Theme(
       // Buttons and tabs take the role's colour.
       data: base.copyWith(
+        navigationBarTheme: base.navigationBarTheme.copyWith(
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final on = states.contains(WidgetState.selected);
+            return TextStyle(
+                fontSize: 12,
+                fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                color: on ? _accent : Palette.muted);
+          }),
+        ),
         filledButtonTheme: FilledButtonThemeData(
           style: (base.filledButtonTheme.style ?? const ButtonStyle())
               .copyWith(backgroundColor: WidgetStatePropertyAll(_accent)),
@@ -255,9 +280,9 @@ class _RemoteHomeState extends State<RemoteHome> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(26),
               child: NavigationBar(
-                selectedIndex: _tab,
+                selectedIndex: _doctor && _tab == 5 ? 0 : _tab,
                 onDestinationSelected: (i) => setState(() => _tab = i),
-                destinations: [
+                destinations: _doctor ? _doctorDestinations() : [
                   NavigationDestination(
                       icon: Badge(
                           isLabelVisible: _unreadTotal > 0,
@@ -524,7 +549,7 @@ class _RemoteHomeState extends State<RemoteHome> {
         ),
         IconButton(
           tooltip: t('rmStatAlerts'),
-          onPressed: () => setState(() => _tab = 3),
+          onPressed: () => setState(() => _tab = _alertsIndex),
           icon: Badge(
               isLabelVisible: _alertTotal > 0,
               label: Text('$_alertTotal'),
@@ -634,6 +659,141 @@ class _RemoteHomeState extends State<RemoteHome> {
       );
 
   // ---- tab 2: requests (invitations from patients) -------------------------
+
+  List<NavigationDestination> _doctorDestinations() => [
+        NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded, color: _accent),
+            label: t('tabHome')),
+        NavigationDestination(
+            icon: const Icon(Icons.groups_outlined),
+            selectedIcon: Icon(Icons.groups_rounded, color: _accent),
+            label: t('rmStatPeople')),
+        NavigationDestination(
+            icon: Badge(
+                isLabelVisible: _unreadTotal > 0,
+                label: Text('$_unreadTotal'),
+                child: const Icon(Icons.forum_outlined)),
+            selectedIcon: Icon(Icons.forum_rounded, color: _accent),
+            label: t('consultTab')),
+        NavigationDestination(
+            icon: Badge(
+                isLabelVisible: _invites.isNotEmpty,
+                label: Text('${_invites.length}'),
+                child: const Icon(Icons.mail_outline_rounded)),
+            selectedIcon: Icon(Icons.mail_rounded, color: _accent),
+            label: t('rmRequests')),
+        NavigationDestination(
+            icon: const Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded, color: _accent),
+            label: t('tabProfile')),
+      ];
+
+  // ---- consult (doctor) ----------------------------------------------------
+
+  int _consultSeg = 0; // 0 patients, 1 caregivers
+
+  int _unreadOf(Iterable<Map<String, dynamic>> rows) =>
+      rows.fold<int>(0, (n, x) => n + ((x['unread'] as int?) ?? 0));
+
+  List<Map<String, dynamic>> _byRecent(Iterable<Map<String, dynamic>> rows) =>
+      [...rows]..sort((a, b) => '${b['last_at'] ?? ''}'.compareTo('${a['last_at'] ?? ''}'));
+
+  Widget _segment(Key key, String label, int index, int unread) {
+    final on = _consultSeg == index;
+    return Expanded(
+      child: GestureDetector(
+        key: key,
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _consultSeg = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+              color: on ? _accent : Colors.transparent,
+              borderRadius: BorderRadius.circular(22)),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Flexible(
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: on ? Colors.white : Palette.muted)),
+            ),
+            if (unread > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(
+                    color: Palette.red, borderRadius: BorderRadius.circular(10)),
+                child: Text('$unread',
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+              ),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// A doctor's conversations in one place. Patients: their own patients, then
+  /// questions from other patients who asked for an opinion. Caregivers: only the
+  /// caregivers of the doctor's own patients (the server never creates anything else).
+  Widget _consultTab() {
+    final mine = _byRecent(_threads.where((x) => x['kind'] == 'care'));
+    final others = _byRecent(_threads.where((x) => x['kind'] == 'opinion'));
+    final team = _byRecent(_threads.where((x) => x['kind'] == 'pro'));
+    final patientsUnread = _unreadOf(mine) + _unreadOf(others);
+    Widget empty(String key) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 28),
+          child: Text(t(key),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14.5, color: Palette.muted, height: 1.4)),
+        );
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      children: [
+        ScreenTitle(t('consultTab')),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(color: Palette.line)),
+          child: Row(children: [
+            _segment(const ValueKey('consultSegPatients'), t('consultPatients'), 0,
+                patientsUnread),
+            _segment(const ValueKey('consultSegCaregivers'), t('consultCaregivers'), 1,
+                _unreadOf(team)),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        if (_consultSeg == 0) ...[
+          if (mine.isEmpty && others.isEmpty) empty('noPatientChats'),
+          if (mine.isNotEmpty) ...[
+            _heading(t('yourPatientsChat')),
+            const SizedBox(height: 8),
+            for (final th in mine) _threadRow(th),
+            const SizedBox(height: 8),
+          ],
+          if (others.isNotEmpty) ...[
+            _heading(t('otherQueries')),
+            const SizedBox(height: 8),
+            for (final th in others) _threadRow(th),
+          ],
+        ] else ...[
+          if (team.isEmpty) empty('noCaregiverChats'),
+          for (final th in team) _threadRow(th),
+        ],
+      ],
+    );
+  }
 
   Widget _requestsTab() => ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),

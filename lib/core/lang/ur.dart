@@ -4,6 +4,13 @@ import '../lang_data.dart';
 const LangData kLangUr = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "consultTab": "مشاورت",
+    "consultPatients": "مریض",
+    "consultCaregivers": "نگہداشت کرنے والے",
+    "yourPatientsChat": "آپ کے مریض",
+    "otherQueries": "دیگر مریضوں کے سوالات",
+    "noPatientChats": "ابھی کوئی گفتگو نہیں۔ آپ کے مریض اور رائے مانگنے والے یہاں نظر آئیں گے۔",
+    "noCaregiverChats": "ابھی کوئی نگہداشت کرنے والا نہیں۔ آپ کے مریض کا نگہداشت کرنے والا دعوت قبول کرے تو یہاں بات ہو سکے گی۔",
     "yourDoctor": "آپ کے ڈاکٹر",
     "otherDoctors": "اسمرتی ساتھی پر دیگر ڈاکٹر",
     "opinionNote": "دوسرے ڈاکٹر صرف وہ پیغامات دیکھتے ہیں جو آپ انہیں بھیجتے ہیں، آپ کی رپورٹیں، کھیل یا یاد دہانیاں نہیں۔ ان کے جواب رائے ہیں، تشخیص نہیں۔",

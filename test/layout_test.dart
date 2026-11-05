@@ -142,11 +142,17 @@ void main() {
     'word recall game': (l) => WordRecallGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
     'puzzle game': (l) => PuzzleFixGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
     'number game': (l) => NumberOrderGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
-    'reminders (water tab data in the db)': (l) => RemindersScreen(
+    'reminders': (l) => RemindersScreen(
         db: db, notifier: ReminderNotifier(db), patientId: pid, language: l, embedded: true),
     'remote home': (l) => RemoteHome(
         api: api, user: const ServerUser('u', 'caretaker', 'Ravi Kumar Sharma'),
         lang: l, onLogout: () {}),
+    'doctor home': (l) => RemoteHome(
+        api: api, user: const ServerUser('u', 'doctor', 'Dr Ananthanarayanan Venkataraghavan'),
+        lang: l, onLogout: () {}),
+    'doctor consult': (l) => RemoteHome(
+        api: api, user: const ServerUser('u', 'doctor', 'Dr Rao'),
+        lang: l, onLogout: () {}, initialTab: 2),
     'remote report': (l) => RemoteReportScreen(
         api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l),
     'remote patient': (l) => RemotePatientScreen(

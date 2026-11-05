@@ -4,6 +4,13 @@ import '../lang_data.dart';
 const LangData kLangMai = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "consultTab": "परामर्श",
+    "consultPatients": "मरीज",
+    "consultCaregivers": "देखभालकर्ता",
+    "yourPatientsChat": "अहाँक मरीज",
+    "otherQueries": "आन मरीजक प्रश्न",
+    "noPatientChats": "एखन धरि कोनो बातचीत नहि। अहाँक मरीज आ राय पूछऽ बला एतय देखाएत।",
+    "noCaregiverChats": "एखन धरि कोनो देखभालकर्ता नहि। अहाँक मरीजक देखभालकर्ता निमंत्रण स्वीकार करताह तऽ एतय गप भऽ सकत।",
     "yourDoctor": "अहाँक डॉक्टर",
     "otherDoctors": "स्मृति साथी पर आन डॉक्टर",
     "opinionNote": "आन डॉक्टर बस अहाँक पठाओल सन्देश देखैत छथि, अहाँक रिपोर्ट, खेल वा रिमाइंडर नहि। हुनकर जवाब राय अछि, निदान नहि।",

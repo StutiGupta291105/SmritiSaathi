@@ -4,6 +4,13 @@ import '../lang_data.dart';
 const LangData kLangPa = LangData(
   strings: {
     "appName": "ਸਮ੍ਰਿਤੀ ਸਾਥੀ",
+    "consultTab": "ਸਲਾਹ",
+    "consultPatients": "ਮਰੀਜ਼",
+    "consultCaregivers": "ਦੇਖਭਾਲ ਕਰਤਾ",
+    "yourPatientsChat": "ਤੁਹਾਡੇ ਮਰੀਜ਼",
+    "otherQueries": "ਹੋਰ ਮਰੀਜ਼ਾਂ ਦੇ ਸਵਾਲ",
+    "noPatientChats": "ਹਾਲੇ ਕੋਈ ਗੱਲਬਾਤ ਨਹੀਂ। ਤੁਹਾਡੇ ਮਰੀਜ਼ ਅਤੇ ਰਾਇ ਪੁੱਛਣ ਵਾਲੇ ਇੱਥੇ ਦਿਖਣਗੇ।",
+    "noCaregiverChats": "ਹਾਲੇ ਕੋਈ ਦੇਖਭਾਲ ਕਰਤਾ ਨਹੀਂ। ਤੁਹਾਡੇ ਮਰੀਜ਼ ਦਾ ਦੇਖਭਾਲ ਕਰਤਾ ਸੱਦਾ ਮੰਨੇ ਤਾਂ ਇੱਥੇ ਗੱਲ ਹੋ ਸਕੇਗੀ।",
     "yourDoctor": "ਤੁਹਾਡੇ ਡਾਕਟਰ",
     "otherDoctors": "ਸਮ੍ਰਿਤੀ ਸਾਥੀ 'ਤੇ ਹੋਰ ਡਾਕਟਰ",
     "opinionNote": "ਹੋਰ ਡਾਕਟਰ ਸਿਰਫ਼ ਉਹੀ ਸੁਨੇਹੇ ਵੇਖਦੇ ਹਨ ਜੋ ਤੁਸੀਂ ਭੇਜਦੇ ਹੋ, ਤੁਹਾਡੀਆਂ ਰਿਪੋਰਟਾਂ, ਖੇਡਾਂ ਜਾਂ ਰਿਮਾਈਂਡਰ ਨਹੀਂ। ਉਨ੍ਹਾਂ ਦੇ ਜਵਾਬ ਰਾਇ ਹਨ, ਨਿਦਾਨ ਨਹੀਂ।",

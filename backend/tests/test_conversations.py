@@ -154,3 +154,19 @@ def test_erasing_the_patient_removes_opinion_and_team_chats(env):
     assert env.client.delete(f"/v1/patients/{pid}", headers=a.headers).status_code == 204
     assert _threads(env, other) == [] and _threads(env, cg) == []
     assert _msgs(env, other, op) == 404 and _msgs(env, dr, pro) == 404
+
+
+def test_a_doctor_only_gets_chats_with_caregivers_of_their_own_patients(env):
+    a1, p1 = env.make_patient(PHONE_P, "Asha")
+    a2, p2 = env.make_patient("+919844444444", "Bina")
+    cg1 = env.link_member(a1, p1, "caretaker", PHONE_C)
+    dr1 = env.link_member(a1, p1, "doctor", PHONE_D)
+    cg2 = env.link_member(a2, p2, "caretaker", "+919855555555")
+    dr2 = env.link_member(a2, p2, "doctor", PHONE_D2)
+    for dr, cg, other_cg, name in ((dr1, cg1, cg2, "Asha"), (dr2, cg2, cg1, "Bina")):
+        pro = [t for t in _threads(env, dr) if t["kind"] == "pro"]
+        assert [(t["peer_name"], t["patient_name"]) for t in pro] == [(cg.user["name"], name)]
+        # and no way into the other pair's conversation
+        theirs = [t for t in _threads(env, other_cg) if t["kind"] == "pro"][0]["link_id"]
+        assert _msgs(env, dr, theirs) == 404
+        assert _send(env, dr, theirs).status_code == 404

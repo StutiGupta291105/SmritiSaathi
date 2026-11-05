@@ -4,6 +4,13 @@ import '../lang_data.dart';
 const LangData kLangMr = LangData(
   strings: {
     "appName": "स्मृती साथी",
+    "consultTab": "सल्ला",
+    "consultPatients": "रुग्ण",
+    "consultCaregivers": "काळजीवाहक",
+    "yourPatientsChat": "तुमचे रुग्ण",
+    "otherQueries": "इतर रुग्णांचे प्रश्न",
+    "noPatientChats": "अजून संभाषणे नाहीत. तुमचे रुग्ण आणि मत विचारणारे येथे दिसतील.",
+    "noCaregiverChats": "अजून काळजीवाहक नाहीत. तुमच्या रुग्णाच्या काळजीवाहकाने आमंत्रण स्वीकारले की येथे बोलता येईल.",
     "yourDoctor": "तुमचे डॉक्टर",
     "otherDoctors": "स्मृती साथीवरील इतर डॉक्टर",
     "opinionNote": "इतर डॉक्टर फक्त तुम्ही पाठवलेले संदेश पाहतात, तुमचे अहवाल, खेळ किंवा आठवणी नाही. त्यांची उत्तरे मते आहेत, निदान नाही.",

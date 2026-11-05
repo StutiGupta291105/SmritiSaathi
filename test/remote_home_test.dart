@@ -210,8 +210,10 @@ void main() {
     expect(find.text('Asha'), findsNothing);
     expect(find.text('Babul'), findsOneWidget);
 
-    // alerts tab: the alert, named by patient
-    await t.tap(find.text('Alerts').last);
+    // alerts page (a doctor reaches it from the bell on Home): the alert, named by patient
+    await t.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Home')));
+    await t.pumpAndSettle();
+    await t.tap(find.byIcon(Icons.notifications_none_rounded).first);
     await t.pumpAndSettle();
     expect(find.text('Has not played for 5 days.'), findsOneWidget);
 
@@ -410,5 +412,65 @@ void main() {
     // Babul has no alert: only Asha is in the attention list, so Asha shows twice.
     expect(find.text('Asha'), findsNWidgets(2));
     expect(find.text('Babul'), findsOneWidget);
+  });
+
+  testWidgets('a doctor has a Consult tab: own patients and other patients\' questions, and caregivers of own patients', (t) async {
+    t.view.physicalSize = const Size(800, 1800);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/chat/threads') {
+        return _j(200, [
+          {'link_id': 'L1', 'kind': 'care', 'patient_id': 'p1', 'patient_name': 'Asha', 'peer_name': 'Asha',
+           'member_role': 'doctor', 'unread': 1, 'last_at': '2026-05-01T10:00:00', 'last_kind': 'text'},
+          {'link_id': 'C7', 'kind': 'opinion', 'patient_id': null, 'patient_name': 'Stranger Sen', 'peer_name': 'Stranger Sen',
+           'member_role': 'patient', 'unread': 2, 'last_at': '2026-05-02T10:00:00', 'last_kind': 'text'},
+          {'link_id': 'P1', 'kind': 'pro', 'patient_id': null, 'patient_name': 'Asha', 'peer_name': 'Cara Caregiver',
+           'member_role': 'caretaker', 'unread': 0, 'last_at': null, 'last_kind': null},
+        ]);
+      }
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(_app(api, role: 'doctor'));
+    await t.pumpAndSettle();
+    // the doctor's bar: Home, Patients, Consult, Requests, Profile (alerts is the bell)
+    final nav = find.byType(NavigationBar);
+    for (final l in ['Home', 'Patients', 'Consult', 'Requests', 'Profile']) {
+      expect(find.descendant(of: nav, matching: find.text(l)), findsOneWidget, reason: l);
+    }
+    expect(find.descendant(of: nav, matching: find.text('Alerts')), findsNothing);
+    await t.tap(find.descendant(of: nav, matching: find.text('Consult')));
+    await t.pumpAndSettle();
+    expect(find.text('Your patients'), findsOneWidget);
+    expect(find.text('Questions from other patients'), findsOneWidget);
+    expect(find.text('Stranger Sen'), findsOneWidget);
+    expect(find.text('Opinion request'), findsOneWidget);
+    expect(find.text('Cara Caregiver'), findsNothing); // caregivers are in their own section
+    await t.tap(find.byKey(const ValueKey('consultSegCaregivers')));
+    await t.pumpAndSettle();
+    expect(find.text('Cara Caregiver'), findsOneWidget);
+    expect(find.textContaining('Care team chat'), findsOneWidget);
+    expect(find.text('Stranger Sen'), findsNothing);
+    // the bell still reaches the alerts page
+    await t.tap(find.descendant(of: nav, matching: find.text('Home')));
+    await t.pumpAndSettle();
+    await t.tap(find.byIcon(Icons.notifications_none_rounded).first);
+    await t.pumpAndSettle();
+    expect(find.text('Alerts'), findsWidgets);
+  });
+
+  testWidgets('a caregiver has no Consult tab', (t) async {
+    final api = _api((r) async {
+      if (r.url.path == '/v1/invites') return _j(200, []);
+      if (r.url.path == '/v1/my-patients') return _j(200, _patientsJson);
+      return _j(200, <Object>[]);
+    });
+    await t.pumpWidget(_app(api));
+    await t.pumpAndSettle();
+    expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Consult')), findsNothing);
+    expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Alerts')), findsOneWidget);
   });
 }
