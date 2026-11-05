@@ -745,6 +745,7 @@ void main() {
     await t.tap(find.byKey(const ValueKey('addCareReminder')));
     await t.pumpAndSettle();
     expect(find.text('Quick add'), findsOneWidget);
+    await t.ensureVisible(find.byKey(const ValueKey('tpl_tplWater')));
     await t.tap(find.byKey(const ValueKey('tpl_tplWater'))); // changes the kind to water, 10:00
     await t.pumpAndSettle();
     await t.tap(find.widgetWithText(FilledButton, 'Save'));
@@ -758,5 +759,48 @@ void main() {
     await t.tap(find.byType(DropdownButtonFormField<ReminderKind>));
     await t.pumpAndSettle();
     expect(find.text('Medicine'), findsNothing);
+  });
+
+  testWidgets('a caregiver chooses the days; the server gets the mask and the list shows them', (t) async {
+    t.view.physicalSize = const Size(800, 2400);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final posts = <Map<String, dynamic>>[];
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      if (p == '/v1/patients/p1/reminders') return _j(200, []);
+      if (p == '/v1/patients/p1/care-reminders' && r.method == 'POST') {
+        posts.add(jsonDecode(r.body) as Map<String, dynamic>);
+        return _j(201, {'id': 'z', ...posts.last, 'created_by_name': 'Ravi', 'created_by_role': 'caretaker', 'mine': true});
+      }
+      if (p == '/v1/patients/p1/care-reminders') {
+        return _j(200, posts.isEmpty ? <Object>[] : [
+          {'id': 'z', ...posts.last, 'on_date': null, 'created_by_name': 'Ravi', 'created_by_role': 'caretaker', 'mine': true}
+        ]);
+      }
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(_app(api));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Asha').first);
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('heroRoutine')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('addCareReminder')));
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const ValueKey('tpl_tplWalk')));
+    await t.tap(find.byKey(const ValueKey('tpl_tplWalk')));
+    for (final bit in [1, 3, 5, 6]) {
+      await t.ensureVisible(find.byKey(ValueKey('day$bit')));
+      await t.tap(find.byKey(ValueKey('day$bit'))); // Tue, Thu, Sat, Sun off
+    }
+    await t.pump();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    await t.pumpAndSettle();
+    expect(posts.single['days_mask'], (1 << 0) | (1 << 2) | (1 << 4)); // Mon, Wed, Fri
+    expect(find.textContaining('Mon, Wed, Fri'), findsOneWidget);
   });
 }

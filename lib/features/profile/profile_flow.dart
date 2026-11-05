@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/languages.dart';
 import '../../core/profile.dart';
 import '../../core/reminder_schedule.dart';
+import '../../core/dates.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -915,6 +916,7 @@ class _RoutineSetupState extends State<_RoutineSetup> {
         label: r.label,
         hour: at.hour,
         minute: at.minute,
+        daysMask: r.daysMask,
         onDate: r.date,
         createdBy: r.by,
       );
@@ -935,7 +937,7 @@ class _RoutineSetupState extends State<_RoutineSetup> {
     final style = kindStyle(r.kind);
     final time = TimeOfDay(hour: r.hour, minute: r.minute).format(context);
     final when = r.onDate == null
-        ? '$time · ${t('everyDay')}'
+        ? '$time · ${daysText(widget.lang, r.daysMask)}'
         : '${MaterialLocalizations.of(context).formatMediumDate(r.onDate!)} · $time';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),

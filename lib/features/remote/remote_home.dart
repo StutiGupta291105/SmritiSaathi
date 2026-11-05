@@ -1495,6 +1495,7 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
             label: r.label,
             hour: at.hour,
             minute: at.minute,
+            daysMask: r.daysMask,
             onDate: d == null
                 ? null
                 : '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}');
@@ -1518,7 +1519,8 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
             if (widget.canPrescribe || k != ReminderKind.medicine) k
         ],
         initial: NewReminder(kind, '${x['label']}',
-            TimeOfDay(hour: x['hour'] as int, minute: x['minute'] as int), d, ''));
+            TimeOfDay(hour: x['hour'] as int, minute: x['minute'] as int), d, '',
+            daysMask: (x['days_mask'] as int?) ?? 127));
     if (r == null) return;
     final nd = r.date;
     try {
@@ -1527,6 +1529,7 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
           label: r.label,
           hour: r.time.hour,
           minute: r.time.minute,
+          daysMask: r.daysMask,
           onDate: nd == null
               ? null
               : '${nd.year.toString().padLeft(4, '0')}-${nd.month.toString().padLeft(2, '0')}-${nd.day.toString().padLeft(2, '0')}');
@@ -2018,7 +2021,10 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                                 color: Palette.brandDeep)),
-                        Text(date == null ? '$hh:$mm' : '$date · $hh:$mm',
+                        Text(
+                            date == null
+                                ? '$hh:$mm · ${daysText(widget.lang, (x['days_mask'] as int?) ?? 127)}'
+                                : '$date · $hh:$mm',
                             style: const TextStyle(
                                 fontSize: 13, color: Palette.ink)),
                         Text(

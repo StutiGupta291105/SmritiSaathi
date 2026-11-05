@@ -620,6 +620,7 @@ class ApiClient {
     required String label,
     required int hour,
     required int minute,
+    int? daysMask,
     String? onDate, // yyyy-mm-dd; null clears it
   }) =>
       _raw('PATCH', '/v1/patients/$patientId/care-reminders/$reminderId', body: {
@@ -627,6 +628,7 @@ class ApiClient {
         'label': label,
         'hour': hour,
         'minute': minute,
+        if (daysMask != null) 'days_mask': daysMask,
         if (onDate != null) 'on_date': onDate else 'clear_date': true,
       });
 

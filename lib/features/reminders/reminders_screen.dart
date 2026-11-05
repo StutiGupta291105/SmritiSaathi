@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/dates.dart';
+
 import '../../core/adherence.dart';
 import '../../core/reminder_schedule.dart';
 import '../../core/strings.dart';
@@ -59,7 +61,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
   Future<void> _load() async {
     final consented = await widget.db.hasConsent(widget.patientId, 'reminders');
     final items = await widget.db.listReminders(widget.patientId);
-    final done = consented ? await widget.db.doneKeys(widget.patientId, days: 2) : <String>{};
+    final done = consented
+        ? await widget.db.doneKeys(widget.patientId, days: 2)
+        : <String>{};
     if (mounted) {
       setState(() {
         _consented = consented;
@@ -81,9 +85,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
         '';
     if (!mounted) return;
     final result = await showAddReminderDialog(context,
-        language: widget.language,
-        kinds: _tabKinds[_tab],
-        defaultBy: by);
+        language: widget.language, kinds: _tabKinds[_tab], defaultBy: by);
     if (result == null) return;
     for (final at in result.allTimes) {
       await widget.db.addReminder(
@@ -92,6 +94,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
         label: result.label,
         hour: at.hour,
         minute: at.minute,
+        daysMask: result.daysMask,
         onDate: result.date,
         createdBy: result.by,
       );
@@ -128,7 +131,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
     if (r.onDate != null) {
       return '${MaterialLocalizations.of(context).formatMediumDate(r.onDate!)} · $time';
     }
-    return '$time · ${t('everyDay')}';
+    return '$time · ${daysText(widget.language, r.daysMask)}';
   }
 
   /// The reminders shown in the current tab. The last tab lists only what is
@@ -145,7 +148,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
       ]..sort((a, b) => a.$1.compareTo(b.$1));
       return [for (final x in withNext) x.$2];
     }
-    of.sort((a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+    of.sort(
+        (a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
     return of;
   }
 
@@ -279,11 +283,13 @@ class _RemindersScreenState extends State<RemindersScreen> {
   Widget _row(Reminder r) {
     final style = kindStyle(r.kind);
     final today = DateTime.now();
-    final isDone = _doneKeys.contains(doneKey(r.id, DateTime(today.year, today.month, today.day)));
+    final isDone = _doneKeys
+        .contains(doneKey(r.id, DateTime(today.year, today.month, today.day)));
     final parts = _when(r).split(' · ');
     final title = r.label.isNotEmpty ? r.label : t('kind_${r.kind.name}');
     final note = parts.skip(1).join(' · ');
-    final canMark = r.kind == ReminderKind.medicine && r.active && _runsToday(r);
+    final canMark =
+        r.kind == ReminderKind.medicine && r.active && _runsToday(r);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Opacity(
@@ -385,7 +391,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
                                 : Icons.notifications_active_outlined,
                             color: Palette.muted),
                         const SizedBox(width: 8),
-                        Text(t(r.active ? 'reminderTurnOff' : 'reminderTurnOn')),
+                        Text(
+                            t(r.active ? 'reminderTurnOff' : 'reminderTurnOn')),
                       ])),
                   PopupMenuItem(
                       value: 'delete',
@@ -407,7 +414,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
 
 class NewReminder {
   NewReminder(this.kind, this.label, this.time, this.date, this.by,
-      {this.extraTimes = const []});
+      {this.extraTimes = const [], this.daysMask = 127});
   final ReminderKind kind;
   final String label;
   final TimeOfDay time;
@@ -418,6 +425,10 @@ class NewReminder {
   /// created for each of [time] and these).
   final List<TimeOfDay> extraTimes;
 
+  /// The days of the week it runs on (bit 0 = Monday ... bit 6 = Sunday); 127 is
+  /// every day. Dated reminders (appointments, events) ignore it.
+  final int daysMask;
+
   List<TimeOfDay> get allTimes => [time, ...extraTimes];
 }
 
@@ -426,7 +437,8 @@ class NewReminder {
 String medicineLabel(String lang, String name, String dose, String? food) => [
       name.trim(),
       if (dose.trim().isNotEmpty) dose.trim(),
-      if (food != null) tr(lang, 'food${food[0].toUpperCase()}${food.substring(1)}'),
+      if (food != null)
+        tr(lang, 'food${food[0].toUpperCase()}${food.substring(1)}'),
     ].join(' · ');
 
 const _kFoods = ['before', 'after', 'with', 'any'];
@@ -444,12 +456,14 @@ const kRoutineTemplates = <(String, ReminderKind, int, int)>[
 ];
 
 /// Reads a label written by [medicineLabel] back into its parts (for editing).
-({String name, String dose, String? food}) parseMedicineLabel(String lang, String label) {
+({String name, String dose, String? food}) parseMedicineLabel(
+    String lang, String label) {
   final parts = label.split(' · ').map((x) => x.trim()).toList();
   String? food;
   if (parts.length > 1) {
     for (final f in _kFoods) {
-      if (parts.last == tr(lang, 'food${f[0].toUpperCase()}${f.substring(1)}')) {
+      if (parts.last ==
+          tr(lang, 'food${f[0].toUpperCase()}${f.substring(1)}')) {
         food = f;
         parts.removeLast();
         break;
@@ -521,8 +535,11 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
   late final _name = TextEditingController(text: _rx.name);
   late final _dose = TextEditingController(text: _rx.dose);
   late String? _food = _rx.food;
+  late int _days = (widget.initial?.daysMask ?? 127) & 127;
   bool _nameMissing = false; // shown after Save is tapped with no medicine name
-  late List<TimeOfDay> _times = [widget.initial?.time ?? const TimeOfDay(hour: 8, minute: 0)];
+  late List<TimeOfDay> _times = [
+    widget.initial?.time ?? const TimeOfDay(hour: 8, minute: 0)
+  ];
 
   bool get _editing => widget.initial != null;
   bool get _medicine => _kind == ReminderKind.medicine;
@@ -538,13 +555,17 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
   }
 
   Future<void> _pickTime(int i) async {
-    final picked = await showTimePicker(context: context, initialTime: _times[i]);
+    final picked =
+        await showTimePicker(context: context, initialTime: _times[i]);
     if (picked != null) setState(() => _times[i] = picked);
   }
 
   void _preset(int n) => setState(() => _times = switch (n) {
         1 => const [TimeOfDay(hour: 8, minute: 0)],
-        2 => const [TimeOfDay(hour: 8, minute: 0), TimeOfDay(hour: 20, minute: 0)],
+        2 => const [
+            TimeOfDay(hour: 8, minute: 0),
+            TimeOfDay(hour: 20, minute: 0)
+          ],
         _ => const [
             TimeOfDay(hour: 8, minute: 0),
             TimeOfDay(hour: 14, minute: 0),
@@ -552,9 +573,102 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
           ],
       });
 
+  /// S M T W T F S: tap the days it should run; "Every day" selects all.
+  Widget _daysPicker() {
+    const order = [6, 0, 1, 2, 3, 4, 5]; // Sunday first, as on a calendar
+    final all = _days == 127;
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+            child: Text(t('repeatOn'),
+                style: kTitleMedium.copyWith(fontSize: 15, height: 1.25)),
+          ),
+          FilterChip(
+            key: const ValueKey('daysAll'),
+            visualDensity: VisualDensity.compact,
+            label: Text(t('everyDay')),
+            selected: all,
+            onSelected: (_) => setState(() => _days = 127),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        // Seven equal circles that shrink to fit a narrow dialog (a small phone).
+        Row(children: [
+          for (final bit in order)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 40),
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: Semantics(
+                        label: weekdayShort(widget.language, bit + 1),
+                        selected: (_days >> bit) & 1 == 1,
+                        button: true,
+                        child: GestureDetector(
+                          key: ValueKey('day$bit'),
+                          onTap: () => setState(() {
+                            final next = _days ^ (1 << bit);
+                            if (next != 0)
+                              _days = next; // at least one day stays on
+                          }),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: (_days >> bit) & 1 == 1
+                                  ? Palette.action
+                                  : Colors.white,
+                              border: Border.all(
+                                  color: (_days >> bit) & 1 == 1
+                                      ? Palette.action
+                                      : Palette.line,
+                                  width: 1.5),
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Padding(
+                                padding: const EdgeInsets.all(3),
+                                child: Text(_dayLetter(bit),
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: (_days >> bit) & 1 == 1
+                                            ? Colors.white
+                                            : Palette.ink)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ]),
+        const SizedBox(height: 6),
+        Text(daysText(widget.language, _days),
+            key: const ValueKey('daysSummary'),
+            style: const TextStyle(fontSize: 13, color: Palette.muted)),
+      ]),
+    );
+  }
+
+  /// One letter in English (S M T W T F S); other languages use their short name.
+  String _dayLetter(int bit) {
+    final name = weekdayShort(widget.language, bit + 1);
+    return widget.language == 'en' ? name.substring(0, 1) : name;
+  }
+
   /// Name, dose, when to take it and the times of day: what a prescription needs.
   List<Widget> _medicineFields(Widget Function(String, Widget) field) => [
-        field(t('rxName'),
+        field(
+            t('rxName'),
             TextField(
                 key: const ValueKey('rxName'),
                 controller: _name,
@@ -563,7 +677,8 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                 decoration: InputDecoration(
                     errorText: _nameMissing ? t('rxNameNeeded') : null),
                 textCapitalization: TextCapitalization.words)),
-        field(t('rxDose'),
+        field(
+            t('rxDose'),
             TextField(
                 key: const ValueKey('rxDose'),
                 controller: _dose,
@@ -585,7 +700,11 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (!_editing)
               Wrap(spacing: 8, runSpacing: 4, children: [
-                for (final (n, k) in [(1, 'rxOnce'), (2, 'rxTwice'), (3, 'rxThrice')])
+                for (final (n, k) in [
+                  (1, 'rxOnce'),
+                  (2, 'rxTwice'),
+                  (3, 'rxThrice')
+                ])
                   ChoiceChip(
                     key: ValueKey('rxPreset$n'),
                     label: Text(t(k)),
@@ -621,7 +740,8 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                 label: Text(t('rxAddTime')),
                 onPressed: () => setState(() {
                   final last = _times.last;
-                  _times.add(TimeOfDay(hour: (last.hour + 4) % 24, minute: last.minute));
+                  _times.add(TimeOfDay(
+                      hour: (last.hour + 4) % 24, minute: last.minute));
                 }),
               ),
           ]),
@@ -644,6 +764,8 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
           ),
         );
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       title: Text(widget.title ?? t('addReminder'), style: kTitleLarge),
       scrollable: true,
       content: SizedBox(
@@ -654,7 +776,8 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
           children: [
             if (widget.kinds.length > 1)
               DropdownButtonFormField<ReminderKind>(
-                key: ValueKey(_kind), // follows a template that changes the kind
+                key:
+                    ValueKey(_kind), // follows a template that changes the kind
                 initialValue: _kind,
                 isExpanded: true,
                 borderRadius: BorderRadius.circular(16),
@@ -674,19 +797,30 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
               if (!dated && !_editing)
                 field(
                   t('tplTitle'),
-                  Wrap(spacing: 8, runSpacing: 4, children: [
-                    for (final (key, kind, h, m) in kRoutineTemplates)
-                      if (widget.kinds.contains(kind))
-                        ActionChip(
-                          key: ValueKey('tpl_$key'),
-                          label: Text(t(key)),
-                          onPressed: () => setState(() {
-                            _kind = kind;
-                            _label.text = t(key);
-                            _time = TimeOfDay(hour: h, minute: m);
-                          }),
-                        ),
-                  ]),
+                  // One scrolling row, so the form stays short on a small phone.
+                  SizedBox(
+                    height: 40,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: [
+                        for (final (key, kind, h, m) in kRoutineTemplates)
+                          if (widget.kinds.contains(kind))
+                            Padding(
+                              padding: const EdgeInsetsDirectional.only(end: 8),
+                              child: ActionChip(
+                                key: ValueKey('tpl_$key'),
+                                visualDensity: VisualDensity.compact,
+                                label: Text(t(key)),
+                                onPressed: () => setState(() {
+                                  _kind = kind;
+                                  _label.text = t(key);
+                                  _time = TimeOfDay(hour: h, minute: m);
+                                }),
+                              ),
+                            ),
+                      ]),
+                    ),
+                  ),
                 ),
               field(
                   t('reminderLabel'),
@@ -731,18 +865,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                 ),
               )
             else
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Row(children: [
-                  const Icon(Icons.repeat_rounded,
-                      size: 18, color: Palette.muted),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Text(t('everyDay'),
-                          style: const TextStyle(
-                              fontSize: 15, color: Palette.muted))),
-                ]),
-              ),
+              _daysPicker(),
           ],
         ),
       ),
@@ -770,19 +893,25 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                           : widget.defaultBy.trim();
                       if (_medicine) {
                         final times = [..._times]..sort((a, b) =>
-                            (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+                            (a.hour * 60 + a.minute)
+                                .compareTo(b.hour * 60 + b.minute));
                         Navigator.pop(
                             context,
                             NewReminder(
                                 _kind,
-                                medicineLabel(widget.language, _name.text, _dose.text, _food),
+                                medicineLabel(widget.language, _name.text,
+                                    _dose.text, _food),
                                 times.first,
                                 null,
                                 by,
-                                extraTimes: times.sublist(1)));
+                                extraTimes: times.sublist(1),
+                                daysMask: _days));
                       } else {
-                        Navigator.pop(context,
-                            NewReminder(_kind, _label.text.trim(), _time, _date, by));
+                        Navigator.pop(
+                            context,
+                            NewReminder(
+                                _kind, _label.text.trim(), _time, _date, by,
+                                daysMask: dated ? 127 : _days));
                       }
                     },
               child: Text(t('save')),

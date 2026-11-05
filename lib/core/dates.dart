@@ -27,3 +27,15 @@ String agoText(String lang, DateTime then, DateTime now) {
   }
   return one(trf(lang, 'rmAgoDay', a: diff.inDays), 'days', 'day', diff.inDays);
 }
+
+
+/// "Every day", or the days a reminder runs on ("Mon, Wed, Fri") from a weekday
+/// mask (bit 0 = Monday ... bit 6 = Sunday).
+String daysText(String lang, int mask) {
+  final m = mask & 127;
+  if (m == 127 || m == 0) return tr(lang, 'everyDay');
+  return [
+    for (var i = 0; i < 7; i++)
+      if ((m >> i) & 1 == 1) weekdayShort(lang, i + 1)
+  ].join(', ');
+}

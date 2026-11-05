@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangDoi = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "repeatOn": "इनें दिनें दोहराओ",
     "rxNameNeeded": "मेहरबानी करियै दवाई दा नां भरो।",
     "notesTab": "नोट",
     "noDoctorChats": "हाल्ली कोई डॉक्टर नेईं। तुंदे मरीज कन्नै जुड़े दे डॉक्टर मंजूर करन तां इत्थें गल्ल होई सकदी ऐ।",

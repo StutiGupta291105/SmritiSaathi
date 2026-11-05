@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangMni = LangData(
   strings: {
     "appName": "ꯁ꯭ꯃꯔꯤꯇꯤ ꯁꯥꯊꯤ",
+    "repeatOn": "ꯅꯨꯃꯤꯠ ꯃꯁꯤꯗꯥ ꯑꯃꯨꯛ ꯍꯟꯅꯕ",
     "rxNameNeeded": "ꯃꯦꯗꯤꯁꯤꯅꯒꯤ ꯃꯤꯡ ꯏꯌꯨ꯫",
     "notesTab": "ꯅꯣꯠ",
     "noDoctorChats": "ꯍꯧꯖꯤꯛꯉꯣ ꯗꯣꯛꯇꯔ ꯑꯃꯠꯇꯥ ꯂꯩꯇꯦ꯫",

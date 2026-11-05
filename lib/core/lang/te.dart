@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangTe = LangData(
   strings: {
     "appName": "స్మృతి సాథీ",
+    "repeatOn": "ఈ రోజుల్లో పునరావృతం",
     "rxNameNeeded": "దయచేసి మందు పేరు నమోదు చేయండి.",
     "notesTab": "గమనికలు",
     "noDoctorChats": "ఇంకా వైద్యులు లేరు. మీ రోగికి అనుసంధానమైన వైద్యుడు అంగీకరిస్తే ఇక్కడ మాట్లాడవచ్చు.",

@@ -129,6 +129,7 @@ void main() {
     await t.tap(find.byKey(const ValueKey('addReminder')));
     await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300))); // reads the patient first
     await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const ValueKey('tpl_tplLunch')));
     await t.tap(find.byKey(const ValueKey('tpl_tplLunch')));
     await t.pumpAndSettle();
     await t.tap(find.widgetWithText(FilledButton, 'Save'));
@@ -179,5 +180,52 @@ void main() {
     }
     await t.pumpAndSettle();
     expect(find.text('Vitamin D'), findsOneWidget);
+  });
+
+  testWidgets('a routine can be set for chosen days: S M T W T F S, and Every day selects all', (t) async {
+    t.view.physicalSize = const Size(800, 2200);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    await open(t);
+    await t.tap(find.byKey(const ValueKey('remTab1')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('addReminder')));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await t.pumpAndSettle();
+    // the seven day circles read S M T W T F S, all on by default
+    for (final l in ['S', 'M', 'T', 'W', 'F']) {
+      expect(find.text(l), findsWidgets);
+    }
+    expect(find.text('Every day'), findsWidgets);
+    expect(find.byKey(const ValueKey('daysSummary')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('day6'))); // Sunday off
+    await t.tap(find.byKey(const ValueKey('day1'))); // Tuesday off
+    await t.pump();
+    expect(t.widget<Text>(find.byKey(const ValueKey('daysSummary'))).data, 'Mon, Wed, Thu, Fri, Sat');
+    await t.tap(find.byKey(const ValueKey('daysAll'))); // select all again
+    await t.pump();
+    expect(t.widget<Text>(find.byKey(const ValueKey('daysSummary'))).data, 'Every day');
+    // weekends only: turn weekdays off one by one; the last day cannot be turned off
+    for (final bit in [0, 1, 2, 3, 4]) {
+      await t.tap(find.byKey(ValueKey('day$bit')));
+    }
+    await t.pump();
+    expect(t.widget<Text>(find.byKey(const ValueKey('daysSummary'))).data, 'Sat, Sun');
+    await t.tap(find.byKey(const ValueKey('day5')));
+    await t.tap(find.byKey(const ValueKey('day6'))); // would leave none: ignored
+    await t.pump();
+    expect(t.widget<Text>(find.byKey(const ValueKey('daysSummary'))).data, 'Sun');
+    await t.tap(find.byKey(const ValueKey('day5'))); // Saturday back on
+    await t.pump();
+    await t.enterText(find.byType(TextField).last, 'Weekend walk');
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    for (var i = 0; i < 4; i++) {
+      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 250)));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    await t.pumpAndSettle();
+    final saved = (await t.runAsync(() => db.listReminders(pid)))!.firstWhere((r) => r.label == 'Weekend walk');
+    expect(saved.daysMask, (1 << 5) | (1 << 6)); // Saturday and Sunday
+    expect(find.textContaining('Sat, Sun'), findsOneWidget); // and the list says so
   });
 }

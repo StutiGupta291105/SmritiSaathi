@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangSa = LangData(
   strings: {
     "appName": "स्मृतिसाथी",
+    "repeatOn": "एतेषु दिनेषु पुनः",
     "rxNameNeeded": "कृपया औषधस्य नाम लिखतु।",
     "notesTab": "टिप्पण्यः",
     "noDoctorChats": "अद्यापि वैद्याः न सन्ति। भवतो रोगिणा सह सम्बद्धः वैद्यः स्वीकरोति चेत् अत्र संवादः शक्यः।",
