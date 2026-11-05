@@ -11,18 +11,72 @@ dependencies:
     sdk: flutter
   sqflite_sqlcipher: ^3.1.0   # AES-encrypted local DB (CERT-In: encryption at rest, offline too)
   path: ^1.9.0
+  firebase_core: ^3.15.2       # push: only starts when a Firebase project's file is in the build
+  firebase_messaging: ^15.2.10
   flutter_secure_storage: ^9.2.2  # DB key lives in Android Keystore / iOS Keychain
   uuid: ^4.4.0
   crypto: ^3.0.3                 # SHA-256 hash chain for tamper-evident audit log
   flutter_local_notifications: ^17.2.2  # on-device reminders, work offline
   flutter_tts: ^4.0.2            # on-device text-to-speech for spoken instructions
+  image_picker: ^1.1.2           # optional photos (stored inside the encrypted DB)
+  image: ^4.2.0                  # shrinks queued chat photos to fit the server limit
+  permission_handler: ^12.0.1    # phone and location permission prompts
+  url_launcher: ^6.3.1           # tap-to-call family (opens the phone dialer)
+  http: ^1.2.2                   # talks to the Smriti Sathi API (HTTPS only)
   timezone: ^0.9.4
-  flutter_timezone: ^2.1.0
+  record: ^6.0.0                 # voice notes in chats (recorded to a temp file, sent, then deleted)
+  audioplayers: ^6.1.0           # plays voice notes
+  path_provider: ^2.1.5          # temp folder for a voice note while it is recorded
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  sqflite_common_ffi: ^2.3.3   # runs AppDatabase tests on a desktop SQLite
+  flutter_launcher_icons: ^0.14.4  # generates the Android launcher icon from the logo
+
+flutter_launcher_icons:
+  android: true
+  ios: false   # the APK workflow generates only the Android project
+  image_path: assets/images/logo_icon.png
+  adaptive_icon_background: "#FBF7EE"
+  adaptive_icon_foreground: assets/images/logo_foreground.png
+  min_sdk_android: 23
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
+  fonts:
+    - family: Nunito   # bundled (SIL Open Font License, see assets/fonts/OFL-Nunito.txt), works offline
+      fonts:
+        - asset: assets/fonts/Nunito-Regular.ttf
+        - asset: assets/fonts/Nunito-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Nunito-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700
+    - family: Lexend   # fallback after Nunito (OFL, see assets/fonts/OFL-Lexend.txt)
+      fonts:
+        - asset: assets/fonts/Lexend-Regular.ttf
+        - asset: assets/fonts/Lexend-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Lexend-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Lexend-Bold.ttf
+          weight: 700
+    - family: NotoSansBengali   # Bengali/Assamese script (OFL, see OFL-NotoSans.txt)
+      fonts:
+        - asset: assets/fonts/NotoSansBengali-Regular.ttf
+        - asset: assets/fonts/NotoSansBengali-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansBengali-Bold.ttf
+          weight: 700
+    - family: NotoSansDevanagari   # Devanagari script: Hindi, Marathi, Nepali... (OFL)
+      fonts:
+        - asset: assets/fonts/NotoSansDevanagari-Regular.ttf
+        - asset: assets/fonts/NotoSansDevanagari-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansDevanagari-Bold.ttf
+          weight: 700

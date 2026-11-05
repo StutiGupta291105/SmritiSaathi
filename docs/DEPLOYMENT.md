@@ -1,0 +1,187 @@
+# Quick test server on Render (free, for trying the caregiver app)
+
+**Test only.** `render.yaml` runs the API with `SMRITI_SMS_PROVIDER=test`: no SMS is
+sent and every login code is `123456`, so anyone who knows a phone number could log
+in as it. Use made-up names and numbers. Production refuses to start with this
+setting. The free plan sleeps after 15 minutes without traffic (the first request
+afterwards takes about a minute) and the free database expires after 30 days.
+
+1. Sign in at https://render.com with GitHub and allow it to see the repository.
+2. New > Blueprint, pick the repository and the branch with `render.yaml`, Apply.
+3. Wait until `smriti-api` shows Live. Open `https://<name>.onrender.com/healthz`; it
+   should answer `{"status":"ok"}`.
+4. In GitHub: repository Settings > Secrets and variables > Actions > Variables >
+   New repository variable `API_BASE_URL` = that address (no trailing slash).
+5. Run the Build Android APK workflow and install the new APK on both phones.
+
+# Turning on the AI helper (Talk to Smriti) on the Render test server, free
+
+The server speaks the common "chat completions" protocol, so several services with a free
+tier work. Free tiers have daily limits, and some may keep and learn from what is sent:
+use made-up data for testing and read the provider's terms before real patients use it.
+
+**Google Gemini (free, no card, good in Indian languages)**
+1. Open https://aistudio.google.com/apikey, sign in, create a key.
+2. In Render: `smriti-api` > Environment > set `SMRITI_COMPANION_API_KEY` = the key. The
+   other settings are already in `render.yaml` (`SMRITI_COMPANION_PROVIDER=openai_compat`,
+   `SMRITI_COMPANION_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`,
+   `SMRITI_COMPANION_MODEL=gemini-flash-latest`). If that model name is rejected, use a
+   name from the Gemini model list.
+
+**Groq (free, fast):** base URL `https://api.groq.com/openai/v1`, a model from its list
+such as `llama-3.3-70b-versatile`, key from console.groq.com. Indian-language quality is
+weaker than Gemini.
+
+**Paid Anthropic instead:** `SMRITI_COMPANION_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`,
+`SMRITI_COMPANION_MODEL=claude-haiku-5-5`.
+
+Then open `https://<your-service>.onrender.com/healthz`: `"ai":true` means a real model is
+connected, `"ai":false` means no key (the app uses its on-device helper). On the patient's
+phone: Talk to Smriti > allow the online helper once, then ask away.
+
+# The AI helper says `"ai": true` but does not answer
+
+`/healthz` only proves a key is set. To see what really happens:
+* Admin portal > Overview > **Test the AI helper** (asks one made-up question), or on the server
+  shell `python -m app.cli ai-check`. It prints the provider's own error, for example
+  `http_429` (free quota used up), `http_403` (key not valid or not allowed), `http_404`
+  (model name wrong), or `empty_answer` (the model answered with nothing).
+* The app now tells the two cases apart: "AI not switched on" means no key; anything else
+  (quota, bad key, outage) falls back to the on-device helper and is logged on the server
+  (`companion provider answered 429: ...`, never what the person said).
+* Gemini "thinks" before it answers and Indian-language text is long, so an open question
+  could use the whole reply budget and come back empty. The server now allows 4096 tokens,
+  asks again once if an answer is empty, and retries without `reasoning_effort` if the
+  provider rejects it. Tune with `SMRITI_COMPANION_MAX_TOKENS` and
+  `SMRITI_COMPANION_REASONING_EFFORT` (`low`, or empty to leave it out).
+* Free tiers have per-minute and per-day limits, and the patient has a daily limit of 40
+  questions (`SMRITI_COMPANION_DAILY_LIMIT`).
+
+# Turning on push notifications (new chat messages, routine changes)
+
+Everything in the code is done: the server sends a generic push ("You have a new
+message." / "Your daily routine was updated.") and the app registers its token. What is
+left needs *your* Firebase project, so these are yours to do once:
+
+1. Create a Firebase project (console.firebase.google.com), add an **Android app** with
+   package name `in.smritisathi.app`, and download `google-services.json`.
+2. In GitHub: Settings > Secrets and variables > Actions > New repository secret, name
+   `GOOGLE_SERVICES_JSON`, value = the whole contents of that file. The next APK build
+   adds Firebase automatically (the build log says "Firebase configured"). Without the
+   secret the app builds exactly as before, with no background push.
+3. In Firebase: Project settings > Service accounts > Generate new private key. In the
+   Render dashboard (Environment) set `SMRITI_PUSH_PROVIDER` = `fcm`,
+   `SMRITI_FCM_PROJECT_ID` = your project id, and `SMRITI_FCM_CREDENTIALS_JSON` = the whole
+   contents of the key file.
+4. Install the new APK, sign in, close the app, and have someone send a message. The
+   first push after the server wakes can be slow on Render's free tier.
+
+This has been tested only against a stub of Google's endpoint, not a live project, and
+iOS push (needs an Apple APNs key) is not set up.
+
+Until then messages still arrive: open chats refresh every few seconds, dashboards and the
+patient's home refresh every 20 seconds and show a banner, and unread counts are always
+correct. They just do not wake a phone whose app is closed.
+
+# Deployment guide (reference: AWS Mumbai, ap-south-1)
+
+Nothing is deployed yet. This is a reference layout; any Indian region of any
+major cloud, or an Indian provider, works the same way. Keep personal data and
+logs in India.
+
+## What runs
+
+One container (`backend/Dockerfile`), stateless, plus PostgreSQL.
+
+```
+Phone app --HTTPS--> Load balancer (TLS, WAF) --> container(s) --> PostgreSQL
+                                                    |
+                                                    +--> SMS provider (OTP)
+```
+
+## Decisions only you can make
+
+| Decision | Options | Notes |
+|---|---|---|
+| Hosting account and region | AWS ap-south-1 (Mumbai), Azure Central India, GCP asia-south1 | Keep database, backups and logs in India |
+| SMS provider for OTP | MSG91, Twilio, AWS SNS | Needs Indian DLT sender and template registration; add an adapter behind `SmsProvider` |
+| Domain name | for example `api.<your-domain>` | The app is built with `--dart-define=API_BASE_URL=https://...` |
+| Who runs it | named incident lead and backup | see `docs/INCIDENT_RESPONSE.md` |
+| Who may call themselves a doctor | self-declared now | registry check is future work |
+
+## Reference setup on AWS
+
+1. **Database**: RDS PostgreSQL, encrypted with KMS, multi-AZ, automated backups,
+   no public access, security group open only to the service.
+2. **Service**: ECS Fargate (or any container host) running the image, 2 or more
+   tasks, in private subnets.
+3. **Edge**: Application Load Balancer with an ACM certificate (TLS 1.2+), AWS WAF
+   with the managed rule sets and a rate-based rule. Set `SMRITI_TRUST_PROXY=true`
+   only because the load balancer supplies the real client address.
+4. **Secrets**: Secrets Manager for `SMRITI_SECRET_KEY`, `SMRITI_PHONE_HMAC_KEY`,
+   the database URL and the SMS credentials.
+5. **Logs**: CloudWatch Logs in ap-south-1 with retention of at least 180 days;
+   S3 object lock (write-once) for the daily audit head.
+6. **Time**: use the cloud's time service, which should sync to NIC/NPL sources
+   (check the current CERT-In requirement for clock sync).
+7. **Monitoring**: alarms for 5xx rate, database CPU and connections, WAF blocks,
+   and a daily job that runs `python -m app.cli verify-audit`.
+
+## Environment variables
+
+| Variable | Meaning |
+|---|---|
+| `SMRITI_ENV` | `prod` turns on the safety checks |
+| `SMRITI_SECRET_KEY` | 32+ random characters; signs tokens, hashes codes, signs the audit head |
+| `SMRITI_PHONE_HMAC_KEY` | 32+ random characters, different from the above; keyed hash for phone lookups. **Never change it** once users exist: they could no longer log in |
+| `SMRITI_DATABASE_URL` | `postgresql+psycopg://user:pass@host/db` |
+| `SMRITI_SMS_PROVIDER` | name of the real provider |
+| `SMRITI_TRUST_PROXY` | `true` only behind your own proxy |
+| `SMRITI_COMPANION_PROVIDER`, `SMRITI_COMPANION_MODEL`, `SMRITI_COMPANION_DAILY_LIMIT`, `ANTHROPIC_API_KEY` | "Talk to Smriti": `dev` (default, fixed reply) or `anthropic`. Read the companion section of `SECURITY.md` first |
+| `SMRITI_PUSH_PROVIDER`, `SMRITI_FCM_PROJECT_ID`, `SMRITI_FCM_CREDENTIALS_JSON` (or `_FILE`) | push: `dev` (default) or `fcm` |
+| `SMRITI_OTP_TTL_SECONDS`, `SMRITI_OTP_MAX_ATTEMPTS`, `SMRITI_OTP_PER_HOUR_PHONE`, `SMRITI_OTP_PER_HOUR_IP`, `SMRITI_ACCESS_TTL_MINUTES`, `SMRITI_REFRESH_TTL_DAYS`, `SMRITI_REQUESTS_PER_MINUTE_IP`, `SMRITI_MAX_BODY_BYTES` | tuning, defaults in `backend/app/config.py` |
+
+## Database changes (migrations)
+
+In production the app does not create tables; it refuses to start unless the
+database is at the newest version. On every deploy, before starting the new
+version (take a backup first):
+
+```
+cd backend && alembic upgrade head      # SMRITI_DATABASE_URL must be set
+```
+
+When you change `app/models.py`, run `alembic revision --autogenerate -m "what changed"`,
+read the generated file, and commit it. A test fails if models and migrations disagree.
+
+## Scheduled jobs
+
+Run `python -m app.cli send-alerts` every 15 to 30 minutes (for example an
+EventBridge schedule that starts a one-off container task). It sends at most one
+generic push per alert kind per person per day, and does nothing with
+`SMRITI_PUSH_PROVIDER=dev`. Also ship `python -m app.cli audit-head` daily (see
+`SECURITY.md`).
+
+## Build and run
+
+```
+docker build -t smriti-api backend
+docker run -p 8000:8000 --env-file prod.env smriti-api
+```
+
+Locally, without Docker:
+
+```
+cd backend
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt
+python -m pytest -q
+uvicorn app.main:create_app --factory --reload   # docs at /docs in dev
+```
+
+## Pointing the app at the server
+
+Build the app with `--dart-define=API_BASE_URL=https://api.example.com`. Without
+it the app stays in its offline test mode (fixed OTP `123456`, nothing leaves the
+phone). The GitHub APK workflow reads the variable `API_BASE_URL` from the
+repository's Actions variables if you set it.

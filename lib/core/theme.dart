@@ -1,14 +1,35 @@
 import 'package:flutter/material.dart';
 
-/// Visual system taken from the design mockups: deep green brand colour on a
-/// warm cream background, soft pastel tiles, rounded cards, very large targets.
+/// Colours taken from the design sheet: teal-green brand on a warm cream
+/// background, bright green action buttons, soft pastel tiles with a stronger
+/// icon colour of the same hue.
+/// Nunito leads; Lexend, then the Noto script fonts, cover anything it lacks.
+const List<String> kFontFallback = ['Lexend', 'NotoSansBengali', 'NotoSansDevanagari'];
+
 class Palette {
-  static const brand = Color(0xFF1F6F5B);
-  static const cream = Color(0xFFFBF6EC);
-  static const tileBlue = Color(0xFFDCEBFA);
-  static const tileOrange = Color(0xFFFDE7CF);
-  static const tileGreen = Color(0xFFDDF1E4);
+  static const brand = Color(0xFF1B8A4A); // nav highlight, links, accents
+  static const brandDeep = Color(0xFF0F2A47); // headings and wordmark: deep navy, as on the sheet
+  static const action = Color(0xFF1B8A4A); // primary buttons ("Play Now")
+  static const cream = Color(0xFFFAF3EA);
+  static const ink = Color(0xFF1F2A37);
+  static const muted = Color(0xFF6B7280);
+  static const line = Color(0xFFEFE4D3);
+
+  // Pastel tile backgrounds (kept under their original names).
+  static const tileBlue = Color(0xFFDDE8FB);
+  static const tileOrange = Color(0xFFFDE8D0);
+  static const tileGreen = Color(0xFFE9F5EE);
   static const tilePurple = Color(0xFFE9E1F8);
+  static const tileSky = Color(0xFFD8EEF7);
+  static const tileRed = Color(0xFFFDE3E1);
+
+  // Matching strong colours for icons.
+  static const blue = Color(0xFF3B6FE0);
+  static const orange = Color(0xFFF08A24);
+  static const green = Color(0xFF1B8A4A);
+  static const purple = Color(0xFF8B6CE0);
+  static const sky = Color(0xFF2A9DC8);
+  static const red = Color(0xFFE5484D);
 }
 
 ThemeData buildTheme() {
@@ -16,30 +37,115 @@ ThemeData buildTheme() {
     seedColor: Palette.brand,
     primary: Palette.brand,
     surface: Palette.cream,
+    onSurface: Palette.ink,
   );
   const radius = BorderRadius.all(Radius.circular(20));
-  return ThemeData(
+  final base = ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
+    fontFamily: 'Nunito',
+    fontFamilyFallback: kFontFallback,
     scaffoldBackgroundColor: Palette.cream,
-    // Elderly-friendly: large text; the OS text-size setting still applies.
-    textTheme: Typography.blackMountainView.apply(fontSizeFactor: 1.2),
     materialTapTargetSize: MaterialTapTargetSize.padded,
     appBarTheme: const AppBarTheme(
       backgroundColor: Palette.cream,
       surfaceTintColor: Colors.transparent,
+      foregroundColor: Palette.brandDeep,
       centerTitle: false,
+      titleTextStyle: TextStyle(
+          fontFamily: 'Nunito',
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          color: Palette.brandDeep),
+    ),
+    cardTheme: const CardThemeData(
+      elevation: 0,
+      color: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      margin: EdgeInsets.symmetric(vertical: 5),
+      shape: RoundedRectangleBorder(borderRadius: radius),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(64),
-        shape: const RoundedRectangleBorder(borderRadius: radius),
-        textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+        backgroundColor: Palette.action,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: const Color(0xFFDADFDC),
+        disabledForegroundColor: Palette.muted,
+        minimumSize: const Size.fromHeight(54),
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16))),
+        textStyle: const TextStyle(
+            fontFamily: 'Nunito', fontSize: 18, fontWeight: FontWeight.w600),
       ),
     ),
-    navigationBarTheme: const NavigationBarThemeData(
-      height: 80,
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Palette.brand,
+        minimumSize: const Size.fromHeight(52),
+        side: const BorderSide(color: Palette.line, width: 1.2),
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16))),
+        textStyle: const TextStyle(
+            fontFamily: 'Nunito', fontSize: 17, fontWeight: FontWeight.w600),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Palette.line),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Palette.line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Palette.brand, width: 2),
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      height: 68,
       backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shadowColor: const Color(0x22000000),
+      indicatorColor: Colors.transparent,
+      labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: states.contains(WidgetState.selected)
+                ? Palette.brand
+                : Palette.muted,
+          )),
+      iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
+            size: 26,
+            color: states.contains(WidgetState.selected)
+                ? Palette.brand
+                : Palette.muted,
+          )),
+    ),
+    dividerTheme: const DividerThemeData(color: Palette.line, space: 1),
+    chipTheme: ChipThemeData(
+      backgroundColor: Colors.white,
+      side: const BorderSide(color: Palette.line),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
   );
+  return base;
 }
+
+/// Text styles for headings outside the dashboard screens, same scale.
+const TextStyle kHeadlineMedium = TextStyle(
+    fontSize: 26, fontWeight: FontWeight.w700, color: Palette.brandDeep);
+const TextStyle kHeadlineSmall = TextStyle(
+    fontSize: 22, fontWeight: FontWeight.w700, color: Palette.brandDeep);
+const TextStyle kTitleLarge = TextStyle(
+    fontSize: 18, fontWeight: FontWeight.w700, color: Palette.brandDeep);
+const TextStyle kTitleMedium = TextStyle(
+    fontSize: 16, fontWeight: FontWeight.w600, color: Palette.brandDeep);

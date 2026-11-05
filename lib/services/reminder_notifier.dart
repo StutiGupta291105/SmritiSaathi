@@ -1,8 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../core/reminder_schedule.dart';
@@ -17,6 +16,10 @@ import '../data/app_database.dart';
 ///    are shown only in the app (DPDP data minimisation, privacy on a shared
 ///    or lost phone).
 ///  * No third-party push service and no network call is involved.
+/// Bumped when reminders change from outside the screens (a caregiver or doctor
+/// added or removed one), so open screens reload.
+final ValueNotifier<int> kRemindersRevision = ValueNotifier<int>(0);
+
 class ReminderNotifier {
   ReminderNotifier(this._db);
   final AppDatabase _db;
@@ -24,9 +27,6 @@ class ReminderNotifier {
   static const _maxPending = 60; // iOS keeps at most 64 pending local notifications
 
   Future<void> init() async {
-    tzdata.initializeTimeZones();
-    tz.setLocalLocation(
-        tz.getLocation(await FlutterTimezone.getLocalTimezone()));
     await _plugin.initialize(const InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       iOS: DarwinInitializationSettings(),
@@ -39,26 +39,28 @@ class ReminderNotifier {
     }
   }
 
+  /// Cancels every pending reminder (used on logout, so nothing fires for a
+  /// signed-out account on a shared phone).
+  Future<void> clear() => _plugin.cancelAll();
+
   /// Rebuilds the pending notifications from the database. Call after any
   /// reminder or consent change and on every app start.
   Future<void> resync({required String patientId, required String lang}) async {
     await _plugin.cancelAll();
     if (!await _db.hasConsent(patientId, 'reminders')) return;
-    final now = DateTime.now();
-    final upcoming = <(DateTime, Reminder)>[];
-    for (final r in await _db.listReminders(patientId)) {
-      for (final at in nextOccurrences(r, now, count: 14)) {
-        upcoming.add((at, r));
-      }
-    }
-    upcoming.sort((a, b) => a.$1.compareTo(b.$1));
     var id = 0;
-    for (final (at, r) in upcoming.take(_maxPending)) {
+    for (final a in plannedAlerts(await _db.listReminders(patientId), DateTime.now(),
+        limit: _maxPending)) {
+      final text = tr(lang, 'notif_${a.kind.name}');
+      final at = a.at;
+      final body = a.headsUp ? '${tr(lang, 'notifSoon')}: $text' : text;
       await _plugin.zonedSchedule(
         id++,
         tr(lang, 'appName'),
-        tr(lang, 'notif_${r.kind.name}'),
-        tz.TZDateTime.from(at, tz.local),
+        body,
+        // Each notification is a one-off absolute instant computed from local
+        // wall-clock time (DST-correct), so no timezone database is needed.
+        tz.TZDateTime.from(at, tz.UTC),
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'reminders',

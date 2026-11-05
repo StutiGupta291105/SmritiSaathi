@@ -21,6 +21,7 @@ Future<void> saveGameSession({
       endLevel: engine.level,
       trials: engine.trials,
       correct: engine.correctTrials,
+      levelStats: engine.levelStatsJson(),
     );
   } on ConsentRequired {
     // Intentionally ignored.

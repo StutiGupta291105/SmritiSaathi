@@ -1,0 +1,93 @@
+"""Operator commands:
+
+  python -m app.cli verify-audit
+  python -m app.cli audit-head
+  python -m app.cli list-unverified            doctors waiting for a registration check
+  python -m app.cli verify-professional <id>   after checking the doctor's registration
+  python -m app.cli unverify-professional <id>
+  python -m app.cli send-alerts                push new alerts to caretakers and doctors
+  python -m app.cli ai-check                   ask the AI helper one question and show why it fails, if it does
+  python -m app.cli admin-hash                 hash for SMRITI_ADMIN_PASSWORD_HASH (asks for the password)
+"""
+import sys
+
+from sqlalchemy import select
+
+from . import audit
+from .config import load_settings
+from .db import make_engine, make_session_factory, utcnow
+from .models import Link, User
+
+
+def _set_verified(db, user_id: str, on: bool) -> int:
+    user = db.get(User, user_id)
+    if user is None or user.role != "doctor":
+        print("No doctor with that id.")
+        return 1
+    user.verified_at = utcnow() if on else None
+    audit.record(db, "operator", "doctor_verified" if on else "doctor_unverified",
+                 f"user={user.id}")
+    db.commit()
+    print("verified" if on else "verification removed")
+    return 0
+
+
+def _admin_hash() -> int:
+    import getpass
+    import os
+    from .security import hash_password, new_totp_secret
+    pw = os.environ.get("SMRITI_ADMIN_PASSWORD_INPUT") or getpass.getpass("Admin password (12+ characters): ")
+    if len(pw) < 12:
+        print("Password must be at least 12 characters.")
+        return 1
+    print("SMRITI_ADMIN_PASSWORD_HASH=" + hash_password(pw))
+    print("Optional second factor (authenticator app secret): SMRITI_ADMIN_TOTP_SECRET=" + new_totp_secret())
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    cmds = {"verify-audit": 1, "audit-head": 1, "list-unverified": 1,
+            "verify-professional": 2, "unverify-professional": 2, "send-alerts": 1,
+            "admin-hash": 1, "ai-check": 1}
+    if not argv or cmds.get(argv[0]) != len(argv):
+        print(__doc__)
+        return 2
+    s = load_settings()
+    sm = make_session_factory(make_engine(s.database_url), {"audit_key": s.secret_key})
+    with sm() as db:
+        cmd = argv[0]
+        if cmd == "verify-audit":
+            ok = audit.verify_chain(db)
+            print("audit log OK" if ok else "AUDIT LOG FAILED VERIFICATION")
+            return 0 if ok else 1
+        if cmd == "audit-head":
+            print(audit.head_hash(db) or "")
+            return 0
+        if cmd == "send-alerts":
+            from . import dispatch, push
+            n = dispatch.send_pending_alerts(db, push.get_provider(s.push_provider))
+            db.commit()
+            print(f"sent {n}")
+            return 0
+        if cmd == "list-unverified":
+            doctors = db.execute(select(User).where(
+                User.role == "doctor", User.verified_at.is_(None))).scalars()
+            for d in doctors:
+                ids = {l.professional_id for l in db.execute(
+                    select(Link).where(Link.member_user_id == d.id)).scalars()
+                    if l.professional_id}
+                print(f"{d.id}  {d.name}  ***{d.phone_last4}  claimed ids: {', '.join(sorted(ids)) or '-'}")
+            return 0
+        if cmd == "ai-check":
+            from . import companion
+            r = companion.ai_check(companion.get_provider(s.companion_provider, s.companion_model))
+            for k, v in r.items():
+                print(f"{k}: {v}")
+            return 0 if r["ok"] else 1
+        if cmd == "admin-hash":
+            return _admin_hash()
+        return _set_verified(db, argv[1], cmd == "verify-professional")
+
+
+if __name__ == "__main__":
+    sys.exit(main(argv=sys.argv[1:]))

@@ -8,6 +8,8 @@
 ///  * Nothing here is a clinical measure. It tracks engagement/performance only.
 library;
 
+import 'dart:convert';
+
 const int kMinLevel = 1;
 const int kMaxLevel = 5;
 
@@ -53,9 +55,19 @@ class AdaptiveEngine {
   int trials = 0;
   int correctTrials = 0;
 
+  /// Per-level tally of this session: level -> [trials, correct]. Stored with
+  /// the session so the ability model can learn from it later.
+  final Map<int, List<int>> levelStats = {};
+
+  String levelStatsJson() =>
+      jsonEncode({for (final e in levelStats.entries) '${e.key}': e.value});
+
   double get accuracy => trials == 0 ? 0 : correctTrials / trials;
 
   LevelChange recordTrial({required bool correct, required int responseMs}) {
+    final tally = levelStats.putIfAbsent(level, () => [0, 0]);
+    tally[0]++;
+    if (correct) tally[1]++;
     trials++;
     if (correct) {
       correctTrials++;

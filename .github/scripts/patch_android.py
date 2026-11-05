@@ -26,7 +26,18 @@ gradle.write_text(
 manifest = root / "src" / "main" / "AndroidManifest.xml"
 perms = "".join(
     f'    <uses-permission android:name="android.permission.{p}"/>\n'
-    for p in ("POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM", "RECEIVE_BOOT_COMPLETED", "VIBRATE")
+    for p in (
+        "INTERNET",  # the release template only has it in debug builds
+        "ACCESS_NETWORK_STATE",
+        "RECORD_AUDIO",  # voice notes in chats
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "CALL_PHONE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+    )
 )
 patch(manifest, "<application", perms + "    <application", )
 patch(manifest, 'android:label="smriti_assist"', 'android:label="Smriti Sathi"\n        android:allowBackup="false"')
@@ -42,4 +53,13 @@ patch(
         </receiver>
     </application>""",
 )
+# Firebase push: only when the build has a google-services.json (repository secret
+# GOOGLE_SERVICES_JSON). Without it the app builds exactly as before.
+if (root / "google-services.json").exists():
+    settings = root.parent / "settings.gradle.kts"
+    patch(settings, 'id("org.jetbrains.kotlin.android")',
+          'id("com.google.gms.google-services") version "4.4.2" apply false\n    id("org.jetbrains.kotlin.android")')
+    patch(gradle, 'id("dev.flutter.flutter-gradle-plugin")',
+          'id("dev.flutter.flutter-gradle-plugin")\n    id("com.google.gms.google-services")')
+    print("Firebase configured")
 print("Android patches applied")

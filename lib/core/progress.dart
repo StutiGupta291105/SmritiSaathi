@@ -25,3 +25,21 @@ List<int> sessionsLast7Days(Iterable<DateTime> sessionTimes, DateTime today) {
   }
   return counts;
 }
+
+/// Longest run of consecutive local calendar days with at least one session.
+int bestStreak(Iterable<DateTime> sessionTimes) {
+  final days = {
+    for (final t in sessionTimes) DateTime(t.year, t.month, t.day),
+  }.toList()
+    ..sort();
+  var best = 0, run = 0;
+  DateTime? prev;
+  for (final d in days) {
+    run = (prev != null && DateTime(prev.year, prev.month, prev.day + 1) == d)
+        ? run + 1
+        : 1;
+    if (run > best) best = run;
+    prev = d;
+  }
+  return best;
+}

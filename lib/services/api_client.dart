@@ -1,0 +1,642 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show ValueNotifier;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+
+/// A failed call. [status] is 0 when the server could not be reached at all.
+class ApiException implements Exception {
+  ApiException(this.status, this.detail);
+  final int status;
+  final String detail;
+
+  bool get isNetwork => status == 0;
+  bool get isUnauthorized => status == 401;
+
+  @override
+  String toString() => 'ApiException($status, $detail)';
+}
+
+/// The signed-in server account.
+class ServerUser {
+  const ServerUser(this.id, this.role, this.name, [this.careId, this.contactPhone]);
+  final String id, role, name;
+
+  /// The number a caretaker or doctor lets their patients call; null when none.
+  final String? contactPhone;
+
+  /// What a patient types to invite a caretaker or doctor; null for patients
+  /// and for sessions saved before IDs existed.
+  final String? careId;
+
+  Map<String, Object?> toJson() =>
+      {'id': id, 'role': role, 'name': name, 'care_id': careId, 'contact_phone': contactPhone};
+  factory ServerUser.fromJson(Map<String, dynamic> j) => ServerUser(
+      j['id'] as String, j['role'] as String, j['name'] as String,
+      j['care_id'] as String?, j['contact_phone'] as String?);
+}
+
+/// Where the tokens and the signed-in user are kept. The platform keystore in
+/// the app; in memory in tests.
+abstract class TokenStore {
+  Future<String?> read(String key);
+  Future<void> write(String key, String value);
+  Future<void> delete(String key);
+}
+
+class SecureTokenStore implements TokenStore {
+  const SecureTokenStore();
+  static const _s = FlutterSecureStorage();
+  @override
+  Future<String?> read(String key) => _s.read(key: key);
+  @override
+  Future<void> write(String key, String value) => _s.write(key: key, value: value);
+  @override
+  Future<void> delete(String key) => _s.delete(key: key);
+}
+
+class MemoryTokenStore implements TokenStore {
+  final Map<String, String> data = {};
+  @override
+  Future<String?> read(String key) async => data[key];
+  @override
+  Future<void> write(String key, String value) async => data[key] = value;
+  @override
+  Future<void> delete(String key) async => data.remove(key);
+}
+
+/// Where the client keeps what it needs to work without a connection: the last
+/// answer to each read (so a caretaker or doctor still sees their patients), and
+/// chat messages written while offline (so they go out later). The app stores
+/// both in its encrypted database.
+abstract class OfflineStore {
+  Future<void> cachePut(String key, String json);
+  Future<({String json, DateTime at})?> cacheGet(String key);
+  Future<void> cacheRemove(String key);
+  Future<void> cacheClear();
+  Future<int> outboxAdd(Map<String, Object?> item);
+  Future<List<Map<String, Object?>>> outboxList();
+  Future<void> outboxRemove(int id);
+}
+
+/// HTTP client for the Smriti Sathi API.
+///
+///  * HTTPS only, except plain http to a machine on this computer or the
+///    Android emulator host (for development).
+///  * An expired access token is refreshed once and the call retried. If the
+///    refresh fails, the stored tokens are cleared and the caller sees 401.
+///  * Network failures and timeouts become `ApiException(0, ...)`.
+class ApiClient {
+  ApiClient({
+    required String baseUrl,
+    http.Client? client,
+    TokenStore? tokens,
+    // A free test server sleeps when idle and takes up to a minute to wake.
+    this.timeout = const Duration(seconds: 45),
+    this.store,
+    this.maxCacheAge = const Duration(days: 7),
+    this.slowAfter = const Duration(seconds: 8),
+  })  : baseUri = _validated(baseUrl),
+        _http = client ?? http.Client(),
+        _tokens = tokens ?? const SecureTokenStore();
+
+  final Uri baseUri;
+  final http.Client _http;
+  final TokenStore _tokens;
+  final Duration timeout;
+  final OfflineStore? store;
+
+  /// Saved copies older than this are not shown any more. Someone whose access
+  /// ended while this phone was offline must not keep seeing their data for ever.
+  final Duration maxCacheAge;
+
+  /// A request still waiting after this long is probably a sleeping test server.
+  final Duration slowAfter;
+
+  /// True while a request is taking suspiciously long (the server is waking up).
+  final ValueNotifier<bool> waking = ValueNotifier<bool>(false);
+  int _slow = 0;
+
+  /// null until the first call; then whether the last call reached the server.
+  final ValueNotifier<bool?> online = ValueNotifier<bool?>(null);
+
+  /// When the data on screen was saved, if it came from the phone's copy because
+  /// the server could not be reached; null when it is live.
+  final ValueNotifier<DateTime?> staleSince = ValueNotifier<DateTime?>(null);
+
+  /// Messages written offline that have not gone out yet.
+  final ValueNotifier<int> outboxCount = ValueNotifier<int>(0);
+  bool _flushing = false;
+
+  static const _kAccess = 'api_access';
+  static const _kRefresh = 'api_refresh';
+  static const _kUser = 'api_user';
+
+  static const _localHosts = {'localhost', '127.0.0.1', '10.0.2.2'};
+
+  static Uri _validated(String url) {
+    final u = Uri.parse(url.endsWith('/') ? url.substring(0, url.length - 1) : url);
+    final secure = u.scheme == 'https';
+    final local = u.scheme == 'http' && _localHosts.contains(u.host);
+    if (!secure && !local) {
+      throw ArgumentError('The API address must use https (got "$url")');
+    }
+    return u;
+  }
+
+  // ---- session state -------------------------------------------------------
+
+  Future<bool> get hasSession async => (await _tokens.read(_kRefresh)) != null;
+
+  Future<ServerUser?> currentUser() async {
+    final raw = await _tokens.read(_kUser);
+    if (raw == null || await _tokens.read(_kRefresh) == null) return null;
+    return ServerUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+  }
+
+  Future<void> _saveSession(Map<String, dynamic> j) async {
+    await _tokens.write(_kAccess, j['access_token'] as String);
+    await _tokens.write(_kRefresh, j['refresh_token'] as String);
+    final u = j['user'];
+    if (u != null) await _tokens.write(_kUser, jsonEncode(u));
+  }
+
+  Future<void> clearSession() async {
+    for (final k in [_kAccess, _kRefresh, _kUser]) {
+      await _tokens.delete(k);
+    }
+  }
+
+  // ---- transport -------------------------------------------------------------
+
+  Future<Map<String, dynamic>> _raw(
+    String method,
+    String path, {
+    Object? body,
+    bool auth = true,
+    bool retried = false,
+    Duration? wait,
+    bool cached = false,
+  }) async {
+    final target = Uri.parse(path); // may carry a query string
+    final uri = baseUri.replace(
+        path: '${baseUri.path}${target.path}',
+        query: target.hasQuery ? target.query : null);
+    final headers = <String, String>{
+      'content-type': 'application/json',
+      'accept': 'application/json',
+    };
+    if (auth) {
+      final token = await _tokens.read(_kAccess);
+      if (token != null) headers['authorization'] = 'Bearer $token';
+    }
+    http.Response res;
+    final slowTimer = Timer(slowAfter, () {
+      _slow++;
+      waking.value = true;
+    });
+    var counted = false;
+    try {
+      final req = http.Request(method, uri)..headers.addAll(headers);
+      if (body != null) req.body = jsonEncode(body);
+      res = await http.Response.fromStream(
+          await _http.send(req).timeout(wait ?? timeout));
+    } on Exception catch (e) {
+      counted = _endSlow(slowTimer);
+      online.value = false;
+      if (cached && method == 'GET') {
+        final saved = await _saved(path);
+        if (saved != null) return saved;
+      }
+      throw ApiException(0, e is TimeoutException ? 'timeout' : 'network');
+    }
+    if (!counted) _endSlow(slowTimer);
+
+    if (res.statusCode == 401 && auth && !retried && path != '/v1/auth/refresh') {
+      if (await _refresh()) {
+        return _raw(method, path,
+            body: body, auth: auth, retried: true, wait: wait, cached: cached);
+      }
+    }
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      online.value = true;
+      staleSince.value = null;
+      Map<String, dynamic> out = const {};
+      if (res.body.isNotEmpty) {
+        final decoded = jsonDecode(res.body);
+        out = decoded is Map<String, dynamic> ? decoded : {'data': decoded};
+        if (cached && method == 'GET') {
+          try {
+            await store?.cachePut(path, res.body);
+          } catch (_) {}
+        }
+      }
+      _flushLater();
+      return out;
+    }
+    if (cached && method == 'GET' && (res.statusCode == 403 || res.statusCode == 404)) {
+      // Access ended (or the thing is gone): do not keep showing the old copy.
+      try {
+        await store?.cacheRemove(path);
+      } catch (_) {}
+    }
+    var detail = 'error';
+    try {
+      final j = jsonDecode(res.body);
+      if (j is Map && j['detail'] is String) detail = j['detail'] as String;
+    } catch (_) {}
+    throw ApiException(res.statusCode, detail);
+  }
+
+  bool _endSlow(Timer t) {
+    final fired = !t.isActive;
+    t.cancel();
+    if (fired && _slow > 0) _slow--;
+    if (_slow == 0) waking.value = false;
+    return true;
+  }
+
+  /// The last answer saved for [path], when the server cannot be reached.
+  Future<Map<String, dynamic>?> _saved(String path) async {
+    try {
+      final hit = await store?.cacheGet(path);
+      if (hit == null) return null;
+      if (DateTime.now().difference(hit.at) > maxCacheAge) {
+        await store?.cacheRemove(path); // too old to be trusted
+        return null;
+      }
+      final decoded = jsonDecode(hit.json);
+      staleSince.value = hit.at;
+      return decoded is Map<String, dynamic> ? decoded : {'data': decoded};
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Any call that gets through proves the phone is online again, so anything
+  /// written while offline goes out now.
+  void _flushLater() {
+    final st = store;
+    if (st == null || _flushing || outboxCount.value == 0) return;
+    unawaited(flushOutbox());
+  }
+
+  /// Queues a chat message to send later. The caller shows it as waiting.
+  Future<int> queueChatMessage(String linkId,
+      {required String kind,
+      String text = '',
+      Uint8List? media,
+      String mime = '',
+      int durationMs = 0}) async {
+    final id = await store!.outboxAdd({
+      'link_id': linkId,
+      'kind': kind,
+      'text': text,
+      'media': media,
+      'mime': mime,
+      'duration_ms': durationMs,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    outboxCount.value = (await store!.outboxList()).length;
+    return id;
+  }
+
+  Future<List<Map<String, Object?>>> pendingMessages([String? linkId]) async {
+    final all = await store?.outboxList() ?? const <Map<String, Object?>>[];
+    return linkId == null ? all : [for (final m in all) if (m['link_id'] == linkId) m];
+  }
+
+  /// Sends the queued messages in order. Stops at the first one that cannot be
+  /// sent for lack of a connection; drops one the server refuses for good (the
+  /// link ended, say), because retrying it can never work. Returns how many went.
+  Future<int> flushOutbox() async {
+    final st = store;
+    if (st == null || _flushing) return 0;
+    _flushing = true;
+    var sent = 0;
+    try {
+      for (final m in await st.outboxList()) {
+        try {
+          await sendChatMessage(m['link_id'] as String,
+              kind: m['kind'] as String,
+              text: (m['text'] as String?) ?? '',
+              media: m['media'] as Uint8List?,
+              mime: (m['mime'] as String?) ?? '',
+              durationMs: (m['duration_ms'] as int?) ?? 0);
+          await st.outboxRemove(m['id'] as int);
+          sent++;
+        } on ApiException catch (e) {
+          if (e.isNetwork || e.isUnauthorized) break;
+          await st.outboxRemove(m['id'] as int);
+        }
+      }
+      outboxCount.value = (await st.outboxList()).length;
+    } finally {
+      _flushing = false;
+    }
+    return sent;
+  }
+
+  /// A binary download (a chat photo or voice note), signed in like any call.
+  Future<Uint8List> _bytes(String path, {bool retried = false}) async {
+    final uri = baseUri.replace(path: '${baseUri.path}$path');
+    final token = await _tokens.read(_kAccess);
+    http.Response res;
+    try {
+      final req = http.Request('GET', uri);
+      if (token != null) req.headers['authorization'] = 'Bearer $token';
+      res = await http.Response.fromStream(await _http.send(req).timeout(timeout));
+    } on TimeoutException {
+      throw ApiException(0, 'timeout');
+    } on Exception {
+      throw ApiException(0, 'network');
+    }
+    if (res.statusCode == 401 && !retried && await _refresh()) {
+      return _bytes(path, retried: true);
+    }
+    if (res.statusCode >= 200 && res.statusCode < 300) return res.bodyBytes;
+    throw ApiException(res.statusCode, 'error');
+  }
+
+  Future<bool> _refresh() async {
+    final refresh = await _tokens.read(_kRefresh);
+    if (refresh == null) return false;
+    try {
+      final j = await _raw('POST', '/v1/auth/refresh',
+          body: {'refresh_token': refresh}, auth: false, retried: true);
+      await _saveSession(j);
+      return true;
+    } on ApiException catch (e) {
+      if (!e.isNetwork) await clearSession(); // rejected: the session is over
+      return false;
+    }
+  }
+
+  // ---- auth --------------------------------------------------------------------
+
+  Future<String> requestOtp(String phoneE164, String role) async {
+    final j = await _raw('POST', '/v1/auth/otp/request',
+        body: {'phone': phoneE164, 'role': role}, auth: false);
+    return j['challenge_id'] as String;
+  }
+
+  Future<ServerUser> verifyOtp({
+    required String challengeId,
+    required String code,
+    required String mode,
+    String? name,
+  }) async {
+    final j = await _raw('POST', '/v1/auth/otp/verify',
+        body: {
+          'challenge_id': challengeId,
+          'code': code,
+          'mode': mode,
+          if (name != null && name.isNotEmpty) 'name': name,
+        },
+        auth: false);
+    await _saveSession(j);
+    return ServerUser.fromJson(j['user'] as Map<String, dynamic>);
+  }
+
+  /// Ends the session on the server (best effort) and on this phone.
+  Future<void> logout() async {
+    final refresh = await _tokens.read(_kRefresh);
+    if (refresh != null) {
+      try {
+        await _raw('POST', '/v1/auth/logout',
+            body: {'refresh_token': refresh}, auth: false);
+      } on ApiException {
+        // Offline: the token still expires on its own.
+      }
+    }
+    await clearSession();
+    try {
+      await store?.cacheClear();
+    } catch (_) {}
+  }
+
+  // ---- patient -----------------------------------------------------------------
+
+  Future<Map<String, dynamic>> createPatient({
+    required String displayName,
+    required String language,
+    required int baselineLevel,
+    required int tzOffsetMinutes,
+  }) =>
+      _raw('POST', '/v1/patients', body: {
+        'display_name': displayName,
+        'language': language,
+        'baseline_level': baselineLevel,
+        'tz_offset_minutes': tzOffsetMinutes,
+      });
+
+  Future<Map<String, dynamic>> myPatient() => _raw('GET', '/v1/patients/me');
+
+  Future<Map<String, dynamic>> snapshot(String patientId) =>
+      _raw('GET', '/v1/patients/$patientId/snapshot');
+
+  Future<void> addConsents(String patientId, List<Map<String, Object?>> items) =>
+      _raw('POST', '/v1/patients/$patientId/consents', body: {'consents': items});
+
+  Future<Map<String, dynamic>> sync(String patientId, Map<String, Object?> body) =>
+      _raw('POST', '/v1/patients/$patientId/sync', body: body);
+
+  Future<Map<String, dynamic>> createInvite(
+    String patientId, {
+    required String role,
+    String phoneE164 = '',
+    String careId = '',
+    required String name,
+    String professionalId = '',
+  }) =>
+      _raw('POST', '/v1/patients/$patientId/invites', body: {
+        'role': role,
+        if (careId.isNotEmpty) 'care_id': careId else 'phone': phoneE164,
+        'name': name,
+        'professional_id': professionalId,
+      });
+
+  /// The signed-in account as the server sees it (includes the care ID).
+  Future<ServerUser> me() async {
+    final j = await _raw('GET', '/v1/auth/me');
+    final u = ServerUser.fromJson(j);
+    final raw = await _tokens.read(_kUser);
+    if (raw != null) await _tokens.write(_kUser, jsonEncode(u.toJson()));
+    return u;
+  }
+
+  Future<List<Map<String, dynamic>>> links(String patientId) async {
+    final j = await _raw('GET', '/v1/patients/$patientId/links');
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  /// One turn of 'Talk to Smriti' through the server. Needs the patient's own
+  /// login and the 'companion' consent. 429 means today's limit was reached.
+  Future<Map<String, dynamic>> companionChat(
+    String patientId, {
+    required List<Map<String, String>> messages,
+    required String lang,
+    required String firstName,
+    required String nowText,
+    required List<Map<String, Object?>> today,
+  }) =>
+      _raw('POST', '/v1/patients/$patientId/companion/chat', body: {
+        'messages': messages,
+        'lang': lang,
+        'first_name': firstName,
+        'now_text': nowText,
+        'today': today,
+      }, wait: const Duration(seconds: 70));
+
+  /// Wakes a sleeping test server in the background so the first real request
+  /// does not wait for it. Never throws.
+  Future<void> wake() async {
+    try {
+      await _http
+          .get(baseUri.replace(path: '${baseUri.path}/healthz'))
+          .timeout(const Duration(seconds: 70));
+    } catch (_) {}
+  }
+
+  Future<void> registerDevice(String token, String platform) =>
+      _raw('POST', '/v1/devices', body: {'token': token, 'platform': platform});
+
+  Future<void> unregisterDevice(String token, String platform) =>
+      _raw('DELETE', '/v1/devices', body: {'token': token, 'platform': platform});
+
+  Future<void> eraseServerData(String patientId) =>
+      _raw('DELETE', '/v1/patients/$patientId');
+
+  // ---- caretaker / doctor -------------------------------------------------------
+
+  Future<List<Map<String, dynamic>>> myInvites() async {
+    final j = await _raw('GET', '/v1/invites', cached: true);
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> acceptInvite(String id) => _raw('POST', '/v1/invites/$id/accept');
+  Future<void> declineInvite(String id) => _raw('POST', '/v1/invites/$id/decline');
+
+  Future<List<Map<String, dynamic>>> myPatients() async {
+    final j = await _raw('GET', '/v1/my-patients', cached: true);
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> patientReminders(String patientId) async {
+    final j = await _raw('GET', '/v1/patients/$patientId/reminders', cached: true);
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> report(String patientId, int days) =>
+      _raw('GET', '/v1/patients/$patientId/report?days=$days', cached: true);
+
+  Future<void> setBaseline(String patientId, int level) =>
+      _raw('PATCH', '/v1/patients/$patientId/baseline', body: {'baseline_level': level});
+
+  Future<void> revokeLink(String linkId) => _raw('DELETE', '/v1/links/$linkId');
+
+  // ---- chat -----------------------------------------------------------------
+
+  /// Every conversation this account can open, with unread counts.
+  Future<List<Map<String, dynamic>>> chatThreads() async {
+    final j = await _raw('GET', '/v1/chat/threads', cached: true);
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  /// For "Talk to Doctor": the patient's own doctor(s) first (`pinned`), then
+  /// every other doctor on the app. Needs only a name and a verified flag.
+  Future<List<Map<String, dynamic>>> doctorDirectory() async {
+    final j = await _raw('GET', '/v1/chat/doctors', cached: true);
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  /// Starts (or reopens) a conversation with any doctor; returns its thread id.
+  Future<String> openOpinionChat(String doctorId) async {
+    final j = await _raw('POST', '/v1/chat/opinion', body: {'doctor_id': doctorId});
+    return j['thread_id'] as String;
+  }
+
+  /// The latest page, or only what is newer than [after], or an older page.
+  Future<List<Map<String, dynamic>>> chatMessages(String linkId,
+      {int after = 0, int before = 0}) async {
+    final q = after > 0 ? '?after=$after' : before > 0 ? '?before=$before' : '';
+    final j = await _raw('GET', '/v1/chat/$linkId/messages$q', cached: q.isEmpty);
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> sendChatMessage(
+    String linkId, {
+    required String kind, // text | image | voice
+    String text = '',
+    Uint8List? media,
+    String mime = '',
+    int durationMs = 0,
+  }) =>
+      _raw('POST', '/v1/chat/$linkId/messages', body: {
+        'kind': kind,
+        'text': text,
+        if (media != null) 'media_b64': base64Encode(media),
+        'mime': mime,
+        'duration_ms': durationMs,
+      });
+
+  Future<Uint8List> chatMedia(int messageId) => _bytes('/v1/chat/media/$messageId');
+
+  Future<void> chatMarkRead(String linkId, int upto) =>
+      _raw('POST', '/v1/chat/$linkId/read', body: {'upto': upto});
+
+  // ---- routines and reminders set by a caretaker or doctor -----------------
+
+  Future<List<Map<String, dynamic>>> careReminders(String patientId, {bool cached = false}) async {
+    final j = await _raw('GET', '/v1/patients/$patientId/care-reminders', cached: cached);
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> addCareReminder(
+    String patientId, {
+    required String kind,
+    required String label,
+    required int hour,
+    required int minute,
+    int daysMask = 127,
+    String? onDate, // yyyy-mm-dd
+  }) =>
+      _raw('POST', '/v1/patients/$patientId/care-reminders', body: {
+        'kind': kind,
+        'label': label,
+        'hour': hour,
+        'minute': minute,
+        'days_mask': daysMask,
+        if (onDate != null) 'on_date': onDate,
+      });
+
+  /// Changes a routine the signed-in caretaker or doctor set earlier.
+  Future<Map<String, dynamic>> editCareReminder(
+    String patientId,
+    String reminderId, {
+    required String kind,
+    required String label,
+    required int hour,
+    required int minute,
+    String? onDate, // yyyy-mm-dd; null clears it
+  }) =>
+      _raw('PATCH', '/v1/patients/$patientId/care-reminders/$reminderId', body: {
+        'kind': kind,
+        'label': label,
+        'hour': hour,
+        'minute': minute,
+        if (onDate != null) 'on_date': onDate else 'clear_date': true,
+      });
+
+  Future<void> deleteCareReminder(String patientId, String reminderId) =>
+      _raw('DELETE', '/v1/patients/$patientId/care-reminders/$reminderId');
+
+  /// A caretaker or doctor chooses the number their patients may call ('' = none).
+  Future<ServerUser> setContactPhone(String phoneE164) async {
+    final j = await _raw('PUT', '/v1/auth/me/contact', body: {'phone': phoneE164});
+    return ServerUser.fromJson(j);
+  }
+
+}

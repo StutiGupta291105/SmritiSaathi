@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import '../../core/adaptive_engine.dart';
 import '../../core/content.dart';
 import '../../core/strings.dart';
+import '../../core/theme.dart';
 import '../../data/app_database.dart';
 import '../../services/voice.dart';
 import 'game_common.dart';
+import 'game_ui.dart';
 
 class _CardState {
   _CardState(this.pair);
@@ -25,6 +27,7 @@ class MemoryMatchGame extends StatefulWidget {
     required this.db,
     required this.patientId,
     required this.baselineLevel,
+    required this.startLevel,
     required this.language,
     required this.voice,
     required this.voiceOn,
@@ -33,6 +36,9 @@ class MemoryMatchGame extends StatefulWidget {
   final AppDatabase db;
   final String patientId;
   final int baselineLevel;
+
+  /// Where this session starts: the learned model's pick inside the band.
+  final int startLevel;
   final String language;
   final Voice voice;
   final bool voiceOn;
@@ -61,7 +67,9 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
   @override
   void initState() {
     super.initState();
-    _engine = AdaptiveEngine(band: DifficultyBand(widget.baselineLevel));
+    _engine = AdaptiveEngine(
+        band: DifficultyBand(widget.baselineLevel),
+        startLevel: widget.startLevel);
     _startLevel = _engine.level;
     widget.voice
         .speak(_t('memoryPrompt'), widget.language, enabled: widget.voiceOn);
@@ -88,7 +96,7 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
       _roundDone = false;
     });
     final previewMs = 5000 - _engine.level * 600; // L1: 4.4s ... L5: 2.0s
-    Timer(Duration(milliseconds: previewMs), () {
+    _later(Duration(milliseconds: previewMs), () {
       if (!mounted) return;
       setState(() {
         for (final c in _cards) {
@@ -122,7 +130,7 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
     _engine.recordTrial(correct: correct, responseMs: responseMs);
 
     if (correct) {
-      Timer(const Duration(milliseconds: 600), () {
+      _later(const Duration(milliseconds: 600), () {
         if (!mounted) return;
         setState(() {
           _cards[first].matched = true;
@@ -135,7 +143,7 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
         if (_cards.every((c) => c.matched)) _onRoundComplete();
       });
     } else {
-      Timer(const Duration(milliseconds: 1200), () {
+      _later(const Duration(milliseconds: 1200), () {
         if (!mounted) return;
         setState(() {
           _cards[first].faceUp = false;
@@ -154,7 +162,7 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
       _roundDone = true;
       _locked = true;
     });
-    Timer(const Duration(milliseconds: 1800), () async {
+    _later(const Duration(milliseconds: 1800), () async {
       if (!mounted) return;
       _round++;
       if (_round >= _rounds) {
@@ -177,8 +185,15 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  final _timers = <Timer>[];
+
+  void _later(Duration d, void Function() f) => _timers.add(Timer(d, f));
+
   @override
   void dispose() {
+    for (final t in _timers) {
+      t.cancel();
+    }
     widget.voice.stop();
     _sw.stop();
     super.dispose();
@@ -187,17 +202,13 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
   @override
   Widget build(BuildContext context) {
     final cols = _cards.length <= 4 ? 2 : (_cards.length <= 6 ? 3 : 4);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_t('memoryGame')),
-        actions: [
-          TextButton(
-            onPressed: _finish,
-            child: Text(_t('finish'), style: const TextStyle(fontSize: 20)),
-          ),
-        ],
-      ),
-      body: Padding(
+    return GameFrame(
+      title: _t('memoryGame'),
+      subtitle: _t('memoryGameDesc'),
+      lang: widget.language,
+      score: _engine.correctTrials * 10,
+      onFinish: _finish,
+      child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
@@ -208,14 +219,27 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
                     style: Theme.of(context).textTheme.headlineMedium),
               ),
             Expanded(
-              child: GridView.count(
-                crossAxisCount: cols,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.95,
-                children: [
-                  for (var i = 0; i < _cards.length; i++) _buildCard(i),
-                ],
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 14,
+                        offset: Offset(0, 5)),
+                  ],
+                ),
+                child: GridView.count(
+                  crossAxisCount: cols,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.95,
+                  children: [
+                    for (var i = 0; i < _cards.length; i++) _buildCard(i),
+                  ],
+                ),
               ),
             ),
           ],
@@ -238,23 +262,33 @@ class _MemoryMatchGameState extends State<MemoryMatchGame> {
         child: Container(
           decoration: BoxDecoration(
             color: c.matched
-                ? Colors.green.shade100
-                : (show ? Colors.white : Colors.teal.shade700),
-            border: Border.all(color: Colors.teal.shade900, width: 3),
-            borderRadius: BorderRadius.circular(16),
+                ? const Color(0xFFCDEFE2)
+                : (show ? const Color(0xFFFBF3E4) : const Color(0xFFA98BE6)),
+            border: Border.all(
+                color: c.matched
+                    ? Palette.action
+                    : (show ? const Color(0xFFE8DCC4) : const Color(0xFF9275DA)),
+                width: c.matched ? 3 : 1.5),
+            borderRadius: BorderRadius.circular(18),
           ),
           alignment: Alignment.center,
           child: show
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(item.emoji, style: const TextStyle(fontSize: 56)),
-                    Text(label,
-                        style: const TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.w600)),
-                  ],
+              ? FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(item.emoji, style: const TextStyle(fontSize: 48)),
+                        Text(label,
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
                 )
-              : const Icon(Icons.help_outline, size: 56, color: Colors.white),
+              : const Icon(Icons.eco_rounded, size: 44, color: Color(0x66FFFFFF)),
         ),
       ),
     );

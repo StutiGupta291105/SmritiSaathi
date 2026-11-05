@@ -1,7 +1,15 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-import '../../core/progress.dart';
-import '../../core/reminder_schedule.dart';
+import 'package:flutter/material.dart';
+import 'offline_bar.dart';
+import '../chat/doctor_directory_screen.dart';
+import '../chat/messages_screen.dart';
+
+import '../../services/api_client.dart';
+import '../../services/companion_service.dart';
+import '../../services/sync_service.dart';
+import '../companion/chat_screen.dart';
+
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../data/app_database.dart';
@@ -9,11 +17,17 @@ import '../../services/reminder_notifier.dart';
 import '../../services/voice.dart';
 import '../games/attention_game.dart';
 import '../games/memory_match_game.dart';
+import '../games/number_order_game.dart';
+import '../games/puzzle_fix_game.dart';
+import '../games/word_recall_game.dart';
 import '../games/routine_game.dart';
-import '../privacy/privacy_screen.dart';
 import '../reminders/reminders_screen.dart';
+import 'games_tab.dart';
+import 'home_tab.dart';
+import 'profile_tab.dart';
+import 'progress_screen.dart';
 
-/// Elderly user's app: Home, Games, Reminders, Progress (as in the mockups).
+/// Elderly user's app: Home, Games, Reminders, Profile (bottom navigation).
 class PatientShell extends StatefulWidget {
   const PatientShell({
     super.key,
@@ -22,14 +36,25 @@ class PatientShell extends StatefulWidget {
     required this.voice,
     required this.patient,
     required this.onPatientChanged,
+    required this.onLogout,
+    this.hooks,
+    this.api,
+    this.onConnectOnline,
   });
+  final ApiClient? api;
+  final ServerHooks? hooks;
   final AppDatabase db;
   final ReminderNotifier notifier;
   final Voice voice;
   final Map<String, Object?> patient;
 
-  /// Reload the patient row (language change, or erasure -> back to onboarding).
+  /// Reload the patient row (language change, or erasure -> back to welcome).
   final VoidCallback onPatientChanged;
+  final VoidCallback onLogout;
+
+  /// Set when the person set up with no internet and still has to check their
+  /// phone number; Settings then offers "Connect online services".
+  final void Function(BuildContext context)? onConnectOnline;
 
   @override
   State<PatientShell> createState() => _PatientShellState();
@@ -37,502 +62,380 @@ class PatientShell extends StatefulWidget {
 
 class _PatientShellState extends State<PatientShell> {
   int _tab = 0;
+  List<Map<String, dynamic>> _threads = const [];
+  Timer? _chatTimer;
+
+  var _ticks = 0;
+
+  void _remindersChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    kRemindersRevision.addListener(_remindersChanged);
+    if (widget.api != null) {
+      widget.api!.online.addListener(_onlineChanged);
+      _loadThreads();
+      _chatTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+        _loadThreads();
+        // About once a minute, pick up routines a caregiver or doctor added.
+        if (++_ticks % 3 == 0) widget.hooks?.syncNow();
+      });
+    }
+  }
+
+  bool? _wasOnline;
+
+  /// Back online after being offline: send what was saved right away instead of
+  /// waiting for the next timer.
+  void _onlineChanged() {
+    final now = widget.api!.online.value;
+    if (now == true && _wasOnline == false) widget.hooks?.syncNow();
+    _wasOnline = now;
+  }
+
+  @override
+  void dispose() {
+    widget.api?.online.removeListener(_onlineChanged);
+    kRemindersRevision.removeListener(_remindersChanged);
+    _chatTimer?.cancel();
+    super.dispose();
+  }
+
+  int _unreadFor(String role) => _threads
+      .where((x) => x['member_role'] == role)
+      .fold<int>(0, (n, x) => n + ((x['unread'] as int?) ?? 0));
+
+  /// Refreshes the conversations and their unread counts; tells the person
+  /// when something new has arrived while the app is open.
+  Future<void> _loadThreads() async {
+    try {
+      final rows = await widget.api!.chatThreads();
+      if (!mounted) return;
+      final before = _threads.fold<int>(0, (n, x) => n + ((x['unread'] as int?) ?? 0));
+      final after = rows.fold<int>(0, (n, x) => n + ((x['unread'] as int?) ?? 0));
+      setState(() => _threads = rows);
+      if (after > before && ModalRoute.of(context)?.isCurrent == true) {
+        final from = rows.firstWhere((x) => ((x['unread'] as int?) ?? 0) > 0,
+            orElse: () => const {});
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(t('newMessageFrom')
+                .replaceAll('{a}', '${from['member_name'] ?? ''}'))));
+      }
+    } on ApiException {
+      // Offline or signed out: the buttons still work once it is back.
+    }
+  }
+
+  Future<void> _openChat(String role) async {
+    List<Map<String, dynamic>> rows = _threads;
+    try {
+      rows = await widget.api!.chatThreads();
+      if (mounted) setState(() => _threads = rows);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.isNetwork || rows.isEmpty) {
+        return _say(t('chatNeedsOnline'));
+      }
+    }
+    final thread = rows.where((x) => x['member_role'] == role).toList();
+    if (!mounted) return;
+    if (thread.isEmpty) {
+      return _say(t(role == 'doctor' ? 'noDoctorYet' : 'noCaregiverYet'));
+    }
+    // Several caregivers (or doctors): let the person pick who to write to.
+    final th = thread.length == 1
+        ? thread.first
+        : await showModalBottomSheet<Map<String, dynamic>>(
+            context: context,
+            backgroundColor: Palette.cream,
+            builder: (_) => SafeArea(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                for (final x in thread)
+                  ListTile(
+                    key: ValueKey('pick_${x['link_id']}'),
+                    leading: const Icon(Icons.chat_bubble_rounded),
+                    title: Text('${x['member_name']}',
+                        style: const TextStyle(fontSize: 17)),
+                    trailing: ((x['unread'] as int?) ?? 0) > 0
+                        ? Text('${x['unread']}',
+                            style: const TextStyle(
+                                color: Palette.red, fontWeight: FontWeight.w700))
+                        : null,
+                    onTap: () => Navigator.pop(context, x),
+                  ),
+              ]),
+            ),
+          );
+    if (th == null || !mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => MessagesScreen(
+        api: widget.api!,
+        linkId: th['link_id'] as String,
+        title: '${th['member_name']}',
+        lang: _lang,
+        accent: role == 'doctor' ? Palette.purple : Palette.action,
+        callPhone: th['member_phone'] as String?,
+        onActivity: _loadThreads,
+      ),
+    ));
+    _loadThreads();
+  }
+
+  /// Talk to Doctor: the patient's own doctor pinned on top, then every other
+  /// doctor on the app.
+  Future<void> _openDoctors() async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => DoctorDirectoryScreen(
+        api: widget.api!,
+        lang: _lang,
+        onActivity: _loadThreads,
+      ),
+    ));
+    _loadThreads();
+  }
+
+  Future<void> _say(String message) => showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          content: Text(message, style: const TextStyle(fontSize: 16)),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(t('finish'))),
+          ],
+        ),
+      );
 
   String get _lang => widget.patient['language'] as String;
   String get _id => widget.patient['id'] as String;
   int get _baseline => widget.patient['baseline_level'] as int;
+  bool get _voiceOn => widget.patient['voice_enabled'] == 1;
   String t(String k) => tr(_lang, k);
 
-  bool get _voiceOn => widget.patient['voice_enabled'] == 1;
-
-  Future<void> _open(Widget game) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => game));
-    if (mounted) setState(() {}); // refresh Home/Progress after a session
+  /// Starts a game at the level the learned model recommends (always inside
+  /// the caregiver's band), then refreshes the tabs when it ends.
+  Future<void> _play(String game, Widget Function(int startLevel) build) async {
+    final level = await widget.db.recommendedStartLevel(_id, game, _baseline);
+    if (!mounted) return;
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => build(level)));
+    if (mounted) setState(() {});
   }
 
-  void _openSettings() => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => SettingsScreen(
-          db: widget.db,
-          notifier: widget.notifier,
-          patientId: _id,
-          language: _lang,
-          voiceOn: _voiceOn,
-          onChanged: widget.onPatientChanged,
-        ),
-      ));
+  void _playMemory() => _play(
+    'memory_match',
+    (lvl) => MemoryMatchGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
 
-  @override
-  Widget build(BuildContext context) {
-    final pages = <Widget>[
-      _HomeTab(
+  void _playAttention() => _play(
+    'attention',
+    (lvl) => AttentionGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
+
+  void _playRoutine() => _play(
+    'routine',
+    (lvl) => RoutineGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
+
+  void _playWordRecall() => _play(
+    'word_recall',
+    (lvl) => WordRecallGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
+
+  void _playPuzzleFix() => _play(
+    'puzzle_fix',
+    (lvl) => PuzzleFixGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
+
+  void _playNumberOrder() => _play(
+    'number_order',
+    (lvl) => NumberOrderGame(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
+
+  void _playGame(String id) {
+    switch (id) {
+      case 'memory_match':
+        return _playMemory();
+      case 'word_recall':
+        return _playWordRecall();
+      case 'puzzle_fix':
+        return _playPuzzleFix();
+      case 'number_order':
+        return _playNumberOrder();
+      case 'attention':
+        return _playAttention();
+      default:
+        return _playRoutine();
+    }
+  }
+
+  void _openProgress() => Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) =>
+          ProgressScreen(db: widget.db, patientId: _id, lang: _lang),
+    ),
+  );
+
+  void _openTalk() => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => ChatScreen(
+        service: CompanionService(db: widget.db, api: widget.api),
+        voice: widget.voice,
         db: widget.db,
         patientId: _id,
         name: widget.patient['display_name'] as String,
         lang: _lang,
-        onPlay: () => setState(() => _tab = 1),
-        onSettings: _openSettings,
+        voiceEnabled: widget.patient['voice_enabled'] == 1,
+        syncNow: widget.hooks?.syncNow,
       ),
-      _GamesTab(
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = <Widget>[
+      HomeTab(
+        db: widget.db,
+        patientId: _id,
+        name: widget.patient['display_name'] as String,
+        photo: widget.patient['photo'] as List<int>?,
         lang: _lang,
-        onMemory: () => _open(MemoryMatchGame(
-            db: widget.db,
-            patientId: _id,
-            baselineLevel: _baseline,
-            language: _lang,
-            voice: widget.voice,
-            voiceOn: _voiceOn)),
-        onAttention: () => _open(AttentionGame(
-            db: widget.db,
-            patientId: _id,
-            baselineLevel: _baseline,
-            language: _lang,
-            voice: widget.voice,
-            voiceOn: _voiceOn)),
-        onRoutine: () => _open(RoutineGame(
-            db: widget.db,
-            patientId: _id,
-            baselineLevel: _baseline,
-            language: _lang,
-            voice: widget.voice,
-            voiceOn: _voiceOn)),
+        onPlay: _playMemory,
+        onGames: () => setState(() => _tab = 1),
+        onReminders: () => setState(() => _tab = 2),
+        onProgress: _openProgress,
+        onTalk: _openTalk,
+        onChatCaregiver:
+            widget.api == null ? null : () => _openChat('caretaker'),
+        onChatDoctor: widget.api == null ? null : _openDoctors,
+        unreadCaregiver: _unreadFor('caretaker'),
+        unreadDoctor: _unreadFor('doctor'),
       ),
+      GamesTab(lang: _lang, onPlay: _playGame),
       RemindersScreen(
         db: widget.db,
         notifier: widget.notifier,
         patientId: _id,
         language: _lang,
+        embedded: true,
+        onBack: () => setState(() => _tab = 0),
       ),
-      _ProgressTab(db: widget.db, patientId: _id, baseline: _baseline, lang: _lang),
+      ProfileTab(
+        hooks: widget.hooks,
+        db: widget.db,
+        notifier: widget.notifier,
+        patient: widget.patient,
+        onChanged: widget.onPatientChanged,
+        onLogout: widget.onLogout,
+        onConnectOnline: widget.onConnectOnline,
+      ),
     ];
     return Scaffold(
-      body: SafeArea(child: pages[_tab]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: [
-          NavigationDestination(
-              icon: const Icon(Icons.home_outlined, size: 30),
-              selectedIcon: const Icon(Icons.home, size: 30),
-              label: t('tabHome')),
-          NavigationDestination(
-              icon: const Icon(Icons.extension_outlined, size: 30),
-              selectedIcon: const Icon(Icons.extension, size: 30),
-              label: t('tabGames')),
-          NavigationDestination(
-              icon: const Icon(Icons.alarm_outlined, size: 30),
-              selectedIcon: const Icon(Icons.alarm, size: 30),
-              label: t('reminders')),
-          NavigationDestination(
-              icon: const Icon(Icons.bar_chart_outlined, size: 30),
-              selectedIcon: const Icon(Icons.bar_chart, size: 30),
-              label: t('tabProgress')),
-        ],
+      body: SafeArea(
+        child: Column(children: [
+          if (widget.api != null)
+            OfflineBar(
+                api: widget.api!, lang: _lang, db: widget.db, patientId: _id),
+          Expanded(child: pages[_tab]),
+        ]),
       ),
-    );
-  }
-}
-
-// ---- Home ------------------------------------------------------------------
-
-class _HomeTab extends StatelessWidget {
-  const _HomeTab({
-    required this.db,
-    required this.patientId,
-    required this.name,
-    required this.lang,
-    required this.onPlay,
-    required this.onSettings,
-  });
-  final AppDatabase db;
-  final String patientId, name, lang;
-  final VoidCallback onPlay, onSettings;
-
-  String _greeting() {
-    final h = DateTime.now().hour;
-    return tr(lang, h < 12 ? 'goodMorning' : h < 17 ? 'goodAfternoon' : 'goodEvening');
-  }
-
-  Future<List<(DateTime, Reminder)>> _today() async {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final out = <(DateTime, Reminder)>[];
-    for (final r in await db.listReminders(patientId)) {
-      final next = nextOccurrences(
-          r, startOfDay.subtract(const Duration(seconds: 1)));
-      if (next.isNotEmpty &&
-          next.first.year == now.year &&
-          next.first.month == now.month &&
-          next.first.day == now.day) {
-        out.add((next.first, r));
-      }
-    }
-    out.sort((a, b) => a.$1.compareTo(b.$1));
-    return out;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text('${_greeting()},\n$name',
-                  style: theme.textTheme.headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-            ),
-            IconButton(
-              tooltip: tr(lang, 'settings'),
-              iconSize: 34,
-              icon: const Icon(Icons.settings),
-              onPressed: onSettings,
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(tr(lang, 'keepGoing'), style: theme.textTheme.titleMedium),
-        const SizedBox(height: 20),
-        FilledButton.icon(
-          icon: const Icon(Icons.extension, size: 32),
-          label: Text(tr(lang, 'playGames')),
-          onPressed: onPlay,
-        ),
-        const SizedBox(height: 24),
-        Text(tr(lang, 'todaysTasks'),
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        FutureBuilder(
-          future: _today(),
-          builder: (context, snap) {
-            final items = snap.data ?? const <(DateTime, Reminder)>[];
-            if (items.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(tr(lang, 'noTasksToday'),
-                    style: theme.textTheme.titleMedium),
-              );
-            }
-            return Column(
-              children: [
-                for (final (at, r) in items)
-                  Card(
-                    color: Colors.white,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      leading: Icon(kindIcon(r.kind),
-                          size: 36, color: Palette.brand),
-                      title: Text(
-                          r.label.isEmpty
-                              ? tr(lang, 'kind_${r.kind.name}')
-                              : r.label,
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text(TimeOfDay.fromDateTime(at).format(context)),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-IconData kindIcon(ReminderKind k) => switch (k) {
-      ReminderKind.medicine => Icons.medication,
-      ReminderKind.hydration => Icons.water_drop,
-      ReminderKind.activity => Icons.directions_walk,
-      ReminderKind.appointment => Icons.event,
-    };
-
-// ---- Games -----------------------------------------------------------------
-
-class _GamesTab extends StatelessWidget {
-  const _GamesTab({
-    required this.lang,
-    required this.onMemory,
-    required this.onAttention,
-    required this.onRoutine,
-  });
-  final String lang;
-  final VoidCallback onMemory, onAttention, onRoutine;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    Widget tile(Color color, IconData icon, String title, String desc,
-        VoidCallback? onTap) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: Card(
-          color: onTap == null ? color.withAlpha(128) : color,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  Icon(icon, size: 48, color: Palette.brand),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title,
-                            style: theme.textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w700)),
-                        Text(onTap == null ? tr(lang, 'comingSoon') : desc,
-                            style: theme.textTheme.bodyLarge),
-                      ],
-                    ),
-                  ),
-                  if (onTap != null) const Icon(Icons.chevron_right, size: 32),
-                ],
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(26),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1F000000),
+                blurRadius: 16,
+                offset: Offset(0, 4),
               ),
-            ),
+            ],
           ),
-        ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Text(tr(lang, 'chooseGame'),
-            style: theme.textTheme.headlineMedium
-                ?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 16),
-        tile(Palette.tileBlue, Icons.extension, tr(lang, 'memoryGame'),
-            tr(lang, 'memoryGameDesc'), onMemory),
-        tile(Palette.tileOrange, Icons.center_focus_strong,
-            tr(lang, 'gameAttention'), tr(lang, 'gameAttentionDesc'), onAttention),
-        tile(Palette.tileGreen, Icons.wb_sunny, tr(lang, 'gameRoutine'),
-            tr(lang, 'gameRoutineDesc'), onRoutine),
-      ],
-    );
-  }
-}
-
-// ---- Progress --------------------------------------------------------------
-
-/// Engagement only: how often the person plays. Deliberately no "cognitive
-/// score" or health label (non-diagnostic positioning, see README).
-class _ProgressTab extends StatelessWidget {
-  const _ProgressTab({
-    required this.db,
-    required this.patientId,
-    required this.baseline,
-    required this.lang,
-  });
-  final AppDatabase db;
-  final String patientId;
-  final int baseline;
-  final String lang;
-
-  Future<(List<DateTime>, int)> _load() async {
-    final times = await db.sessionTimes(patientId);
-    final levels = await db.recentEndLevels(patientId, limit: 1);
-    return (times, levels.isEmpty ? baseline : levels.last);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return FutureBuilder(
-      future: _load(),
-      builder: (context, snap) {
-        if (!snap.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final (times, level) = snap.data!;
-        final today = DateTime.now();
-        final week = sessionsLast7Days(times, today);
-        final maxCount = week.fold<int>(1, (m, c) => c > m ? c : m);
-        Widget stat(String label, String value, Color color) => Expanded(
-              child: Card(
-                color: color,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: Column(
-                    children: [
-                      Text(value,
-                          style: theme.textTheme.headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w800)),
-                      Text(label,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium),
-                    ],
-                  ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(26),
+            child: NavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: (i) => setState(() => _tab = i),
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
+                  label: t('tabHome'),
                 ),
-              ),
-            );
-        return ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(tr(lang, 'myProgress'),
-                style: theme.textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 16),
-            Row(children: [
-              stat(tr(lang, 'gamesPlayed'), '${times.length}', Palette.tileBlue),
-              stat(tr(lang, 'dayStreak'), '${currentStreak(times, today)}',
-                  Palette.tileOrange),
-              stat(tr(lang, 'currentLevel'), '$level', Palette.tileGreen),
-            ]),
-            const SizedBox(height: 20),
-            Text(tr(lang, 'thisWeek'),
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 140,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (var i = 0; i < 7; i++)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Container(
-                              height: 8 + 100.0 * week[i] / maxCount,
-                              decoration: BoxDecoration(
-                                color: week[i] == 0
-                                    ? Colors.black12
-                                    : Palette.brand,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(_dayLetter(
-                                today.subtract(Duration(days: 6 - i)))),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                NavigationDestination(
+                  icon: const Icon(Icons.sports_esports_outlined),
+                  selectedIcon: const Icon(Icons.sports_esports_rounded),
+                  label: t('tabGames'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.notifications_none_rounded),
+                  selectedIcon: const Icon(Icons.notifications_rounded),
+                  label: t('reminders'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.person_outline_rounded),
+                  selectedIcon: const Icon(Icons.person_rounded),
+                  label: t('tabProfile'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(tr(lang, 'progressNote'), style: theme.textTheme.bodyMedium),
-          ],
-        );
-      },
-    );
-  }
-
-  String _dayLetter(DateTime d) => 'MTWTFSS'[d.weekday - 1];
-}
-
-// ---- Settings --------------------------------------------------------------
-
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({
-    super.key,
-    required this.db,
-    required this.notifier,
-    required this.patientId,
-    required this.language,
-    required this.voiceOn,
-    required this.onChanged,
-  });
-  final AppDatabase db;
-  final ReminderNotifier notifier;
-  final String patientId, language;
-  final bool voiceOn;
-  final VoidCallback onChanged;
-
-  // Assamese and Bengali are in the design; they need translated strings first.
-  static const _languages = {'en': 'English', 'hi': 'हिन्दी'};
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(tr(language, 'settings'))),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(tr(language, 'language'),
-              style: Theme.of(context).textTheme.titleLarge),
-          RadioGroupCompat(
-            value: language,
-            options: _languages,
-            onSelected: (code) async {
-              await db.setLanguage(patientId, code, 'user');
-              await notifier.resync(patientId: patientId, lang: code);
-              onChanged();
-              if (context.mounted) Navigator.of(context).pop();
-            },
           ),
-          const Divider(height: 32),
-          SwitchListTile(
-            secondary: const Icon(Icons.record_voice_over, size: 32),
-            title: Text(tr(language, 'voiceOn'),
-                style: const TextStyle(fontSize: 20)),
-            value: voiceOn,
-            onChanged: (v) async {
-              await db.setVoiceEnabled(patientId, v, 'user');
-              onChanged();
-              if (context.mounted) Navigator.of(context).pop();
-            },
-          ),
-          const Divider(height: 32),
-          ListTile(
-            leading: const Icon(Icons.lock_outline, size: 32),
-            title: Text(tr(language, 'privacy'),
-                style: const TextStyle(fontSize: 20)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => PrivacyScreen(
-                db: db,
-                notifier: notifier,
-                patientId: patientId,
-                language: language,
-                onErased: () {
-                  Navigator.of(context).popUntil((r) => r.isFirst);
-                  onChanged();
-                },
-              ),
-            )),
-          ),
-        ],
+        ),
       ),
     );
   }
-}
-
-/// Simple tappable language list (avoids Radio API differences across Flutter versions).
-class RadioGroupCompat extends StatelessWidget {
-  const RadioGroupCompat(
-      {super.key,
-      required this.value,
-      required this.options,
-      required this.onSelected});
-  final String value;
-  final Map<String, String> options;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          for (final e in options.entries)
-            ListTile(
-              leading: Icon(
-                  e.key == value
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  color: Palette.brand,
-                  size: 32),
-              title: Text(e.value, style: const TextStyle(fontSize: 22)),
-              onTap: () => onSelected(e.key),
-            ),
-        ],
-      );
 }

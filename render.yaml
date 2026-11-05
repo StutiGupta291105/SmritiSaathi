@@ -1,0 +1,72 @@
+# One-click test server on Render (https://render.com): a web service built from
+# backend/Dockerfile plus a free PostgreSQL database.
+#
+# TEST ONLY. The login code is always 123456 (SMRITI_SMS_PROVIDER=test), so use
+# made-up names and numbers. Real use needs a real SMS provider and
+# SMRITI_ENV=prod; see docs/DEPLOYMENT.md.
+services:
+  - type: web
+    name: smriti-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: singapore          # closest Render region to India
+    healthCheckPath: /healthz
+    envVars:
+      - key: SMRITI_ENV
+        value: dev
+      - key: SMRITI_SMS_PROVIDER
+        value: test
+      - key: SMRITI_TRUST_PROXY
+        value: "true"
+      - key: SMRITI_OTP_PER_HOUR_PHONE
+        value: "50"
+      - key: SMRITI_OTP_PER_HOUR_IP
+        value: "200"
+      # Talk to Smriti: a free AI through Google Gemini's chat endpoint. Get a free
+      # key at https://aistudio.google.com/apikey and paste it in the Render
+      # dashboard (Environment > SMRITI_COMPANION_API_KEY). Without a key the app
+      # uses its small on-device helper. To use another service (Groq, a paid
+      # Anthropic key...) see docs/DEPLOYMENT.md.
+      - key: SMRITI_COMPANION_PROVIDER
+        value: openai_compat
+      - key: SMRITI_COMPANION_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai
+      - key: SMRITI_COMPANION_MODEL
+        value: gemini-flash-latest
+      - key: SMRITI_COMPANION_API_KEY
+        sync: false
+      # Gemini 'thinks' before it answers and Indian-language text is long: give it room,
+      # and ask it to think little. (Remove the second line for a provider that rejects it.)
+      - key: SMRITI_COMPANION_MAX_TOKENS
+        value: "4096"
+      - key: SMRITI_COMPANION_REASONING_EFFORT
+        value: low
+      # Background push (see docs/DEPLOYMENT.md): set provider to fcm and fill the two
+      # values below in the Render dashboard once you have a Firebase project.
+      - key: SMRITI_PUSH_PROVIDER
+        value: dev
+      - key: SMRITI_FCM_PROJECT_ID
+        sync: false
+      - key: SMRITI_FCM_CREDENTIALS_JSON
+        sync: false
+      # The ONE admin of the read-only admin portal (desktop app). Choose the password in
+      # the Render dashboard (12+ characters). Leave it unset to switch the portal off.
+      - key: SMRITI_ADMIN_USERNAME
+        value: admin
+      - key: SMRITI_ADMIN_PASSWORD
+        sync: false
+      - key: SMRITI_SECRET_KEY
+        generateValue: true
+      - key: SMRITI_PHONE_HMAC_KEY
+        generateValue: true
+      - key: SMRITI_DATABASE_URL
+        fromDatabase:
+          name: smriti-db
+          property: connectionString
+
+databases:
+  - name: smriti-db
+    plan: free
+    region: singapore
