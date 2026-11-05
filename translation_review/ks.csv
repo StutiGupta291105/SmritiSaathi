@@ -119,6 +119,7 @@
 2,strings,doctorId,Doctor ID (registration number),ڈاکٹر ID (رجسٹریشن نمبر),,
 2,strings,doctorName,Doctor's name,ڈاکٹرُک ناو,,
 2,strings,doctorVerified,Registration checked,رجسٹریشن چھ جانچنہ آمژ,,
+2,strings,doneOfTotal,{a} of {b} done today,اَتھ {b} مَنٛز {a} مکمل,,
 2,strings,drinkGlass,Drink 1 glass,اکھ گلاس آب پیوو,,
 2,strings,editDetails,Edit,بدلاو,,
 2,strings,email,Email,ای میل,,

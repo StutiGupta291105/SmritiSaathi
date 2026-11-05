@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangSat = LangData(
   strings: {
     "appName": "ᱥᱚᱢᱨᱤᱛᱤ ᱥᱟᱛᱷᱤ",
+    "doneOfTotal": "ᱫᱤᱱᱟᱜ {b} ᱨᱮᱭᱟᱜ {a} ᱪᱟᱹᱛᱤ",
     "connectRetry": "ᱫᱟᱭᱟ ᱠᱟᱛᱮ ᱱᱟᱣᱟ ᱠᱳᱰ ᱥᱟᱲᱟᱣ ᱢᱮ ᱟᱨ ᱪᱟᱹᱛᱤ ᱞᱟᱹᱜᱤᱫ ᱩᱞᱟᱹᱜ ᱢᱮ।",
     "offlineBar": "ᱟᱢ ᱚᱯᱞᱟᱭᱤᱱ ᱢᱮᱱᱟᱢᱟ। ᱡᱚᱛᱚ ᱪᱤᱡ ᱱᱚᱶᱟ ᱯᱷᱚᱱ ᱨᱮ ᱵᱷᱚᱨᱛᱤ ᱢᱮᱱᱟᱭ, ᱤᱱᱴᱟᱨᱱᱮᱴ ᱥᱟᱵᱟ ᱥᱮᱱᱫᱚᱜ ᱠᱟᱱᱟ।",
     "offlinePending": "{a} ᱵᱷᱮᱡᱟᱜ ᱞᱟᱜᱤᱫ ᱨᱩᱣᱟᱹᱲ",

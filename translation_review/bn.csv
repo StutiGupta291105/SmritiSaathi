@@ -118,6 +118,7 @@
 2,strings,doctorId,Doctor ID (registration number),ডাক্তারের আইডি (নিবন্ধন নম্বর),,
 2,strings,doctorName,Doctor's name,ডাক্তারের নাম,,
 2,strings,doctorVerified,Registration checked,নিবন্ধন যাচাই করা হয়েছে,,
+2,strings,doneOfTotal,{a} of {b} done today,আজ {b}টির মধ্যে {a}টি শেষ,,
 2,strings,drinkGlass,Drink 1 glass,১ গ্লাস পানি খান,,
 2,strings,editDetails,Edit,সম্পাদনা,,
 2,strings,email,Email,ইমেইল,,

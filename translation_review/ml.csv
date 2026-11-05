@@ -119,6 +119,7 @@
 2,strings,doctorId,Doctor ID (registration number),ഡോക്ടർ ഐഡി (രജിസ്ട്രേഷൻ നമ്പർ),,
 2,strings,doctorName,Doctor's name,ഡോക്ടറുടെ പേര്,,
 2,strings,doctorVerified,Registration checked,രജിസ്ട്രേഷൻ പരിശോധിച്ചു,,
+2,strings,doneOfTotal,{a} of {b} done today,ഇന്ന് {b} ൽ {a} പൂർത്തിയായി,,
 2,strings,drinkGlass,Drink 1 glass,1 ഗ്ലാസ് വെള്ളം കുടിക്കുക,,
 2,strings,editDetails,Edit,തിരുത്തുക,,
 2,strings,email,Email,ഇമെയിൽ,,

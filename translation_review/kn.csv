@@ -119,6 +119,7 @@
 2,strings,doctorId,Doctor ID (registration number),ವೈದ್ಯರ ID (ನೋಂದಣಿ ಸಂಖ್ಯೆ),,
 2,strings,doctorName,Doctor's name,ವೈದ್ಯರ ಹೆಸರು,,
 2,strings,doctorVerified,Registration checked,ನೋಂದಣಿ ಪರಿಶೀಲಿಸಲಾಗಿದೆ,,
+2,strings,doneOfTotal,{a} of {b} done today,ಇಂದು {b} ರಲ್ಲಿ {a} ಮುಗಿದಿದೆ,,
 2,strings,drinkGlass,Drink 1 glass,೧ ಲೋಟ ನೀರು ಕುಡಿಯಿರಿ,,
 2,strings,editDetails,Edit,ಸಂಪಾದಿಸಿ,,
 2,strings,email,Email,ಇಮೇಲ್,,

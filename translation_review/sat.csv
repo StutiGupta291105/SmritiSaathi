@@ -119,6 +119,7 @@
 2,strings,doctorId,Doctor ID (registration number),ᱰᱟᱠᱴᱚᱨ ID (ᱨᱮᱡᱤᱥᱴᱨᱮᱥᱚᱱ ᱱᱚᱢᱵᱚᱨ),,
 2,strings,doctorName,Doctor's name,ᱰᱟᱠᱴᱚᱨ ᱧᱩᱛᱩᱢ,,
 2,strings,doctorVerified,Registration checked,ᱨᱮᱡᱤᱥᱴᱨᱮᱥᱚᱱ ᱡᱟᱪ ᱦᱩᱭᱞᱮᱱᱟ,,
+2,strings,doneOfTotal,{a} of {b} done today,ᱫᱤᱱᱟᱜ {b} ᱨᱮᱭᱟᱜ {a} ᱪᱟᱹᱛᱤ,,
 2,strings,drinkGlass,Drink 1 glass,1 ᱜᱞᱟᱥ ᱫᱟᱜ ᱚᱠᱚᱭ ᱢᱮ,,
 2,strings,editDetails,Edit,ᱥᱚᱫᱚᱨ ᱢᱮ,,
 2,strings,email,Email,ᱤᱢᱮᱞ,,

@@ -118,6 +118,7 @@
 2,strings,doctorId,Doctor ID (registration number),চিকিৎসকৰ আইডি (পঞ্জীয়ন নম্বৰ),,
 2,strings,doctorName,Doctor's name,চিকিৎসকৰ নাম,,
 2,strings,doctorVerified,Registration checked,পঞ্জীয়ন পৰীক্ষা কৰা হৈছে,,
+2,strings,doneOfTotal,{a} of {b} done today,আজি {b}টাৰ ভিতৰত {a}টা শেষ,,
 2,strings,drinkGlass,Drink 1 glass,১ গিলাচ পানী খাওক,,
 2,strings,editDetails,Edit,সম্পাদনা,,
 2,strings,email,Email,ইমেইল,,

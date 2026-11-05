@@ -119,6 +119,7 @@
 2,strings,doctorId,Doctor ID (registration number),ଡାକ୍ତର ID (ପଞ୍ଜୀକରଣ ନମ୍ବର),,
 2,strings,doctorName,Doctor's name,ଡାକ୍ତରଙ୍କ ନାମ,,
 2,strings,doctorVerified,Registration checked,ପଞ୍ଜୀକରଣ ଯାଞ୍ଚ ହୋଇଛି,,
+2,strings,doneOfTotal,{a} of {b} done today,ଆଜି {b} ମଧ୍ୟରୁ {a} ସରିଛି,,
 2,strings,drinkGlass,Drink 1 glass,୧ ଗ୍ଲାସ ପାଣି ପିଅନ୍ତୁ,,
 2,strings,editDetails,Edit,ସମ୍ପାଦନ,,
 2,strings,email,Email,ଇମେଲ୍,,

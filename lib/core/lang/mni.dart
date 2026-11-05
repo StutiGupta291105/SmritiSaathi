@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangMni = LangData(
   strings: {
     "appName": "ꯁ꯭ꯃꯔꯤꯇꯤ ꯁꯥꯊꯤ",
+    "doneOfTotal": "ꯉꯁꯤ {b} ꯃꯅꯨꯡꯗꯥ {a} ꯂꯣꯏꯈꯔꯦ",
     "connectRetry": "ꯃꯍꯨꯠ ꯇꯧꯗꯨꯅꯥ ꯑꯅꯧꯕꯥ ꯀꯣꯗ ꯑꯃꯥ ꯂꯧꯗꯨꯅꯥ ꯂꯣꯏꯁꯤꯅꯕꯥ ꯇꯥꯀꯎ꯫",
     "offlineBar": "ꯅꯍꯥꯛ ꯑꯣꯐꯂꯥꯏꯟꯗꯥ ꯑꯣꯏꯔꯤ꯫ ꯄꯨꯝꯅꯃꯛ ꯃꯁꯤꯒꯤ ꯐꯣꯟꯗꯥ ꯊꯃꯖꯔꯤ, ꯏꯟꯇꯔꯅꯦꯠ ꯂꯥꯀꯄꯥ ꯃꯇꯃꯗꯥ ꯊꯥꯒꯅꯤ꯫",
     "offlinePending": "{a} ꯊꯥꯅꯕꯥ ꯉꯥꯏꯔꯤ",

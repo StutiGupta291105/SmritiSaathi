@@ -9,6 +9,7 @@ import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../profile/photo_picker.dart' show Avatar;
 import '../reminders/reminder_style.dart';
+import 'garden.dart';
 
 class _HomeData {
   _HomeData(this.playedToday, this.tasks, this.done);
@@ -53,6 +54,12 @@ class HomeTab extends StatelessWidget {
     return t(h < 12 ? 'goodMorning' : h < 17 ? 'goodAfternoon' : 'goodEvening');
   }
 
+  // Today's progress for the garden: every task, plus playing a game.
+  int _total(_HomeData? d) => (d?.tasks.length ?? 0) + 1;
+  int _doneCount(_HomeData? d) =>
+      d == null ? 0 : d.done.length + (d.playedToday ? 1 : 0);
+  double _progress(_HomeData? d) => _doneCount(d) / _total(d);
+
   Future<_HomeData> _load() async {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
@@ -88,34 +95,32 @@ class HomeTab extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
-            Row(
-              children: [
-                Avatar(photo: photo, radius: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${_greeting()},',
-                          style: const TextStyle(
-                              fontSize: 14, color: Palette.muted)),
-                      Text(name,
-                          style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Palette.brandDeep)),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                      color: Color(0xFFFFEBD6), shape: BoxShape.circle),
-                  child: const Icon(Icons.favorite_rounded,
-                      size: 20, color: Palette.orange),
-                ),
-              ],
+            GardenHeader(
+              greeting: _greeting(),
+              name: name,
+              photo: photo,
+              now: DateTime.now(),
+              progress: _progress(data),
+              progressText: t('doneOfTotal')
+                  .replaceAll('{a}', '${_doneCount(data)}')
+                  .replaceAll('{b}', '${_total(data)}'),
+            ),
+            const SizedBox(height: 18),
+
+            // Today as a line through the day: "now" glows, a tap ticks it off.
+            if (data != null) _Timeline(
+              title: t('todaysTasks'),
+              empty: t('noTasksToday'),
+              tasks: data.tasks,
+              done: data.done,
+              lang: lang,
+              onToggle: (r, v) => db.setReminderDone(
+                patientId: patientId,
+                reminderId: r.id,
+                day: DateTime.now(),
+                done: v,
+                by: 'patient',
+              ),
             ),
             const SizedBox(height: 18),
 
@@ -220,35 +225,6 @@ class HomeTab extends StatelessWidget {
               ]),
             ),
 
-            // Today's tasks
-            const SizedBox(height: 24),
-            Text(t('todaysTasks'),
-                style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Palette.brandDeep)),
-            const SizedBox(height: 10),
-            if (data == null)
-              const SizedBox.shrink()
-            else if (data.tasks.isEmpty)
-              Text(t('noTasksToday'),
-                  style: const TextStyle(fontSize: 16, color: Palette.muted))
-            else
-              for (final (at, r) in data.tasks)
-                _TaskRow(
-                  key: ValueKey(r.id),
-                  reminder: r,
-                  at: at,
-                  lang: lang,
-                  initiallyDone: data.done.contains(r.id),
-                  onToggle: (v) => db.setReminderDone(
-                    patientId: patientId,
-                    reminderId: r.id,
-                    day: DateTime.now(),
-                    done: v,
-                    by: 'patient',
-                  ),
-                ),
           ],
         );
       },
@@ -380,27 +356,72 @@ class HomeTab extends StatelessWidget {
   }
 }
 
-/// One of today's tasks with a big tick to mark it done.
-class _TaskRow extends StatefulWidget {
-  const _TaskRow({
+/// Today's tasks on one vertical line. The next task that is not done is marked
+/// "now" with a glowing ring; tapping the circle on the right ticks a task off.
+class _Timeline extends StatelessWidget {
+  const _Timeline({
+    required this.title,
+    required this.empty,
+    required this.tasks,
+    required this.done,
+    required this.lang,
+    required this.onToggle,
+  });
+  final String title, empty, lang;
+  final List<(DateTime, Reminder)> tasks;
+  final Set<String> done;
+  final Future<void> Function(Reminder r, bool done) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final nowIndex = tasks.indexWhere((x) => !done.contains(x.$2.id));
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title,
+          style: const TextStyle(
+              fontSize: 20, fontWeight: FontWeight.w700, color: Palette.brandDeep)),
+      const SizedBox(height: 10),
+      if (tasks.isEmpty)
+        Text(empty, style: const TextStyle(fontSize: 16, color: Palette.muted))
+      else
+        for (var i = 0; i < tasks.length; i++)
+          _TimelineItem(
+            key: ValueKey(tasks[i].$2.id),
+            reminder: tasks[i].$2,
+            at: tasks[i].$1,
+            lang: lang,
+            first: i == 0,
+            last: i == tasks.length - 1,
+            isNow: i == nowIndex,
+            initiallyDone: done.contains(tasks[i].$2.id),
+            onToggle: (v) => onToggle(tasks[i].$2, v),
+          ),
+    ]);
+  }
+}
+
+class _TimelineItem extends StatefulWidget {
+  const _TimelineItem({
     super.key,
     required this.reminder,
     required this.at,
     required this.lang,
+    required this.first,
+    required this.last,
+    required this.isNow,
     required this.initiallyDone,
     required this.onToggle,
   });
   final Reminder reminder;
   final DateTime at;
   final String lang;
-  final bool initiallyDone;
+  final bool first, last, isNow, initiallyDone;
   final Future<void> Function(bool done) onToggle;
 
   @override
-  State<_TaskRow> createState() => _TaskRowState();
+  State<_TimelineItem> createState() => _TimelineItemState();
 }
 
-class _TaskRowState extends State<_TaskRow> {
+class _TimelineItemState extends State<_TimelineItem> {
   late bool _done = widget.initiallyDone;
 
   @override
@@ -408,53 +429,98 @@ class _TaskRowState extends State<_TaskRow> {
     final r = widget.reminder;
     final style = kindStyle(r.kind);
     final label = r.label.isEmpty ? tr(widget.lang, 'kind_${r.kind.name}') : r.label;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppCard(
-        color: _done ? Palette.tileGreen : Colors.white,
-        padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
-        child: Row(children: [
-          IconBadge(
-              icon: style.icon,
-              fg: style.fg,
-              bg: style.bg,
-              size: 46,
-              circle: true),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        decoration: _done ? TextDecoration.lineThrough : null)),
-                Text(TimeOfDay.fromDateTime(widget.at).format(context),
-                    style: const TextStyle(fontSize: 14, color: Palette.muted)),
-              ],
+    final by = r.addedBy;
+    final now = widget.isNow && !_done;
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SizedBox(
+          width: 66,
+          child: Stack(alignment: Alignment.topCenter, children: [
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.center,
+                child: Container(
+                  width: 4,
+                  margin: EdgeInsets.only(
+                      top: widget.first ? 36 : 0, bottom: widget.last ? 36 : 0),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFE1D6C4),
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Container(
+                key: now ? const ValueKey('timelineNow') : null,
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _done ? Palette.tileGreen : style.bg,
+                  border: Border.all(
+                      color: _done ? Palette.action : Colors.white, width: 3),
+                  boxShadow: [
+                    if (now)
+                      BoxShadow(
+                          color: Palette.action.withValues(alpha: 0.35),
+                          blurRadius: 0,
+                          spreadRadius: 6),
+                    const BoxShadow(
+                        color: Color(0x26000000), blurRadius: 8, offset: Offset(0, 3)),
+                  ],
+                ),
+                child: Icon(_done ? Icons.check_rounded : style.icon,
+                    size: 26, color: _done ? Palette.action : style.fg),
+              ),
+            ),
+          ]),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              color: _done ? Palette.tileGreen : Colors.white,
+              padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+              child: Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(label,
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            decoration: _done ? TextDecoration.lineThrough : null)),
+                    Text(TimeOfDay.fromDateTime(widget.at).format(context),
+                        style: const TextStyle(fontSize: 14, color: Palette.muted)),
+                    if (by != null && by.isNotEmpty)
+                      Text(tr(widget.lang, 'addedBy').replaceAll('{a}', by),
+                          style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Palette.brand)),
+                  ]),
+                ),
+                IconButton(
+                  tooltip: tr(widget.lang, 'markDone'),
+                  iconSize: 38,
+                  icon: Icon(
+                      _done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                      color: _done ? Palette.action : Palette.muted),
+                  onPressed: () async {
+                    final next = !_done;
+                    setState(() => _done = next);
+                    try {
+                      await widget.onToggle(next);
+                    } catch (_) {
+                      if (mounted) setState(() => _done = !next);
+                    }
+                  },
+                ),
+              ]),
             ),
           ),
-          IconButton(
-            tooltip: tr(widget.lang, 'markDone'),
-            iconSize: 38,
-            icon: Icon(
-                _done
-                    ? Icons.check_circle_rounded
-                    : Icons.radio_button_unchecked_rounded,
-                color: _done ? Palette.action : Palette.muted),
-            onPressed: () async {
-              final next = !_done;
-              setState(() => _done = next);
-              try {
-                await widget.onToggle(next);
-              } catch (_) {
-                if (mounted) setState(() => _done = !next);
-              }
-            },
-          ),
-        ]),
-      ),
+        ),
+      ]),
     );
   }
 }

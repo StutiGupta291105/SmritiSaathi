@@ -119,6 +119,7 @@
 2,strings,doctorId,Doctor ID (registration number),மருத்துவர் அடையாளம் (பதிவு எண்),,
 2,strings,doctorName,Doctor's name,மருத்துவரின் பெயர்,,
 2,strings,doctorVerified,Registration checked,பதிவு சரிபார்க்கப்பட்டது,,
+2,strings,doneOfTotal,{a} of {b} done today,இன்று {b} இல் {a} முடிந்தது,,
 2,strings,drinkGlass,Drink 1 glass,1 கிளாஸ் குடி,,
 2,strings,editDetails,Edit,திருத்து,,
 2,strings,email,Email,மின்னஞ்சல்,,

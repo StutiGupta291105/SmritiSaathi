@@ -119,6 +119,7 @@
 2,strings,doctorId,Doctor ID (registration number),डाक्टर ID (रजिस्ट्रेशन नंबर),,
 2,strings,doctorName,Doctor's name,डाक्टर दा नां,,
 2,strings,doctorVerified,Registration checked,रजिस्ट्रेशन दी जांच होई,,
+2,strings,doneOfTotal,{a} of {b} done today,अज्ज {b} चों {a} पूरे,,
 2,strings,drinkGlass,Drink 1 glass,1 गलास पानी पियो,,
 2,strings,editDetails,Edit,बदलो,,
 2,strings,email,Email,ईमेल,,

@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangMr = LangData(
   strings: {
     "appName": "स्मृती साथी",
+    "doneOfTotal": "आज {b} पैकी {a} पूर्ण",
     "connectRetry": "कृपया नवीन कोड मागवा आणि पूर्ण करण्यासाठी तो टाका.",
     "offlineBar": "तुम्ही ऑफलाइन आहात. सर्व काही या फोनमध्ये सुरक्षित आहे आणि इंटरनेट आल्यावर पाठवले जाईल.",
     "offlinePending": "{a} पाठवण्याची वाट पाहत आहेत",

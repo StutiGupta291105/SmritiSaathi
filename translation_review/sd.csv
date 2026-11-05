@@ -119,6 +119,7 @@
 2,strings,doctorId,Doctor ID (registration number),ڊاڪٽر ID (رجسٽريشن نمبر),,
 2,strings,doctorName,Doctor's name,ڊاڪٽر جو نالو,,
 2,strings,doctorVerified,Registration checked,رجسٽريشن جاچي وئي,,
+2,strings,doneOfTotal,{a} of {b} done today,اڄ {b} مان {a} مڪمل,,
 2,strings,drinkGlass,Drink 1 glass,هڪ گلاس پاڻي پيئو,,
 2,strings,editDetails,Edit,تبديل ڪريو,,
 2,strings,email,Email,اي ميل,,

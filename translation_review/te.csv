@@ -119,6 +119,7 @@
 2,strings,doctorId,Doctor ID (registration number),వైద్యుని ID (రిజిస్ట్రేషన్ నంబర్),,
 2,strings,doctorName,Doctor's name,వైద్యుని పేరు,,
 2,strings,doctorVerified,Registration checked,రిజిస్ట్రేషన్ తనిఖీ చేయబడింది,,
+2,strings,doneOfTotal,{a} of {b} done today,ఈ రోజు {b} లో {a} పూర్తయ్యాయి,,
 2,strings,drinkGlass,Drink 1 glass,1 గ్లాసు తాగండి,,
 2,strings,editDetails,Edit,సవరించు,,
 2,strings,email,Email,ఈమెయిల్,,

@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangSd = LangData(
   strings: {
     "appName": "سمرتي ساٿي",
+    "doneOfTotal": "اڄ {b} مان {a} مڪمل",
     "connectRetry": "مهرباني ڪري نئون ڪوڊ گهرايو ۽ مڪمل ڪرڻ لاءِ اهو داخل ڪريو.",
     "offlineBar": "توهان آف لائن آهيو. سڀ ڪجهه هن فون ۾ محفوظ آهي ۽ انٽرنيٽ ايندي ئي موڪلبو.",
     "offlinePending": "{a} موڪلڻ جي انتظار ۾",

@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangSa = LangData(
   strings: {
     "appName": "स्मृतिसाथी",
+    "doneOfTotal": "अद्य {b} मध्ये {a} पूर्णम्",
     "connectRetry": "कृपया नूतनं सङ्केतं प्राप्य समापनाय तं प्रविशतु।",
     "offlineBar": "भवान् अनन्तर्जाले नास्ति। सर्वं अस्मिन् दूरभाषे रक्षितम्, जालं प्राप्ते प्रेषयिष्यते।",
     "offlinePending": "{a} प्रेषणं प्रतीक्षन्ते",

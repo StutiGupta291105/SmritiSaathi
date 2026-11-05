@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangTe = LangData(
   strings: {
     "appName": "స్మృతి సాథీ",
+    "doneOfTotal": "ఈ రోజు {b} లో {a} పూర్తయ్యాయి",
     "connectRetry": "దయచేసి కొత్త కోడ్ తీసుకుని, పూర్తి చేయడానికి దాన్ని నమోదు చేయండి.",
     "offlineBar": "మీరు ఆఫ్‌లైన్‌లో ఉన్నారు. అన్నీ ఈ ఫోన్‌లో భద్రంగా ఉన్నాయి; ఇంటర్నెట్ రాగానే పంపబడతాయి.",
     "offlinePending": "{a} పంపడానికి వేచి ఉన్నాయి",
