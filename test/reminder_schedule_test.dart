@@ -77,4 +77,62 @@ void main() {
       (DateTime(2026, 3, 10, 11, 0), false, ReminderKind.appointment),
     ]);
   });
+
+  group('repeatingAlerts (the OS repeats them, so no weekly app opening is needed)', () {
+    final now = DateTime(2026, 3, 4, 10, 0); // Wednesday
+
+    test('an every-day reminder is one daily alarm plus one daily heads-up', () {
+      final a = repeatingAlerts([r()], now);
+      expect(a.length, 2);
+      expect(a[0].repeat, AlertRepeat.daily);
+      expect(a[0].headsUp, isFalse);
+      expect(a[0].first, DateTime(2026, 3, 5, 9, 0));
+      expect(a[1].headsUp, isTrue);
+      expect(a[1].first, DateTime(2026, 3, 5, 8, 30));
+    });
+
+    test('a heads-up already past today starts tomorrow, not in the past', () {
+      final a = repeatingAlerts([r(h: 10, m: 15)], now); // alarm 10:15, heads-up 09:45
+      expect(a.firstWhere((x) => x.headsUp).first, DateTime(2026, 3, 5, 9, 45));
+      expect(a.firstWhere((x) => !x.headsUp).first, DateTime(2026, 3, 4, 10, 15));
+    });
+
+    test('some weekdays: one weekly alarm per chosen day', () {
+      const monFri = 1 | 16;
+      final a = repeatingAlerts([r(mask: monFri)], now);
+      final main = a.where((x) => !x.headsUp).toList();
+      expect(main.map((x) => x.first),
+          [DateTime(2026, 3, 6, 9, 0), DateTime(2026, 3, 9, 9, 0)]);
+      expect(main.every((x) => x.repeat == AlertRepeat.weekly), isTrue);
+    });
+
+    test('a heads-up that crosses midnight lands on the previous weekday', () {
+      final a = repeatingAlerts([r(mask: 1, h: 0, m: 10)], now); // Mondays 00:10
+      final head = a.firstWhere((x) => x.headsUp);
+      expect(head.first, DateTime(2026, 3, 8, 23, 40)); // Sunday night
+      expect(head.repeat, AlertRepeat.weekly);
+    });
+
+    test('birthday repeats yearly, an appointment is one-off and skips a past heads-up', () {
+      final bday = Reminder(
+          id: 'b', kind: ReminderKind.birthday, label: '', hour: 9, minute: 0,
+          onDate: DateTime(1950, 3, 20));
+      final yearly = repeatingAlerts([bday], now);
+      expect(yearly.every((x) => x.repeat == AlertRepeat.yearly), isTrue);
+      expect(yearly.first.first, DateTime(2026, 3, 20, 9, 0));
+
+      final soon = r(on: DateTime(2026, 3, 4), h: 10, m: 20); // heads-up 09:50 is past
+      final one = repeatingAlerts([soon], now);
+      expect(one.length, 1);
+      expect(one.single.repeat, AlertRepeat.none);
+    });
+
+    test('inactive reminders are left out and the limit keeps main alarms first', () {
+      expect(repeatingAlerts([r(active: false)], now), isEmpty);
+      final many = [for (var i = 0; i < 5; i++) r(h: 6 + i)];
+      final a = repeatingAlerts(many, now, limit: 7);
+      expect(a.length, 7);
+      expect(a.where((x) => !x.headsUp).length, 5);
+    });
+  });
 }

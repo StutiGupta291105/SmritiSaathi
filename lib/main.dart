@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import 'core/language_picker.dart';
@@ -27,6 +28,12 @@ import 'services/voice.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    // Lets a "routine updated" push schedule its alarms while the app is closed.
+    FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+  } catch (_) {
+    // No Firebase project in this build.
+  }
   runApp(const SmritiSathiApp());
 }
 
@@ -180,6 +187,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.api?.wake(); // a sleeping test server needs a head start
+    PushEvents.start(onRoutineChanged: _sync);
     _load();
   }
 
