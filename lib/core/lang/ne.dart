@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangNe = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "rxNameNeeded": "कृपया औषधिको नाम हाल्नुहोस्।",
     "notesTab": "टिप्पणी",
     "noDoctorChats": "अहिलेसम्म कुनै डाक्टर छैनन्। तपाईंको बिरामीसँग जोडिएका डाक्टरले स्वीकारेपछि यहाँ कुरा गर्न सकिन्छ।",
     "consultDoctors": "डाक्टरहरू",

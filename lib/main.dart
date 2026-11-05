@@ -217,7 +217,25 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     }
   }
 
+  /// Set when starting up failed, so the person sees a message and a retry
+  /// button instead of a spinner that never ends.
+  Object? _loadError;
+
   Future<void> _load() async {
+    try {
+      await _loadInner();
+      _loadError = null;
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadError = e;
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadInner() async {
     Map<String, Object?>? account;
     Map<String, Object?>? patient;
     final id = await widget.session.read();
@@ -316,6 +334,40 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_loadError != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.error_outline_rounded, size: 56),
+              const SizedBox(height: 12),
+              const Text('Something went wrong while opening the app.',
+                  textAlign: TextAlign.center, style: TextStyle(fontSize: 18)),
+              const SizedBox(height: 8),
+              // The technical reason, so it can be reported and fixed.
+              Text('$_loadError',
+                  key: const ValueKey('loadError'),
+                  textAlign: TextAlign.center,
+                  maxLines: 6,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54)),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () {
+                  setState(() {
+                    _loadError = null;
+                    _loading = true;
+                  });
+                  _load();
+                },
+                child: const Text('Try again'),
+              ),
+            ]),
+          ),
+        ),
+      );
     }
     final active = (_patient?['language'] as String?) ?? _lang;
     if (kActiveLanguage.value != active) {

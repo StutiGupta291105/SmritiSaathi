@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangSd = LangData(
   strings: {
     "appName": "سمرتي ساٿي",
+    "rxNameNeeded": "مهرباني ڪري دوا جو نالو داخل ڪريو.",
     "notesTab": "نوٽس",
     "noDoctorChats": "اڃا ڪو ڊاڪٽر ناهي. توهان جي مريض سان ڳنڍيل ڊاڪٽر قبول ڪري ته هتي ڳالهائي سگهندا.",
     "consultDoctors": "ڊاڪٽر",

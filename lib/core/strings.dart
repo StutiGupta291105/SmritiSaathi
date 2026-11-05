@@ -11,6 +11,7 @@ const Map<String, Map<String, String>> _kCoreStrings = {
   'as': kStringsAs,
   'en': {
     'appName': 'Smriti Sathi',
+    'rxNameNeeded': 'Please enter the medicine name.',
     'notesTab': 'Notes',
     'noDoctorChats': 'No doctors yet. When a doctor linked to one of your patients accepts, you can talk to them here.',
     'consultDoctors': 'Doctors',
@@ -521,6 +522,7 @@ const Map<String, Map<String, String>> _kCoreStrings = {
   },
   'hi': {
     'appName': 'स्मृति साथी',
+    'rxNameNeeded': 'कृपया दवा का नाम लिखें।',
     'notesTab': 'नोट्स',
     'noDoctorChats': 'अभी कोई डॉक्टर नहीं। आपके किसी मरीज़ से जुड़ा डॉक्टर स्वीकार करे तो आप यहाँ बात कर सकेंगे।',
     'consultDoctors': 'डॉक्टर',

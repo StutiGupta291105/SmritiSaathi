@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangBrx = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "rxNameNeeded": "नाजाबो बैसाग्रानि मुंखौ बिजिर।",
     "notesTab": "नोट",
     "noDoctorChats": "एखन कोनो डाक्टर नाङा। नोंथांनि बिरामिजों जोबोद डाक्टरआ नोहोर सायनाय मुंनो।",
     "consultDoctors": "डाक्टरफोर",
