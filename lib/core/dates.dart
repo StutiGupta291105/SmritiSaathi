@@ -19,6 +19,11 @@ String agoText(String lang, DateTime then, DateTime now) {
   final diff = now.difference(then);
   if (diff.inMinutes < 2) return tr(lang, 'rmJustNow');
   if (diff.inMinutes < 60) return trf(lang, 'rmAgoMin', a: diff.inMinutes);
-  if (diff.inHours < 24) return trf(lang, 'rmAgoHour', a: diff.inHours);
-  return trf(lang, 'rmAgoDay', a: diff.inDays);
+  // English only has a singular form to fix ("1 hours ago" reads wrongly).
+  String one(String text, String plural, String singular, int n) =>
+      lang == 'en' && n == 1 ? text.replaceFirst(plural, singular) : text;
+  if (diff.inHours < 24) {
+    return one(trf(lang, 'rmAgoHour', a: diff.inHours), 'hours', 'hour', diff.inHours);
+  }
+  return one(trf(lang, 'rmAgoDay', a: diff.inDays), 'days', 'day', diff.inDays);
 }

@@ -285,7 +285,7 @@ class _RemoteHomeState extends State<RemoteHome> {
 
   Widget _avatar(String name, {double radius = 24}) => CircleAvatar(
         radius: radius,
-        backgroundColor: Palette.tileGreen,
+        backgroundColor: widget.user.role == 'doctor' ? Palette.tileBlue : Palette.tileGreen,
         child: Text(name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase(),
             style: TextStyle(
                 fontSize: radius * 0.85,
@@ -439,6 +439,83 @@ class _RemoteHomeState extends State<RemoteHome> {
     );
   }
 
+  /// Warm header card, tinted with the role's colour so a doctor and a
+  /// caregiver can tell at a glance which app they are in.
+  Widget _hero() {
+    final doctor = widget.user.role == 'doctor';
+    final tint = doctor ? Palette.tileBlue : Palette.tileGreen;
+    return Container(
+      key: const ValueKey('roleHero'),
+      padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [tint, Colors.white],
+        ),
+        border: Border.all(color: _accent.withValues(alpha: .18)),
+      ),
+      child: Row(children: [
+        _avatar(widget.user.name, radius: 28),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${_greeting()},',
+                  style: const TextStyle(fontSize: 14, color: Palette.muted)),
+              Text(widget.user.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Palette.brandDeep)),
+              const SizedBox(height: 6),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                    color: _accent.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(12)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(
+                      doctor
+                          ? Icons.medical_services_rounded
+                          : Icons.volunteer_activism_rounded,
+                      size: 14,
+                      color: _accent),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(t(doctor ? 'roleDoctor' : 'roleCaretaker'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _accent)),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 8),
+              Text(t(doctor ? 'rmGlanceDoctor' : 'rmGlanceCaretaker'),
+                  style: const TextStyle(fontSize: 13, color: Palette.muted)),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: t('rmStatAlerts'),
+          onPressed: () => setState(() => _tab = 3),
+          icon: Badge(
+              isLabelVisible: _alertTotal > 0,
+              label: Text('$_alertTotal'),
+              child: const Icon(Icons.notifications_none_rounded)),
+        ),
+      ]),
+    );
+  }
+
   // ---- tab 0: dashboard ------------------------------------------------------
 
   Widget _dashboard() {
@@ -453,39 +530,8 @@ class _RemoteHomeState extends State<RemoteHome> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        Row(children: [
-          _avatar(widget.user.name),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${_greeting()},',
-                    style: const TextStyle(fontSize: 14, color: Palette.muted)),
-                Text(widget.user.name,
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Palette.brandDeep)),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: t('rmStatAlerts'),
-            onPressed: () => setState(() => _tab = 3),
-            icon: Badge(
-                isLabelVisible: _alertTotal > 0,
-                label: Text('$_alertTotal'),
-                child: const Icon(Icons.notifications_none_rounded)),
-          ),
-        ]),
-        const SizedBox(height: 4),
-        Text(
-            t(widget.user.role == 'doctor'
-                ? 'rmGlanceDoctor'
-                : 'rmGlanceCaretaker'),
-            style: const TextStyle(fontSize: 13, color: Palette.muted)),
-        const SizedBox(height: 14),
+        _hero(),
+        const SizedBox(height: 16),
         _errorLine(),
         if (_loading)
           const Padding(
@@ -727,6 +773,37 @@ class _RemoteHomeState extends State<RemoteHome> {
       children: [
         ScreenTitle(t('settings')),
         const SizedBox(height: 16),
+        AppCard(
+          key: const ValueKey('settingsProfileCard'),
+          color: widget.user.role == 'doctor' ? Palette.tileBlue : Palette.tileGreen,
+          child: Row(children: [
+            _avatar(widget.user.name, radius: 28),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.user.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Palette.brandDeep)),
+                    Text(t(widget.user.role == 'doctor' ? 'roleDoctor' : 'roleCaretaker'),
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: _accent)),
+                    if (_careId != null && _careId!.isNotEmpty)
+                      Text(_careId!,
+                          style: const TextStyle(
+                              fontSize: 13, color: Palette.muted)),
+                  ]),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 12),
         AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           child: Column(children: [
