@@ -46,7 +46,6 @@ class _RemindersScreenState extends State<RemindersScreen> {
   void initState() {
     super.initState();
     _load();
-    _loadWater();
     kRemindersRevision.addListener(_load);
   }
 
@@ -97,16 +96,14 @@ class _RemindersScreenState extends State<RemindersScreen> {
     await _changed();
   }
 
-  /// 0 medicines, 1 water tracker, 2 routine, 3 reminders (appointments, events,
-  /// important dates).
+  /// 0 medicines, 1 routine (activities and any water/hydration reminders),
+  /// 2 reminders (appointments, events, important dates).
   int _tab = 0;
-  int _glasses = 0;
 
   static const _tabKinds = <int, List<ReminderKind>>{
     0: [ReminderKind.medicine],
-    1: [ReminderKind.hydration],
-    2: [ReminderKind.activity],
-    3: [
+    1: [ReminderKind.activity, ReminderKind.hydration],
+    2: [
       ReminderKind.appointment,
       ReminderKind.event,
       ReminderKind.birthday,
@@ -131,22 +128,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
     return '$time · ${t('everyDay')}';
   }
 
-  Future<void> _loadWater() async {
-    final n = await widget.db.waterToday(widget.patientId);
-    if (mounted) setState(() => _glasses = n);
-  }
-
-  Future<void> _glass(int by) async {
-    final n = await widget.db.addWater(widget.patientId, by: by);
-    if (mounted) setState(() => _glasses = n);
-  }
-
   /// The reminders shown in the current tab. The last tab lists only what is
   /// still to come, soonest first.
   List<Reminder> get _shown {
     final kinds = _tabKinds[_tab]!;
     final of = _items.where((r) => kinds.contains(r.kind)).toList();
-    if (_tab == 3) {
+    if (_tab == 2) {
       final now = DateTime.now();
       final withNext = [
         for (final r in of)
@@ -162,13 +149,11 @@ class _RemindersScreenState extends State<RemindersScreen> {
   Widget _tabs() {
     const icons = [
       Icons.medication_outlined,
-      Icons.water_drop_outlined,
       Icons.checklist_rounded,
       Icons.notifications_none_rounded,
     ];
     final labels = [
       t('tabMedicines'),
-      t('tabWater'),
       t('tabRoutine'),
       t('reminders'),
     ];
@@ -180,17 +165,14 @@ class _RemindersScreenState extends State<RemindersScreen> {
         border: Border.all(color: Palette.line),
       ),
       child: Row(children: [
-        for (var i = 0; i < 4; i++)
+        for (var i = 0; i < 3; i++)
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(left: i == 0 ? 0 : 2),
               child: GestureDetector(
                 key: ValueKey('remTab$i'),
                 behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  setState(() => _tab = i);
-                  if (i == 1) _loadWater();
-                },
+                onTap: () => setState(() => _tab = i),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   padding:
@@ -219,84 +201,6 @@ class _RemindersScreenState extends State<RemindersScreen> {
             ),
           ),
       ]),
-    );
-  }
-
-  Widget _water() {
-    const goal = AppDatabase.waterGoal;
-    final shown = _shown;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-      children: [
-        AppCard(
-          padding: const EdgeInsets.all(18),
-          child: Column(children: [
-            const IconBadge(
-                icon: Icons.water_drop_outlined,
-                fg: Palette.blue,
-                bg: Palette.tileBlue,
-                size: 64),
-            const SizedBox(height: 12),
-            Text(
-                t('waterOfGlasses')
-                    .replaceAll('{a}', '$_glasses')
-                    .replaceAll('{b}', '$goal'),
-                key: const ValueKey('waterCount'),
-                style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Palette.brandDeep)),
-            const SizedBox(height: 4),
-            Text(t('waterHint'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: Palette.muted)),
-            const SizedBox(height: 16),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (var i = 0; i < goal; i++)
-                  GestureDetector(
-                    key: ValueKey('glass$i'),
-                    // Tapping the last full glass takes one back, if it was a slip.
-                    onTap: i == _glasses - 1 ? () => _glass(-1) : null,
-                    child: Container(
-                      width: 40,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: i < _glasses
-                            ? Palette.tileBlue
-                            : const Color(0xFFFBF3E7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: i < _glasses
-                                ? Palette.blue.withValues(alpha: .5)
-                                : Palette.line),
-                      ),
-                      child: Icon(Icons.local_drink_outlined,
-                          size: 22,
-                          color: i < _glasses ? Palette.blue : Palette.muted),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                key: const ValueKey('drinkGlass'),
-                style: FilledButton.styleFrom(backgroundColor: Palette.blue),
-                onPressed: () => _glass(1),
-                icon: const Icon(Icons.water_drop_outlined, size: 20),
-                label: Text(t('drinkGlass')),
-              ),
-            ),
-          ]),
-        ),
-        const SizedBox(height: 14),
-        for (final r in shown) _row(r),
-      ],
     );
   }
 
@@ -345,17 +249,15 @@ class _RemindersScreenState extends State<RemindersScreen> {
                   ),
                 ),
                 Expanded(
-                  child: _tab == 1
-                      ? _water()
-                      : shown.isEmpty
-                          ? Center(
-                              child: Text(t('nothingHere'),
-                                  style: const TextStyle(
-                                      fontSize: 17, color: Palette.muted)))
-                          : ListView(
-                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                              children: [for (final r in shown) _row(r)],
-                            ),
+                  child: shown.isEmpty
+                      ? Center(
+                          child: Text(t('nothingHere'),
+                              style: const TextStyle(
+                                  fontSize: 17, color: Palette.muted)))
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                          children: [for (final r in shown) _row(r)],
+                        ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),

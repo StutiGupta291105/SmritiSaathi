@@ -15,6 +15,7 @@ import '../caregiver/caregiver_area.dart';
 import '../privacy/privacy_screen.dart';
 import '../profile/photo_picker.dart' show Avatar;
 import '../profile/profile_flow.dart';
+import 'help_content.dart';
 
 const String kFooterLine = 'MDoNER Digital Health';
 const String kAppVersion = '0.1.0';
@@ -39,15 +40,130 @@ Widget _textCard(IconData icon, Color fg, Color bg, String text) => AppCard(
       ]),
     );
 
+Widget _section(String title) => Padding(
+      padding: const EdgeInsets.fromLTRB(4, 22, 4, 10),
+      child: Text(title,
+          style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Palette.brandDeep)),
+    );
+
+Widget _bullets(List<String> items, IconData icon, Color color) => Column(
+      children: [
+        for (final x in items)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: Text(x,
+                      style: const TextStyle(fontSize: 15.5, height: 1.4))),
+            ]),
+          ),
+      ],
+    );
+
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key, required this.lang});
   final String lang;
 
   @override
-  Widget build(BuildContext context) => _page(tr(lang, 'helpSupport'), [
-        _textCard(Icons.help_outline_rounded, Palette.blue, Palette.tileBlue,
-            tr(lang, 'helpBody')),
-      ]);
+  Widget build(BuildContext context) {
+    String h(String k) => helpText(lang, k);
+    return _page(tr(lang, 'helpSupport'), [
+      _textCard(Icons.support_agent_rounded, Palette.blue, Palette.tileBlue,
+          h('helpIntro')),
+      const SizedBox(height: 14),
+      AppCard(
+        color: Palette.tileRed,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.emergency_rounded, color: Palette.red),
+            const SizedBox(width: 8),
+            Text(tr(lang, 'emergencySos'),
+                style: const TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w800)),
+          ]),
+          const SizedBox(height: 8),
+          Text(h('emergencyNote'),
+              style: const TextStyle(fontSize: 15, height: 1.4)),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey('helpCall112'),
+              style: FilledButton.styleFrom(backgroundColor: Palette.red),
+              onPressed: () => launchUrl(Uri(scheme: 'tel', path: '112')),
+              icon: const Icon(Icons.call_rounded),
+              label: Text(tr(lang, 'chatCall112')),
+            ),
+          ),
+        ]),
+      ),
+      _section(h('quick')),
+      AppCard(
+        child: Column(children: [
+          for (final (i, x) in helpList(lang, 'steps').indexed)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                        radius: 13,
+                        backgroundColor: Palette.tileGreen,
+                        child: Text('${i + 1}',
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Palette.green))),
+                    const SizedBox(width: 12),
+                    Expanded(
+                        child: Text(x,
+                            style: const TextStyle(
+                                fontSize: 15.5, height: 1.4))),
+                  ]),
+            ),
+        ]),
+      ),
+      _section(h('faqTitle')),
+      for (final f in helpFaq(lang))
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: AppCard(
+            padding: EdgeInsets.zero,
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                title: Text(f.q,
+                    style: const TextStyle(
+                        fontSize: 15.5, fontWeight: FontWeight.w700)),
+                children: [
+                  Text(f.a, style: const TextStyle(fontSize: 15, height: 1.45)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      _section(h('fixTitle')),
+      AppCard(
+          child: _bullets(helpList(lang, 'fix'),
+              Icons.check_circle_outline_rounded, Palette.green)),
+      const SizedBox(height: 14),
+      _textCard(Icons.forum_outlined, Palette.purple, Palette.tilePurple,
+          h('teamNote')),
+      const SizedBox(height: 14),
+      const SizedBox(height: 16),
+      Center(
+          child: Text('${h('version')} $kAppVersion',
+              style: const TextStyle(fontSize: 13, color: Palette.muted))),
+    ]);
+  }
 }
 
 class AboutAppScreen extends StatelessWidget {
@@ -55,27 +171,71 @@ class AboutAppScreen extends StatelessWidget {
   final String lang;
 
   @override
-  Widget build(BuildContext context) => _page(tr(lang, 'aboutApp'), [
-        AppCard(
+  Widget build(BuildContext context) {
+    String h(String k) => helpText(lang, k);
+    return _page(tr(lang, 'aboutApp'), [
+      AppCard(
+        color: Palette.tileGreen,
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        child: SizedBox(
+          width: double.infinity,
           child: Column(children: [
+            const IconBadge(
+                icon: Icons.spa_rounded,
+                fg: Palette.green,
+                bg: Colors.white,
+                size: 76,
+                circle: true),
+            const SizedBox(height: 12),
             Text(tr(lang, 'appName'), style: kHeadlineMedium),
             const SizedBox(height: 4),
             Text(tr(lang, 'tagline'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 15, color: Palette.muted)),
-            const SizedBox(height: 4),
-            const Text('v$kAppVersion',
-                style: TextStyle(fontSize: 13, color: Palette.muted)),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                  color: Colors.white, borderRadius: BorderRadius.circular(20)),
+              child: Text('${h('version')} $kAppVersion',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700)),
+            ),
           ]),
         ),
-        const SizedBox(height: 12),
-        _textCard(Icons.info_outline_rounded, Palette.purple,
-            Palette.tilePurple, tr(lang, 'aboutBody')),
-        const SizedBox(height: 16),
-        const Center(
-            child: Text(kFooterLine,
-                style: TextStyle(fontSize: 13, color: Palette.muted))),
-      ]);
+      ),
+      _section(h('aboutWhat')),
+      AppCard(
+          child: _bullets(helpList(lang, 'features'), Icons.favorite_rounded,
+              Palette.green)),
+      _section(h('aboutPrivacyTitle')),
+      _textCard(Icons.lock_outline_rounded, Palette.blue, Palette.tileBlue,
+          h('aboutPrivacy')),
+      const SizedBox(height: 12),
+      _textCard(Icons.health_and_safety_outlined, Palette.orange,
+          Palette.tileOrange, '${h('disclaimerTitle')}: ${h('disclaimer')}'),
+      const SizedBox(height: 12),
+      _textCard(Icons.translate_rounded, Palette.sky, Palette.tileSky,
+          h('languagesLine')),
+      _section(h('creditsTitle')),
+      _textCard(Icons.school_outlined, Palette.purple, Palette.tilePurple,
+          h('credits')),
+      const SizedBox(height: 14),
+      OutlinedButton.icon(
+        key: const ValueKey('aboutLicences'),
+        onPressed: () => showLicensePage(
+            context: context,
+            applicationName: tr(lang, 'appName'),
+            applicationVersion: kAppVersion),
+        icon: const Icon(Icons.description_outlined),
+        label: Text(h('licenses')),
+      ),
+      const SizedBox(height: 16),
+      const Center(
+          child: Text(kFooterLine,
+              style: TextStyle(fontSize: 13, color: Palette.muted))),
+    ]);
+  }
 }
 
 class SosScreen extends StatelessWidget {

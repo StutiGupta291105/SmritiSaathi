@@ -44,7 +44,7 @@ Platform hardening to apply after `flutter create` (security baseline):
 | Caregiver onboarding: consent per purpose + starting level | `lib/features/onboarding/` | written |
 | Game 1: pair matching, level-scaled | `lib/features/games/memory_match_game.dart` | written |
 | English / Hindi strings | `lib/core/strings.dart` | written (migrate to ARB later) |
-| Reminders: medicine, water, activity, appointment (offline local notifications) | `lib/core/reminder_schedule.dart`, `lib/services/reminder_notifier.dart`, `lib/features/reminders/` | written, schedule tests in `test/` |
+| Reminders: medicine, routine (incl. water), appointment (offline local notifications) | `lib/core/reminder_schedule.dart`, `lib/services/reminder_notifier.dart`, `lib/features/reminders/` | written, schedule tests in `test/` |
 | Privacy screen: consent switches, access, erasure | `lib/features/privacy/` | written |
 | Elderly app shell per the mockups: Home (greeting, today's tasks), Games, Reminders, Progress, Settings (English/Hindi) | `lib/features/shell/`, `lib/core/theme.dart`, `lib/core/progress.dart` | written, streak tests in `test/` |
 

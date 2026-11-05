@@ -53,16 +53,16 @@ void main() {
     await t.pumpAndSettle();
   }
 
-  testWidgets('four tabs: Medicines, Water Tracker, Routine, Reminders', (t) async {
+  testWidgets('three tabs: Medicines, Routine, Reminders', (t) async {
     await open(t);
-    for (final l in ['Medicines', 'Water Tracker', 'Routine', 'Reminders']) {
+    for (final l in ['Medicines', 'Routine', 'Reminders']) {
       expect(find.text(l), findsWidgets);
     }
     expect(find.text('Today'), findsNothing);
     expect(find.text('Upcoming'), findsNothing);
     expect(find.text('Metformin 500 mg'), findsOneWidget); // first tab: medicines only
     expect(find.text('Evening walk'), findsNothing);
-    await t.tap(find.byKey(const ValueKey('remTab2')));
+    await t.tap(find.byKey(const ValueKey('remTab1')));
     await t.pumpAndSettle();
     expect(find.text('Evening walk'), findsOneWidget);
     expect(find.text('Metformin 500 mg'), findsNothing);
@@ -83,31 +83,19 @@ void main() {
     expect(find.text('Mark as taken'), findsOneWidget);
   });
 
-  testWidgets('water tracker counts glasses, is remembered, and a slip can be undone', (t) async {
+  testWidgets('there is no water tracker; water reminders sit under Routine', (t) async {
     await open(t);
+    expect(find.text('Water Tracker'), findsNothing);
+    expect(find.byKey(const ValueKey('drinkGlass')), findsNothing);
     await t.tap(find.byKey(const ValueKey('remTab1')));
     await t.pumpAndSettle();
-    expect(find.text('0 of 8 glasses'), findsOneWidget);
-    expect(find.text('Morning water'), findsOneWidget); // water reminders are listed below
-    for (var i = 0; i < 3; i++) {
-      await t.tap(find.byKey(const ValueKey('drinkGlass')));
-      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-      await t.pumpAndSettle();
-    }
-    expect(find.text('3 of 8 glasses'), findsOneWidget);
-    expect((await t.runAsync(() => db.waterToday(pid))), 3);
-    await t.tap(find.byKey(const ValueKey('glass2'))); // the last full glass
-    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-    await t.pumpAndSettle();
-    expect(find.text('2 of 8 glasses'), findsOneWidget);
-    await t.tap(find.byKey(const ValueKey('glass0'))); // not the last: ignored
-    await t.pump();
-    expect(find.text('2 of 8 glasses'), findsOneWidget);
+    expect(find.text('Morning water'), findsOneWidget);
+    expect(find.text('Evening walk'), findsOneWidget);
   });
 
   testWidgets('the Reminders tab lists appointments, events and important dates, soonest first', (t) async {
     await open(t);
-    await t.tap(find.byKey(const ValueKey('remTab3')));
+    await t.tap(find.byKey(const ValueKey('remTab2')));
     await t.pumpAndSettle();
     final order = ['Dr Rao clinic', 'Sita birthday', 'Family lunch']; // in 3, 4 and 8 days
     final ys = [for (final n in order) t.getTopLeft(find.text(n)).dy];
@@ -118,7 +106,7 @@ void main() {
 
   testWidgets('the add button offers only what belongs to the tab', (t) async {
     await open(t);
-    await t.tap(find.byKey(const ValueKey('remTab3')));
+    await t.tap(find.byKey(const ValueKey('remTab2')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('addReminder')));
     await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
