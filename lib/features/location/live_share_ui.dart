@@ -6,6 +6,7 @@ import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/api_client.dart';
 import '../../services/live_share.dart';
+import '../../services/sms_sender.dart';
 
 String _clockText(DateTime d) {
   final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
@@ -20,10 +21,16 @@ class LiveLocationCard extends StatelessWidget {
     required this.controller,
     required this.lang,
     required this.onShare,
+    this.onOptions,
   });
   final LiveShareController controller;
   final String lang;
+
+  /// One tap: share now with the usual people (no questions).
   final VoidCallback onShare;
+
+  /// The small slider icon: choose who and for how long.
+  final VoidCallback? onOptions;
 
   @override
   Widget build(BuildContext context) {
@@ -70,8 +77,13 @@ class LiveLocationCard extends StatelessWidget {
                 onPressed: () => controller.stop(),
                 child: Text(t('stopSharing'), style: const TextStyle(fontSize: 14)),
               )
-            else
-              const Icon(Icons.chevron_right_rounded, color: Palette.muted),
+            else if (onOptions != null)
+              IconButton(
+                key: const ValueKey('liveOptions'),
+                tooltip: t('shareOptions'),
+                icon: const Icon(Icons.tune_rounded, color: Palette.muted),
+                onPressed: onOptions,
+              ),
           ]),
         );
       },
@@ -89,6 +101,7 @@ Future<void> showLiveShareSheet(
   required String lang,
   required LiveShareController controller,
   ApiClient? api,
+  SmsSender? sms,
   Future<bool> Function(Uri)? launch,
 }) {
   return showModalBottomSheet<void>(
@@ -104,6 +117,7 @@ Future<void> showLiveShareSheet(
         lang: lang,
         controller: controller,
         api: api,
+        sms: sms,
         launch: launch),
   );
 }
@@ -116,12 +130,14 @@ class _ShareSheet extends StatefulWidget {
     required this.lang,
     required this.controller,
     this.api,
+    this.sms,
     this.launch,
   });
   final AppDatabase db;
   final String patientId, name, lang;
   final LiveShareController controller;
   final ApiClient? api;
+  final SmsSender? sms;
   final Future<bool> Function(Uri)? launch;
 
   @override
@@ -134,7 +150,7 @@ class _ShareSheetState extends State<_ShareSheet> {
   bool _loaded = false;
   bool _alsoSms = false;
   bool _busy = false;
-  int _minutes = 60;
+  int _minutes = kQuickMinutes;
   String? _problem;
 
   String t(String k) => tr(widget.lang, k);
@@ -198,10 +214,12 @@ class _ShareSheetState extends State<_ShareSheet> {
         )
     ];
     final report = await sendLiveMessage(
-        text: text, targets: targets, api: widget.api, launch: widget.launch);
+        text: text, targets: targets, api: widget.api, sms: widget.sms, launch: widget.launch);
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
-    final note = report.smsOpened
+    final note = report.smsSent > 0
+        ? t('liveSent')
+        : report.smsOpened
         ? t('liveSmsNote')
         : report.chatQueued > 0 && report.chatSent == 0
             ? t('liveQueued')
@@ -318,5 +336,82 @@ class _ShareSheetState extends State<_ShareSheet> {
         ),
       ),
     );
+  }
+}
+
+
+/// How long the one-tap share lasts.
+const kQuickMinutes = 120;
+
+String _problemFor(String lang, ShareOutcome o) => switch (o) {
+      ShareOutcome.deniedForever => tr(lang, 'locDeniedForever'),
+      ShareOutcome.serviceOff => tr(lang, 'locServiceOff'),
+      ShareOutcome.noPosition => tr(lang, 'locNoPosition'),
+      _ => tr(lang, 'locDenied'),
+    };
+
+/// The one-tap share: starts at once and sends to the caregivers and to the
+/// family members ticked "Include in live location", with nothing to confirm.
+/// SMS goes straight from the phone when it may; the caregiver gets the chat
+/// message (and an SMS too when their number is known). The snackbar lists who
+/// it went to and has a Stop button.
+Future<void> quickShareLiveLocation(
+  BuildContext context, {
+  required AppDatabase db,
+  required String patientId,
+  required String name,
+  required String lang,
+  required LiveShareController controller,
+  ApiClient? api,
+  SmsSender? sms,
+  Future<bool> Function(Uri)? launch,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  void say(String text, {bool stop = false}) => messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(
+      content: Text(text),
+      duration: Duration(seconds: stop ? 8 : 5),
+      action: stop
+          ? SnackBarAction(label: tr(lang, 'stopSharing'), onPressed: () => controller.stop())
+          : null,
+    ));
+
+  if (controller.active) return;
+  final people = await loadShareCandidates(db, patientId);
+  final targets = [
+    for (final p in people)
+      if (p.chat || p.sms)
+        ShareTarget(
+            name: p.name,
+            phone: p.phone,
+            chatLinkId: p.chatLinkId,
+            chat: p.chat,
+            sms: p.chat ? (p.phone ?? '').isNotEmpty : true)
+  ];
+  if (targets.isEmpty) {
+    say(tr(lang, 'shareNobody'));
+    return;
+  }
+  final r = await controller.start(
+      minutes: kQuickMinutes,
+      notifyTitle: tr(lang, 'liveNotifyTitle'),
+      notifyText: tr(lang, 'liveNotifyText'));
+  if (r.outcome != ShareOutcome.ok) {
+    say(_problemFor(lang, r.outcome));
+    return;
+  }
+  final text = liveMessage(lang,
+      name: name.split(' ').first, link: r.link!, until: r.live ? r.until : null);
+  final report = await sendLiveMessage(
+      text: text, targets: targets, api: api, sms: sms, launch: launch);
+  final names = targets.map((t) => t.name).join(', ');
+  if (report.smsOpened && report.smsSent == 0 && report.chatSent == 0) {
+    // This phone could not send SMS by itself: the messaging app opened instead.
+    say(tr(lang, 'liveSmsNote'));
+  } else if (report.chatQueued > 0 && report.chatSent == 0 && report.smsSent == 0) {
+    say(tr(lang, 'liveQueued'));
+  } else {
+    say(tr(lang, 'liveAutoSent').replaceAll('{names}', names), stop: r.live);
   }
 }

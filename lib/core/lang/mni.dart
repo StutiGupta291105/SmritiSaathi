@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangMni = LangData(
   strings: {
     "appName": "ꯁ꯭ꯃꯔꯤꯇꯤ ꯁꯥꯊꯤ",
+    "liveAutoSent": "নহাক্কী লোকেশন {names} দা থোক্কি",
+    "shareOptions": "কামদা অমসুং কয়াগী চেনবনো য়ৌশিল্লু",
     "shareLiveLoc": "নহাক্ লৈখ্রবানো? নহাক্কী ঈশিংশিংদা ঈশিন্নু",
     "shareLiveLocSub": "নহাক্কী কেয়ারগিভর অমসুং ইমুংদা নখোয় করাম্দা লৈরিবনো ঈশিন্নু",
     "liveSharingUntil": "{time} ফাওবু লাইভ লোকেশন শেয়ার ওইরি",

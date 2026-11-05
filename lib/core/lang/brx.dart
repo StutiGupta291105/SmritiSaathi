@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangBrx = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "liveAutoSent": "नोंनि लोकेसन {names} नो फोरमायनाय",
+    "shareOptions": "बासिनो आरो माबोरै सम थायनो",
     "shareLiveLoc": "नों हराय जादोंमोन? नोंथाङनि मानसिफोरखौ नोंथाङो",
     "shareLiveLocSub": "नोंनि नुनाइनै आरो खायसे फोरखौ नोंथाङो बायदि दङ बुङो",
     "liveSharingUntil": "{time} सोमजोबथा लाइभ लोकेसन शेयार जानाय",

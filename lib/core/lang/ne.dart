@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangNe = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "liveAutoSent": "तपाईंको लोकेसन {names} लाई पठाइँदैछ",
+    "shareOptions": "कसलाई र कति समयका लागि छान्नुहोस्",
     "shareLiveLoc": "के तपाईं हराउनुभयो? आफ्नाहरूलाई बताउनुहोस्",
     "shareLiveLocSub": "तपाईं कहाँ हुनुहुन्छ भनेर हेरचाहकर्ता र परिवारलाई बताउनुहोस्",
     "liveSharingUntil": "{time} सम्म लाइभ लोकेसन सेयर हुँदैछ",

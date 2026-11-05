@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangPa = LangData(
   strings: {
     "appName": "ਸਮ੍ਰਿਤੀ ਸਾਥੀ",
+    "liveAutoSent": "ਤੁਹਾਡੀ ਲੋਕੇਸ਼ਨ {names} ਨੂੰ ਭੇਜੀ ਜਾ ਰਹੀ ਹੈ",
+    "shareOptions": "ਚੁਣੋ ਕਿਸਨੂੰ ਅਤੇ ਕਿੰਨੇ ਸਮੇਂ ਲਈ",
     "shareLiveLoc": "ਕੀ ਤੁਸੀਂ ਗੁਆਚ ਗਏ ਹੋ? ਆਪਣਿਆਂ ਨੂੰ ਦੱਸੋ",
     "shareLiveLocSub": "ਆਪਣੇ ਸੰਭਾਲ ਕਰਤਾ ਅਤੇ ਪਰਿਵਾਰ ਨੂੰ ਦੱਸੋ ਕਿ ਤੁਸੀਂ ਕਿੱਥੇ ਹੋ",
     "liveSharingUntil": "{time} ਤੱਕ ਲਾਈਵ ਲੋਕੇਸ਼ਨ ਸਾਂਝੀ ਹੋ ਰਹੀ ਹੈ",

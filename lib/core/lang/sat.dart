@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangSat = LangData(
   strings: {
     "appName": "ᱥᱚᱢᱨᱤᱛᱤ ᱥᱟᱛᱷᱤ",
+    "liveAutoSent": "आपनाक् लोकेशन {names} के होड़ोक् आ",
+    "shareOptions": "ओकोय के आर कत्तेक बेरा बाछाव",
     "shareLiveLoc": "आपे हेरा गेयाकाना? आपनाक् लोक के रेंगेच आ",
     "shareLiveLocSub": "आपनाक् देखभाल आर परिवार के रेंगेच आपे ओनाते गे",
     "liveSharingUntil": "{time} लगिद लाइव लोकेशन साझा",

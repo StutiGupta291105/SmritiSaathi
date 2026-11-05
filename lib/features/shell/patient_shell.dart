@@ -20,6 +20,7 @@ import '../reminders/notify_banner.dart';
 import '../../services/voice.dart';
 import '../../services/live_share.dart';
 import '../../services/location_service.dart';
+import '../../services/sms_sender.dart';
 import '../location/live_share_ui.dart';
 import '../games/change_game.dart';
 import '../games/echo_game.dart';
@@ -78,6 +79,7 @@ class _PatientShellState extends State<PatientShell> {
 
   var _ticks = 0;
   late final LiveShareController _live;
+  final SmsSender _sms = AndroidSmsSender();
 
   void _remindersChanged() {
     if (mounted) setState(() {});
@@ -354,13 +356,23 @@ class _PatientShellState extends State<PatientShell> {
         topCard: LiveLocationCard(
           controller: _live,
           lang: _lang,
-          onShare: () => showLiveShareSheet(context,
+          // One tap shares at once; the slider icon lets the person choose.
+          onShare: () => quickShareLiveLocation(context,
               db: widget.db,
               patientId: _id,
               name: widget.patient['display_name'] as String,
               lang: _lang,
               controller: _live,
-              api: widget.api),
+              api: widget.api,
+              sms: _sms),
+          onOptions: () => showLiveShareSheet(context,
+              db: widget.db,
+              patientId: _id,
+              name: widget.patient['display_name'] as String,
+              lang: _lang,
+              controller: _live,
+              api: widget.api,
+              sms: _sms),
         ),
         onPlay: () => _playGame(kGames.first.id),
         onGames: () => setState(() => _tab = 1),

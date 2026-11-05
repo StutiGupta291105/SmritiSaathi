@@ -7,6 +7,7 @@ import '../core/strings.dart';
 import '../data/app_database.dart';
 import 'api_client.dart';
 import 'location_service.dart';
+import 'sms_sender.dart';
 
 /// How a share went.
 enum ShareOutcome { ok, denied, deniedForever, serviceOff, noPosition }
@@ -189,9 +190,15 @@ Uri smsUri(List<String> numbers, String body) =>
     Uri.parse('sms:${numbers.join(',')}?body=${Uri.encodeComponent(body)}');
 
 class ShareReport {
-  const ShareReport({this.chatSent = 0, this.chatQueued = 0, this.smsOpened = false});
+  const ShareReport(
+      {this.chatSent = 0, this.chatQueued = 0, this.smsOpened = false, this.smsSent = 0});
   final int chatSent, chatQueued;
+
+  /// The messaging app was opened because the SMS could not be sent directly.
   final bool smsOpened;
+
+  /// SMS sent straight from the phone.
+  final int smsSent;
 }
 
 /// Sends [text] by the app chat (queued if offline) and by SMS as chosen.
@@ -199,6 +206,7 @@ Future<ShareReport> sendLiveMessage({
   required String text,
   required List<ShareTarget> targets,
   ApiClient? api,
+  SmsSender? sms,
   Future<bool> Function(Uri)? launch,
 }) async {
   var sent = 0, queued = 0;
@@ -219,11 +227,17 @@ Future<ShareReport> sendLiveMessage({
       if (t.sms && (t.phone ?? '').isNotEmpty) t.phone!
   }.toList();
   var opened = false;
+  var smsSent = 0;
   if (numbers.isNotEmpty) {
-    opened = await (launch ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(
-        smsUri(numbers, text));
+    // Straight from the phone when it can; otherwise open the messaging app.
+    smsSent = await sms?.sendAll(numbers, text) ?? 0;
+    if (smsSent == 0) {
+      opened = await (launch ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(
+          smsUri(numbers, text));
+    }
   }
-  return ShareReport(chatSent: sent, chatQueued: queued, smsOpened: opened);
+  return ShareReport(
+      chatSent: sent, chatQueued: queued, smsOpened: opened, smsSent: smsSent);
 }
 
 /// The people a patient can share with, from what is saved on the phone.

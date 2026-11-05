@@ -44,6 +44,7 @@ perms = "".join(
         "ACCESS_FINE_LOCATION",
         "FOREGROUND_SERVICE",  # keeps live location sharing going with the screen off
         "FOREGROUND_SERVICE_LOCATION",
+        "SEND_SMS",  # live location goes to family by SMS without opening the messaging app
     )
 )
 patch(manifest, "<application", perms + "    <application", )
@@ -70,3 +71,48 @@ if (root / "google-services.json").exists():
           'id("dev.flutter.flutter-gradle-plugin")\n    id("com.google.gms.google-services")')
     print("Firebase configured")
 print("Android patches applied")
+
+
+# Sends one SMS straight from the phone (no messaging app, no extra tap) for the
+# live location. Only SEND_SMS is used: the app never reads messages.
+main = next((root / "src" / "main" / "kotlin").rglob("MainActivity.kt"))
+package = main.read_text().splitlines()[0]
+main.write_text(package + """
+
+import android.os.Build
+import android.telephony.SmsManager
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+
+class MainActivity : FlutterActivity() {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "in.smritisathi/sms")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "send") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                val to = call.argument<String>("to")
+                val body = call.argument<String>("body")
+                if (to == null || body == null) {
+                    result.success(false)
+                    return@setMethodCallHandler
+                }
+                try {
+                    val sms: SmsManager = if (Build.VERSION.SDK_INT >= 31) {
+                        getSystemService(SmsManager::class.java)
+                    } else {
+                        SmsManager.getDefault()
+                    }
+                    sms.sendMultipartTextMessage(to, null, sms.divideMessage(body), null, null)
+                    result.success(true)
+                } catch (e: Exception) {
+                    result.success(false)
+                }
+            }
+    }
+}
+""")
+print("MainActivity patched")

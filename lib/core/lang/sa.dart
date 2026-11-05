@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangSa = LangData(
   strings: {
     "appName": "स्मृतिसाथी",
+    "liveAutoSent": "भवतः स्थानं {names} इत्येभ्यः प्रेष्यते",
+    "shareOptions": "कस्मै कियत्कालं च इति चिनोतु",
     "shareLiveLoc": "किं भवान् भ्रष्टमार्गः? स्वजनान् सूचयतु",
     "shareLiveLocSub": "भवतः परिचारकाय परिवाराय च भवान् कुत्र अस्ति इति वदतु",
     "liveSharingUntil": "{time} पर्यन्तं साक्षात्स्थानं विभज्यते",

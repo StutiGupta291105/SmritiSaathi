@@ -48,9 +48,12 @@ phone (about 5 inch) and, if you can, with the system font size set to Large.
 ## Live location (two phones: patient and caregiver; a third for a family member's SMS)
 21. Patient: add a family member and tick **Include in live location** (or tap the pin icon on
     the family row). The patient Home shows **Are You Lost? Tell Your Loved Ones** at the very top.
-22. Tap it: the caregiver and the ticked family member are already selected. Choose **1 hour**
-    and **Start sharing**. Allow location when asked. The messaging app opens with the text and a
-    link ready: press send. The Home card turns green with **Stop sharing**.
+22. **One tap** on the card: it starts at once, with no questions. The first time, allow location
+    and **SMS** when Android asks. The SMS goes straight from the phone (normal SMS charges apply)
+    to the ticked family members and to the caregiver; nothing opens and nothing needs pressing.
+    A message at the bottom says who it went to and has **Stop sharing**. The card turns green. The
+    slider icon on the card opens the old chooser (who, how long: just now / 30 min / 1 / 2 hours).
+    If SMS permission is refused (or on iPhone) the messaging app opens with the text ready.
 23. Caregiver phone: a chat message with **Open map** arrives (push too), and the patient screen
     shows a green **Live location** card with "x min ago" that moves as the patient walks.
 24. Family phone: the SMS link opens a map page that refreshes by itself. Press **Stop sharing**

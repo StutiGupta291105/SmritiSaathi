@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangKn = LangData(
   strings: {
     "appName": "ಸ್ಮೃತಿ ಸಾಥಿ",
+    "liveAutoSent": "ನಿಮ್ಮ ಸ್ಥಳವನ್ನು {names} ಅವರಿಗೆ ಹಂಚಿಕೊಳ್ಳಲಾಗುತ್ತಿದೆ",
+    "shareOptions": "ಯಾರಿಗೆ ಮತ್ತು ಎಷ್ಟು ಸಮಯ ಎಂದು ಆಯ್ಕೆಮಾಡಿ",
     "shareLiveLoc": "ನೀವು ದಾರಿ ತಪ್ಪಿದ್ದೀರಾ? ನಿಮ್ಮ ಆಪ್ತರಿಗೆ ತಿಳಿಸಿ",
     "shareLiveLocSub": "ನೀವು ಎಲ್ಲಿದ್ದೀರಿ ಎಂದು ನಿಮ್ಮ ಆರೈಕೆದಾರರಿಗೆ ಮತ್ತು ಕುಟುಂಬಕ್ಕೆ ತಿಳಿಸಿ",
     "liveSharingUntil": "{time} ವರೆಗೆ ಲೈವ್ ಸ್ಥಳ ಹಂಚಿಕೆಯಾಗುತ್ತಿದೆ",

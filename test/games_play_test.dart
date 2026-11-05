@@ -173,11 +173,14 @@ void main() {
     for (var board = 0; board < 3; board++) {
       await wait(t, 4200); // the board is shown face up first
       // Try every pair; matched tiles ignore further taps.
-      for (var i = 0; i < 6; i++) {
-        for (var j = i + 1; j < 6; j++) {
-          await t.tap(find.byType(GameTile).at(i));
-          await t.tap(find.byType(GameTile).at(j));
-          await wait(t, 1000);
+      // (twice: a tap on an already matched tile is ignored and can shift a pair)
+      for (var pass = 0; pass < 2; pass++) {
+        for (var i = 0; i < 6; i++) {
+          for (var j = i + 1; j < 6; j++) {
+            await t.tap(find.byType(GameTile).at(i));
+            await t.tap(find.byType(GameTile).at(j));
+            await wait(t, 1000);
+          }
         }
       }
       await wait(t, 1800);

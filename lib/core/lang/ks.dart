@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangKs = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "liveAutoSent": "توہنزِ لوکیشن چھیہ {names} ہس بھیجنہ آمژ",
+    "shareOptions": "چُنِو کَمۍ تہٕ کتھ وقتہ باپتھ",
     "shareLiveLoc": "کیا توہہ گُم چھِو؟ پننِس لولس وَنِو",
     "shareLiveLocSub": "پننہِ دیکھ بھال کرنہ وٲلس تہٕ خاندانس وَنِو زِ توہہ کُتھ چھِو",
     "liveSharingUntil": "{time} تام لایو لوکیشن شیئر چھیہ گژھان",
