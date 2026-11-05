@@ -194,3 +194,16 @@ def test_fcm_silent_message_has_no_notification_block_on_android():
     assert msg["apns"]["payload"]["aps"]["content-available"] == 1
     plain = FcmPush._message("tok", "T", "B", {"type": "chat", "link_id": "x"}, False)
     assert plain["notification"]["body"] == "B" and plain["data"]["link_id"] == "x"
+
+
+def test_healthz_says_whether_real_push_is_on(env):
+    """So a test server can be checked from a browser: push is only real with Firebase."""
+    from app.push import FcmPush
+
+    class _Creds:
+        valid = True
+        token = "t"
+
+    assert env.client.get("/healthz").json()["push"] is False  # the dev provider
+    env.app.state.push = FcmPush("proj", creds=_Creds())
+    assert env.client.get("/healthz").json()["push"] is True

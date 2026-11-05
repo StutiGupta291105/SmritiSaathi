@@ -15,6 +15,11 @@ def patch(path: Path, old: str, new: str) -> None:
 
 
 gradle = root / "build.gradle.kts"
+# Release builds shrink and rename code; give R8 the rules the notification plugin needs.
+(root / "proguard-rules.pro").write_text(
+    (Path(__file__).parent / "proguard-rules.pro").read_text())
+patch(gradle, 'signingConfig = signingConfigs.getByName("debug")',
+      'signingConfig = signingConfigs.getByName("debug")\n            proguardFiles("proguard-rules.pro")')
 patch(gradle, "compileOptions {", "compileOptions {\n        isCoreLibraryDesugaringEnabled = true")
 patch(gradle, "minSdk = flutter.minSdkVersion", "minSdk = 23")
 patch(gradle, 'applicationId = "com.example.smriti_assist"', 'applicationId = "in.smritisathi.app"')

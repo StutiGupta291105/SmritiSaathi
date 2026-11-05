@@ -521,6 +521,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
   late final _name = TextEditingController(text: _rx.name);
   late final _dose = TextEditingController(text: _rx.dose);
   late String? _food = _rx.food;
+  bool _nameMissing = false; // shown after Save is tapped with no medicine name
   late List<TimeOfDay> _times = [widget.initial?.time ?? const TimeOfDay(hour: 8, minute: 0)];
 
   bool get _editing => widget.initial != null;
@@ -558,7 +559,9 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                 key: const ValueKey('rxName'),
                 controller: _name,
                 inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => setState(() => _nameMissing = false),
+                decoration: InputDecoration(
+                    errorText: _nameMissing ? t('rxNameNeeded') : null),
                 textCapitalization: TextCapitalization.words)),
         field(t('rxDose'),
             TextField(
@@ -754,10 +757,14 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
           const SizedBox(width: 12),
           Expanded(
             child: FilledButton(
-              onPressed: (dated && _date == null) ||
-                      (_medicine && _name.text.trim().isEmpty)
+              onPressed: (dated && _date == null)
                   ? null
                   : () {
+                      if (_medicine && _name.text.trim().isEmpty) {
+                        // Say what is missing instead of a button that does nothing.
+                        setState(() => _nameMissing = true);
+                        return;
+                      }
                       final by = widget.defaultBy.trim().isEmpty
                           ? 'self'
                           : widget.defaultBy.trim();

@@ -117,4 +117,67 @@ void main() {
     expect(find.text('Medicine'), findsNothing);
     expect(find.text('Water'), findsNothing);
   });
+
+  testWidgets('a patient can add a routine from a quick template and it shows in the list', (t) async {
+    t.view.physicalSize = const Size(800, 2200);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    await open(t);
+    await t.tap(find.byKey(const ValueKey('remTab1'))); // Routine
+    await t.pumpAndSettle();
+    expect(find.text('Evening walk'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('addReminder')));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300))); // reads the patient first
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('tpl_tplLunch')));
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    for (var i = 0; i < 4; i++) {
+      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 250)));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    await t.pumpAndSettle();
+    expect(find.text('Lunch'), findsOneWidget);
+    final rows = (await t.runAsync(() => db.listReminders(pid)))!;
+    expect(rows.where((r) => r.label == 'Lunch').length, 1);
+  });
+
+  testWidgets('a patient can add a typed routine, and a medicine with a name', (t) async {
+    t.view.physicalSize = const Size(800, 2200);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    await open(t);
+    await t.tap(find.byKey(const ValueKey('remTab1')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('addReminder')));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300))); // reads the patient first
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField).last, 'Water the plants');
+    await t.pump();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    for (var i = 0; i < 4; i++) {
+      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 250)));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    await t.pumpAndSettle();
+    expect(find.text('Water the plants'), findsOneWidget);
+    // Medicines tab: the dialog opens on Medicine and needs a name
+    await t.tap(find.byKey(const ValueKey('remTab0')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('addReminder')));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300))); // reads the patient first
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    await t.pump();
+    expect(find.text('Please enter the medicine name.'), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey('rxName')), 'Vitamin D');
+    await t.pump();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    for (var i = 0; i < 4; i++) {
+      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 250)));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    await t.pumpAndSettle();
+    expect(find.text('Vitamin D'), findsOneWidget);
+  });
 }

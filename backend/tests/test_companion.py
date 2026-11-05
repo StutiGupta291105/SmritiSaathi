@@ -261,10 +261,10 @@ def test_healthz_says_whether_a_real_ai_is_behind_talk_to_smriti(env):
     from app.companion import AnthropicCompanion
     from app.config import Settings
     from app.main import create_app
-    assert env.client.get("/healthz").json() == {"status": "ok", "ai": False}
+    assert env.client.get("/healthz").json() == {"status": "ok", "ai": False, "push": False}
     fake = AnthropicCompanion.__new__(AnthropicCompanion)  # no key or network needed
     c = TestClient(create_app(Settings(database_url="sqlite://"), companion_provider=fake))
-    assert c.get("/healthz").json() == {"status": "ok", "ai": True}
+    assert c.get("/healthz").json() == {"status": "ok", "ai": True, "push": False}
 
 
 def test_openai_compatible_provider_sends_the_prompt_and_reads_the_reply(monkeypatch):

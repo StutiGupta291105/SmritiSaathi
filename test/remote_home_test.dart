@@ -353,8 +353,10 @@ void main() {
     await t.tap(find.byKey(const ValueKey('addCareReminder')));
     await t.pumpAndSettle();
     // A prescription: name, dose, when to take it, and how many times a day.
-    expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save')).onPressed, isNull,
-        reason: 'no medicine name yet');
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    await t.pump();
+    expect(find.text('Please enter the medicine name.'), findsOneWidget, reason: 'no medicine name yet');
+    expect(posts, isEmpty);
     await t.enterText(find.byKey(const ValueKey('rxName')), 'Metformin');
     await t.enterText(find.byKey(const ValueKey('rxDose')), '500 mg');
     await t.tap(find.byKey(const ValueKey('food_after')));

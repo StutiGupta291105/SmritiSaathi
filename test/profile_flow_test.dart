@@ -289,7 +289,9 @@ void main() {
     await t.tap(find.byKey(const ValueKey('addRoutine')));
     await t.pumpAndSettle();
     // A medicine needs a name before it can be saved.
-    expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save').last).onPressed, isNull);
+    await t.tap(find.widgetWithText(FilledButton, 'Save').last);
+    await t.pump();
+    expect(find.text('Please enter the medicine name.'), findsOneWidget); // not a dead button
     await t.enterText(find.byKey(const ValueKey('rxName')), 'Aspirin');
     await t.pump();
     await t.tap(find.widgetWithText(FilledButton, 'Save').last);

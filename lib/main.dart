@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
@@ -147,6 +149,13 @@ class _BootState extends State<_Boot> {
   }
 }
 
+/// Lets tests shorten the time a startup step may take.
+@visibleForTesting
+class RootStateTimeouts {
+  static Duration get() => _RootState.stepTimeout;
+  static void set(Duration d) => _RootState.stepTimeout = d;
+}
+
 class Root extends StatefulWidget {
   const Root({
     super.key,
@@ -225,23 +234,68 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     }
   }
 
+  /// Set when starting up failed, so the person sees a message and a retry
+  /// button instead of a spinner that never ends.
+  Object? _loadError;
+
+  /// The step startup is on, so a stall can be named on screen.
+  String _step = '';
+
+  /// How long a step on this phone (storage, database) may take before startup
+  /// says where it is stuck instead of spinning for ever.
+  @visibleForTesting
+  static Duration stepTimeout = const Duration(seconds: 12);
+
+  Future<T> _timed<T>(String step, Future<T> f) {
+    _step = step;
+    return f.timeout(stepTimeout,
+        onTimeout: () => throw TimeoutException('stuck while: $step'));
+  }
+
+  /// Rebuilds the reminder notifications without making the app wait for them:
+  /// the home screen never needs them to be ready.
+  void _resyncInBackground(Map<String, Object?> patient) {
+    unawaited(widget.notifier
+        .resync(patientId: patient['id'] as String, lang: patient['language'] as String)
+        .timeout(const Duration(seconds: 30), onTimeout: () {})
+        .catchError((Object _) {}));
+  }
+
   Future<void> _load() async {
+    try {
+      // The longest honest wait is a sleeping test server waking up for a restore.
+      await _loadInner().timeout(const Duration(seconds: 100),
+          onTimeout: () => throw TimeoutException('stuck while: $_step'));
+      _loadError = null;
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadError = e;
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadInner() async {
     Map<String, Object?>? account;
     Map<String, Object?>? patient;
-    final id = await widget.session.read();
+    final id = await _timed('reading the saved sign-in', widget.session.read());
     if (id != null) {
-      account = await widget.db.accountById(id);
+      account = await _timed('opening the account', widget.db.accountById(id));
       if (account == null) await widget.session.clear(); // e.g. after erasure
     }
     if (account != null && account['role'] == 'patient') {
-      patient = await widget.db.patientForAccount(account['id'] as String);
+      patient = await _timed('opening the profile',
+          widget.db.patientForAccount(account['id'] as String));
       if (patient != null && (patient['setup_stage'] as int) >= 5) {
-        await widget.notifier.resync(
-            patientId: patient['id'] as String,
-            lang: patient['language'] as String);
+        _resyncInBackground(patient);
       }
     }
-    final serverUser = await widget.api?.currentUser();
+    final serverUser = widget.api == null
+        ? null
+        : await _timed('reading the online sign-in', widget.api!.currentUser());
+    _step = 'checking the server';
     Map<String, dynamic>? offer;
     if (account != null &&
         account['role'] == 'patient' &&
@@ -262,9 +316,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
           patient = await widget.db.patientForAccount(account['id'] as String);
           if (patient != null) {
             offer = null;
-            await widget.notifier.resync(
-                patientId: patient['id'] as String,
-                lang: patient['language'] as String);
+            _resyncInBackground(patient);
           }
         }
       }
@@ -324,6 +376,42 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_loadError != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.error_outline_rounded, size: 56),
+              const SizedBox(height: 12),
+              const Text('Something went wrong while opening the app.',
+                  textAlign: TextAlign.center, style: TextStyle(fontSize: 18)),
+              const SizedBox(height: 8),
+              // The technical reason, so it can be reported and fixed.
+              Text(_loadError is TimeoutException
+                      ? '${(_loadError as TimeoutException).message}'
+                      : '$_loadError',
+                  key: const ValueKey('loadError'),
+                  textAlign: TextAlign.center,
+                  maxLines: 6,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54)),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () {
+                  setState(() {
+                    _loadError = null;
+                    _loading = true;
+                  });
+                  _load();
+                },
+                child: const Text('Try again'),
+              ),
+            ]),
+          ),
+        ),
+      );
     }
     final active = (_patient?['language'] as String?) ?? _lang;
     if (kActiveLanguage.value != active) {

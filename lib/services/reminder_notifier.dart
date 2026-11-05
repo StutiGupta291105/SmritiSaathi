@@ -92,7 +92,20 @@ class ReminderNotifier {
     await _initTimeZone();
   }
 
+  /// Why the last notification step failed (null when all went well). A failed
+  /// notification must never stop the app from opening or a routine from being
+  /// saved, so problems are recorded here instead of thrown.
+  String? lastProblem;
+
   Future<void> init() async {
+    try {
+      await _init();
+    } catch (e) {
+      lastProblem = 'init: $e';
+    }
+  }
+
+  Future<void> _init() async {
     await _initPlugin();
     // The app was started by tapping a notification.
     try {
@@ -155,13 +168,64 @@ class ReminderNotifier {
     return access();
   }
 
+  /// How many reminder alerts the phone currently holds (null if it cannot say).
+  Future<int?> pendingCount() async {
+    try {
+      return (await _plugin.pendingNotificationRequests()).length;
+    } catch (e) {
+      lastProblem = 'pending: $e';
+      return null;
+    }
+  }
+
+  /// For the Notification check screen: asks for an alert one minute from now,
+  /// the same way real reminders are scheduled. Returns the error text, or null.
+  Future<String?> scheduleTest(String title, String body) async {
+    try {
+      await _initTimeZone();
+      final exact = await access() != NotifyAccess.inexactOnly;
+      await _plugin.zonedSchedule(
+        0x7e57,
+        title,
+        body,
+        tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1)),
+        _details,
+        androidScheduleMode: exact
+            ? AndroidScheduleMode.exactAllowWhileIdle
+            : AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'reminder',
+      );
+      return null;
+    } catch (e) {
+      return '$e';
+    }
+  }
+
+  /// Shows a notification straight away; returns the error text, or null.
+  Future<String?> showTest(String title, String body) async {
+    try {
+      await _plugin.show(0x7e58, title, body, _details, payload: 'reminder');
+      return null;
+    } catch (e) {
+      return '$e';
+    }
+  }
+
   /// Shows a notification now (used by the background push handler).
   Future<void> showNow(String title, String body, {String? payload}) =>
       _plugin.show(0x5ee0, title, body, _details, payload: payload);
 
   /// Cancels every pending reminder (used on logout, so nothing fires for a
   /// signed-out account on a shared phone).
-  Future<void> clear() => _plugin.cancelAll();
+  Future<void> clear() async {
+    try {
+      await _plugin.cancelAll();
+    } catch (e) {
+      lastProblem = 'clear: $e';
+    }
+  }
 
   static DateTimeComponents? _match(AlertRepeat r) {
     switch (r) {
@@ -182,6 +246,16 @@ class ReminderNotifier {
   /// they keep ringing for as long as the phone is on, even if the app is not
   /// opened again.
   Future<void> resync({required String patientId, required String lang}) async {
+    try {
+      await _resync(patientId, lang);
+    } catch (e) {
+      // Never let a notification problem break saving a routine or opening the app.
+      lastProblem = 'resync: $e';
+      debugPrint('Reminders could not be rebuilt: $e');
+    }
+  }
+
+  Future<void> _resync(String patientId, String lang) async {
     await _plugin.cancelAll();
     if (!await _db.hasConsent(patientId, 'reminders')) return;
     await _initTimeZone();

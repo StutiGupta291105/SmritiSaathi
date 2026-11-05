@@ -4,6 +4,7 @@ import '../lang_data.dart';
 const LangData kLangGu = LangData(
   strings: {
     "appName": "સ્મૃતિ સાથી",
+    "rxNameNeeded": "કૃપા કરીને દવાનું નામ દાખલ કરો.",
     "notesTab": "નોંધો",
     "noDoctorChats": "હજુ કોઈ ડૉક્ટર નથી. તમારા દર્દી સાથે જોડાયેલા ડૉક્ટર સ્વીકારે ત્યારે અહીં વાત કરી શકશો.",
     "consultDoctors": "ડૉક્ટર",
