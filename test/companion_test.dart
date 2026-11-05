@@ -244,5 +244,64 @@ void main() {
       expect(s.nice('en').text, isNotEmpty);
       expect(await s.onlinePossible(), isFalse);
     });
+
+    test('agreed but the profile never reached the server: it syncs once, then asks the AI', () async {
+      await consent(true);
+      await raw.update('patients', {'server_patient_id': null});
+      var synced = 0;
+      final r = await make().ask(
+          patientId: pid, lang: 'en', firstName: 'Asha', history: const [], text: 'Hello',
+          syncNow: () async {
+            synced++;
+            await db.setServerPatientId(pid, 'srv-1'); // what a real sync does
+          });
+      expect(synced, 1);
+      expect(r.text, 'I am here.'); // the AI answered
+      expect(r.why, isNull);
+    });
+
+    test('if that sync does not work, the reason is named', () async {
+      await consent(true);
+      await raw.update('patients', {'server_patient_id': null});
+      final r = await make().ask(
+          patientId: pid, lang: 'en', firstName: 'Asha', history: const [], text: 'Hello',
+          syncNow: () async {});
+      expect(r.text, contains('Tap a button'));
+      expect(r.why, contains('not saved online yet'));
+    });
+
+    test('without agreeing, the reason says to tap Allow', () async {
+      final r = await make().ask(
+          patientId: pid, lang: 'en', firstName: 'Asha', history: const [], text: 'Hello');
+      expect(r.why, contains('tap Allow'));
+    });
+
+    test('the server not having the consent yet (403) is fixed by syncing, then asking again', () async {
+      await consent(true);
+      failWith = 403;
+      failDetail = 'consent_required';
+      var synced = 0;
+      final r = await make().ask(
+          patientId: pid, lang: 'en', firstName: 'Asha', history: const [], text: 'Hello',
+          syncNow: () async {
+            synced++;
+            failWith = 0; // the consent has now reached the server
+          });
+      expect(synced, 1);
+      expect(r.text, 'I am here.');
+      expect(calls.length, 2); // asked twice
+    });
+
+    test('a failing AI service shows the reason next to the basic answer', () async {
+      await consent(true);
+      failWith = 503;
+      failDetail = 'companion_unavailable';
+      final r = await ask(make(), 'Hello');
+      expect(r.offline, isTrue);
+      expect(r.why, '503 companion_unavailable');
+      failWith = 0;
+      offline = true;
+      expect((await ask(make(), 'Hello')).why, 'no connection to the service');
+    });
   });
 }

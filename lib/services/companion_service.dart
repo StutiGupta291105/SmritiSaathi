@@ -11,8 +11,14 @@ class ChatTurn {
 }
 
 class CompanionReply {
-  const CompanionReply(this.text, {this.emergency = false, this.offline = false});
+  const CompanionReply(this.text,
+      {this.emergency = false, this.offline = false, this.why});
   final String text;
+
+  /// When the online helper could not answer, the technical reason (for example
+  /// "503 companion_unavailable" or "profile not saved online yet"), so it can be
+  /// read out and fixed instead of guessed at. Null when the answer is fine.
+  final String? why;
 
   /// Show the call buttons.
   final bool emergency;
@@ -63,6 +69,7 @@ class CompanionService {
     required String firstName,
     required List<ChatTurn> history,
     required String text,
+    Future<void> Function()? syncNow,
   }) async {
     if (isEmergencyText(text, lang)) {
       return CompanionReply(emergencyTextFor(text, lang), emergency: true);
@@ -70,10 +77,33 @@ class CompanionService {
     if (!await onlineAllowed(patientId)) {
       // Signed in only on this phone (an account made before the service existed).
       if (api != null && !await api!.hasSession) {
-        return CompanionReply(tr(lang, 'chatNeedsLogin'));
+        return CompanionReply(tr(lang, 'chatNeedsLogin'), why: 'not signed in to the online service');
       }
-      return CompanionReply(tr(lang, 'chatOfflineHelp'));
+      if (api == null) return CompanionReply(tr(lang, 'chatOfflineHelp'));
+      // Signed in and the person has agreed, but the profile or the consent has not
+      // reached the server yet (the usual reason the AI "does not answer"): send
+      // them now, once, and carry on if that worked.
+      final agreed = await db.hasConsent(patientId, 'companion');
+      if (agreed && syncNow != null) {
+        try {
+          await syncNow();
+        } catch (_) {}
+      }
+      if (!await onlineAllowed(patientId)) {
+        return CompanionReply(tr(lang, 'chatOfflineHelp'),
+            why: !agreed
+                ? 'online helper not allowed yet (tap Allow)'
+                : (await _serverId(patientId)) == null
+                    ? 'profile not saved online yet (sync failed)'
+                    : 'consent not sent yet');
+      }
     }
+    return _askServer(patientId, lang, firstName, history, text, syncNow, retried: false);
+  }
+
+  Future<CompanionReply> _askServer(String patientId, String lang, String firstName,
+      List<ChatTurn> history, String text, Future<void> Function()? syncNow,
+      {required bool retried}) async {
     final now = _clock();
     final today = DateTime(now.year, now.month, now.day);
     final reminders = await db.listReminders(patientId);
@@ -103,16 +133,23 @@ class CompanionService {
       return CompanionReply(out['reply'] as String,
           emergency: out['emergency'] == true);
     } on ApiException catch (e) {
+      // The server has not seen the consent yet: send it and ask once more.
+      if (e.status == 403 && e.detail == 'consent_required' && !retried && syncNow != null) {
+        try {
+          await syncNow();
+        } catch (_) {}
+        return _askServer(patientId, lang, firstName, history, text, syncNow, retried: true);
+      }
+      final why = e.isNetwork ? 'no connection to the service' : '${e.status} ${e.detail}';
       // Say what is actually wrong, so it can be fixed.
       if (e.status == 503 && e.detail == 'ai_not_configured') {
-        return CompanionReply(tr(lang, 'chatAiNotOn'));
+        return CompanionReply(tr(lang, 'chatAiNotOn'), why: why);
       }
-      // 503 companion_unavailable (the service failed) and anything else: the
-      // on-device helper answers, and the server's logs and the admin portal's
-      // "Test the AI helper" say why.
-      if (e.status == 429) return CompanionReply(tr(lang, 'chatDailyLimit'));
-      if (e.status == 401) return CompanionReply(tr(lang, 'chatNeedsLogin'));
-      return CompanionReply(tr(lang, 'chatOfflineHelp'), offline: true);
+      if (e.status == 429) return CompanionReply(tr(lang, 'chatDailyLimit'), why: why);
+      if (e.status == 401) return CompanionReply(tr(lang, 'chatNeedsLogin'), why: why);
+      // 503 companion_unavailable (the service failed: quota, bad key, outage) and
+      // anything else: the on-device helper answers and the reason is shown.
+      return CompanionReply(tr(lang, 'chatOfflineHelp'), offline: true, why: why);
     }
   }
 }

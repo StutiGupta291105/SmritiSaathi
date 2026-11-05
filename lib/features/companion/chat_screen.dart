@@ -45,6 +45,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _busy = false;
   bool _emergency = false;
   bool _offlineNote = false;
+  String? _why; // why the online helper could not answer, shown in small print
   bool _canAskOnline = false; // server possible but the person has not agreed
 
   String t(String k) => tr(widget.lang, k);
@@ -112,7 +113,9 @@ class _ChatScreenState extends State<ChatScreen> {
       firstName: widget.name.split(' ').first,
       history: before,
       text: text,
+      syncNow: widget.syncNow,
     );
+    if (mounted) setState(() => _why = r.why);
     _add(ChatTurn(false, r.text), emergency: r.emergency, offline: r.offline);
   }
 
@@ -197,6 +200,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     padding: const EdgeInsets.all(8),
                     child: Text(t('chatThinking'),
                         style: const TextStyle(color: Palette.muted, fontSize: 15)),
+                  ),
+                if (_why != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Text('Online helper: $_why',
+                        key: const ValueKey('chatWhy'),
+                        style: const TextStyle(fontSize: 12, color: Palette.muted)),
                   ),
                 if (_offlineNote)
                   Padding(
