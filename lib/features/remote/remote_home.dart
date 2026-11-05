@@ -621,14 +621,7 @@ class _RemoteHomeState extends State<RemoteHome> {
             ),
             const SizedBox(height: 18),
           ],
-          if (_threads.isNotEmpty) ...[
-            _heading(t('chatMessages')),
-            const SizedBox(height: 8),
-            for (final th in ([..._threads]
-              ..sort((a, b) => '${b['last_at'] ?? ''}'.compareTo('${a['last_at'] ?? ''}'))))
-              _threadRow(th),
-            const SizedBox(height: 10),
-          ],
+          // Conversations live in the Consult tab (its badge shows unread ones).
           if (recent.any((p) => _alertCount(p) > 0)) ...[
             // Who to look at first.
             _heading(t('rmStatusAttention')),
@@ -865,7 +858,8 @@ class _RemoteHomeState extends State<RemoteHome> {
   /// patients. A caregiver: their patients, and the doctors of those patients. The
   /// server never creates a chat outside these (see `test_conversations.py`).
   Widget _consultTab() {
-    final mine = _byRecent(_threads.where((x) => x['kind'] == 'care'));
+    // (a chat with no kind comes from an older server and is a plain care chat)
+    final mine = _byRecent(_threads.where((x) => (x['kind'] ?? 'care') == 'care'));
     // Opinion requests are a doctor's; a caregiver never has any (the server sends none).
     final others = _doctor ? _byRecent(_threads.where((x) => x['kind'] == 'opinion')) : <Map<String, dynamic>>[];
     final team = _byRecent(_threads.where((x) => x['kind'] == 'pro'));

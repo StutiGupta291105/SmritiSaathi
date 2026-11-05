@@ -253,7 +253,7 @@ void main() {
     await t.pumpWidget(const SizedBox());
   });
 
-  testWidgets('caregiver dashboard lists conversations with unread, and opens one', (t) async {
+  testWidgets('caregiver Consult tab lists conversations with unread, and opens one; the dashboard has no message list', (t) async {
     final s = _Server();
     s.threads[0]['unread'] = 2;
     s.threads[0]['last_kind'] = 'voice';
@@ -279,7 +279,12 @@ void main() {
             lang: 'en',
             onLogout: () {})));
     await t.pumpAndSettle();
-    expect(find.text('Messages'), findsWidgets);
+    // conversations are not on the dashboard any more...
+    expect(find.byKey(const ValueKey('thread_L1')), findsNothing);
+    // ...the Consult tab has them, and its bar badge shows the unread count
+    expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('2')), findsOneWidget);
+    await t.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Consult')));
+    await t.pumpAndSettle();
     expect(find.byKey(const ValueKey('thread_L1')), findsOneWidget);
     expect(find.text('2'), findsWidgets); // unread badge
     await t.tap(find.byKey(const ValueKey('thread_L1')));
