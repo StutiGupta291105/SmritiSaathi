@@ -6,6 +6,7 @@ import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
 import '../../services/sync_service.dart';
+import 'notification_check.dart';
 import 'settings_pages.dart';
 
 /// Settings tab: Profile (all details, language, voice, caregiver area,
@@ -84,6 +85,10 @@ class ProfileTab extends StatelessWidget {
             row(const ValueKey('rowAbout'), Icons.info_outline_rounded,
                 Palette.purple, Palette.tilePurple, t('aboutApp'),
                 () => open(AboutAppScreen(lang: _lang))),
+            row(const ValueKey('rowNotifyCheck'), Icons.notifications_active_outlined,
+                Palette.orange, Palette.tileOrange, 'Notification check',
+                () => open(NotificationCheckScreen(
+                    notifier: notifier, db: db, patientId: _id, lang: _lang))),
             row(const ValueKey('rowSos'), Icons.phone_in_talk_outlined,
                 Palette.red, Palette.tileRed, t('emergencySos'),
                 () => open(SosScreen(db: db, patientId: _id, lang: _lang))),

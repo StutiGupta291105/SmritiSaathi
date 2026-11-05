@@ -44,3 +44,16 @@ phone (about 5 inch) and, if you can, with the system font size set to Large.
     Caregivers; open an opinion request and reply. Prescribe a medicine twice a day: the patient's
     phone shows two reminders after it syncs.
 20. Rotate the phone and use the keyboard in the note field: nothing is hidden behind it.
+
+## When reminders or alerts do not arrive
+1. Settings > **Notification check** lists what is wrong in plain words (blocked notifications,
+   exact alarms off, reminders not allowed, nothing scheduled, no push in this build).
+2. Tap **Fix permissions**, then **Show a test alert now** (proves notifications can appear) and
+   **Schedule a test alert in 1 minute** (lock the phone; proves scheduled alerts work, which is
+   what real reminders use).
+3. On Oppo, Realme, OnePlus, Xiaomi and Vivo phones also allow **Auto-start** and set Battery to
+   **Unrestricted** for the app, otherwise the phone kills it.
+4. Open `https://<your-server>/healthz`: `"push": true` means the server can send real push; if it
+   says false, set `SMRITI_PUSH_PROVIDER=fcm` and the two FCM variables (docs/DEPLOYMENT.md).
+5. The release APK needs the keep-rules in `.github/scripts/proguard-rules.pro` (applied by the
+   build); without them scheduling fails in the installed app even though it works in debug.

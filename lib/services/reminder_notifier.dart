@@ -168,6 +168,51 @@ class ReminderNotifier {
     return access();
   }
 
+  /// How many reminder alerts the phone currently holds (null if it cannot say).
+  Future<int?> pendingCount() async {
+    try {
+      return (await _plugin.pendingNotificationRequests()).length;
+    } catch (e) {
+      lastProblem = 'pending: $e';
+      return null;
+    }
+  }
+
+  /// For the Notification check screen: asks for an alert one minute from now,
+  /// the same way real reminders are scheduled. Returns the error text, or null.
+  Future<String?> scheduleTest(String title, String body) async {
+    try {
+      await _initTimeZone();
+      final exact = await access() != NotifyAccess.inexactOnly;
+      await _plugin.zonedSchedule(
+        0x7e57,
+        title,
+        body,
+        tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1)),
+        _details,
+        androidScheduleMode: exact
+            ? AndroidScheduleMode.exactAllowWhileIdle
+            : AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'reminder',
+      );
+      return null;
+    } catch (e) {
+      return '$e';
+    }
+  }
+
+  /// Shows a notification straight away; returns the error text, or null.
+  Future<String?> showTest(String title, String body) async {
+    try {
+      await _plugin.show(0x7e58, title, body, _details, payload: 'reminder');
+      return null;
+    } catch (e) {
+      return '$e';
+    }
+  }
+
   /// Shows a notification now (used by the background push handler).
   Future<void> showNow(String title, String body, {String? payload}) =>
       _plugin.show(0x5ee0, title, body, _details, payload: payload);

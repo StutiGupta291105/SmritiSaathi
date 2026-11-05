@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from .config import Settings, load_settings
 from .db import Base, add_missing_columns, make_engine, make_session_factory
 from .migrate import require_up_to_date
+from .push import FcmPush
 from .ratelimit import SlidingWindowLimiter
 from . import companion as companion_mod
 from . import push as push_mod
@@ -71,9 +72,11 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
     def healthz():
         # "ai" says whether Talk to Smriti has a real model behind it, so a
         # test server can be checked from a browser.
+        # "push" says whether real push (Firebase) is switched on, for the same reason.
         return {"status": "ok",
                 "ai": isinstance(app.state.companion, (companion_mod.AnthropicCompanion,
-                                                         companion_mod.OpenAICompatCompanion))}
+                                                         companion_mod.OpenAICompatCompanion)),
+                "push": isinstance(app.state.push, FcmPush)}
 
     app.include_router(auth.router)
     app.include_router(patients.router)
