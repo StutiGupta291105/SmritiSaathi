@@ -74,6 +74,9 @@ left needs *your* Firebase project, so these are yours to do once:
    `GOOGLE_SERVICES_JSON`, value = the whole contents of that file. The next APK build
    adds Firebase automatically (the build log says "Firebase configured"). Without the
    secret the app builds exactly as before, with no background push.
+   (`render.yaml` deliberately leaves these three settings to the dashboard: a value in that file
+   would be put back on every deploy and switch push off again. After a deploy,
+   `/healthz` should still say `"push":true`.)
 3. In Firebase: Project settings > Service accounts > Generate new private key. In the
    Render dashboard (Environment) set `SMRITI_PUSH_PROVIDER` = `fcm`,
    `SMRITI_FCM_PROJECT_ID` = your project id, and `SMRITI_FCM_CREDENTIALS_JSON` = the whole
