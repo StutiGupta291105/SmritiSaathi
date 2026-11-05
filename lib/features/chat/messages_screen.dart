@@ -17,6 +17,16 @@ typedef PhotoSource = Future<Uint8List?> Function(BuildContext context, String l
 Future<Uint8List?> _pickMessagePhoto(BuildContext context, String lang) =>
     pickPhoto(context, lang, maxSide: 1280, quality: 70);
 
+/// A map or live-location link in a message (ours, or a plain maps link).
+Uri? _mapLink(String text) {
+  final m = RegExp(r'https?://[^\s]+').firstMatch(text);
+  if (m == null) return null;
+  final u = Uri.tryParse(m.group(0)!);
+  if (u == null) return null;
+  final isMaps = u.host.endsWith('google.com') && u.path.startsWith('/maps');
+  return isMaps || u.path.startsWith('/live/') ? u : null;
+}
+
 /// One conversation: text, photos and voice notes between a patient and the
 /// caregiver or doctor they are linked to. Used by every role. New messages are
 /// fetched every few seconds while the screen is open; the history is kept on
@@ -395,8 +405,23 @@ class _MessagesScreenState extends State<MessagesScreen> {
             style: TextStyle(fontSize: 15, color: fg)),
       ]);
     } else {
-      body = Text('${m['text']}',
-          style: TextStyle(fontSize: 16, height: 1.3, color: fg));
+      final text = '${m['text']}';
+      final map = _mapLink(text);
+      body = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(text, style: TextStyle(fontSize: 16, height: 1.3, color: fg)),
+        // A shared location: one tap opens the map.
+        if (map != null)
+          TextButton.icon(
+            key: ValueKey('openMap_${m['id']}'),
+            style: TextButton.styleFrom(
+                foregroundColor: fg,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                minimumSize: const Size(0, 36)),
+            icon: const Icon(Icons.place_rounded, size: 20),
+            label: Text(t('openMap')),
+            onPressed: () => launchUrl(map, mode: LaunchMode.externalApplication),
+          ),
+      ]);
     }
     final caption = kind != 'text' && '${m['text']}'.isNotEmpty
         ? Padding(

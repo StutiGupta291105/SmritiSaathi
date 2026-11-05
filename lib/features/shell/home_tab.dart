@@ -36,7 +36,11 @@ class HomeTab extends StatelessWidget {
     this.onChatDoctor,
     this.unreadCaregiver = 0,
     this.unreadDoctor = 0,
+    this.topCard,
   });
+
+  /// Shown above everything else (the live location button).
+  final Widget? topCard;
   final AppDatabase db;
   final String patientId, name, lang;
   final List<int>? photo;
@@ -95,6 +99,7 @@ class HomeTab extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
+            if (topCard != null) ...[topCard!, const SizedBox(height: 14)],
             GardenHeader(
               greeting: _greeting(),
               name: name,

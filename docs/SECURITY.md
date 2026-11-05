@@ -59,6 +59,22 @@ end).
   users cannot update the app.
 - **Backups, restore drills and disaster recovery** are not designed yet.
 
+## Live location sharing
+
+- Only the patient's own phone starts it, only after they tap and choose the people and the time
+  (30 minutes, 1 hour or 2 hours; the server allows at most 4 hours). Location is never read
+  otherwise, and not in the background without a share running.
+- The server keeps only the **latest point** of the one running share (table `live_shares`, no
+  trail). It is deleted when sharing stops, when it expires, and when the patient is erased.
+- The link sent to family is a random 32-character token. Anyone who has the link can see the
+  latest point and the patient's **first name** until the share ends, so it is sent only to the
+  people the patient picked. The page is `no-store`, `noindex` and sends no referrer.
+- A linked caregiver (with the caregiver sharing consent) sees the same point inside the app;
+  the doctor does not. Starting a share sends the caregiver a push with generic text.
+- Family members get the text by SMS composed in the patient's own messaging app (the app cannot
+  send SMS silently, so the patient presses send). Group SMS shows recipients to each other.
+- Which family members are ticked is stored on the phone only.
+
 ## Talk to Smriti (AI companion): what to know before turning it on
 
 - **Chat history** is one continuous conversation with date and time, kept only in the

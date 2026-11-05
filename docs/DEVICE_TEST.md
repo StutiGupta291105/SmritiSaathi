@@ -45,6 +45,22 @@ phone (about 5 inch) and, if you can, with the system font size set to Large.
     phone shows two reminders after it syncs.
 20. Rotate the phone and use the keyboard in the note field: nothing is hidden behind it.
 
+## Live location (two phones: patient and caregiver; a third for a family member's SMS)
+21. Patient: add a family member and tick **Include in live location** (or tap the pin icon on
+    the family row). The patient Home shows **Share my live location** at the very top.
+22. Tap it: the caregiver and the ticked family member are already selected. Choose **1 hour**
+    and **Start sharing**. Allow location when asked. The messaging app opens with the text and a
+    link ready: press send. The Home card turns green with **Stop sharing**.
+23. Caregiver phone: a chat message with **Open map** arrives (push too), and the patient screen
+    shows a green **Live location** card with "x min ago" that moves as the patient walks.
+24. Family phone: the SMS link opens a map page that refreshes by itself. Press **Stop sharing**
+    on the patient phone: the page now says the live location has ended.
+25. Lock the patient phone for a few minutes while walking: sharing carries on (a notification
+    "Sharing your location" is shown), and the caregiver's card still updates. If it does not on
+    Oppo/Realme/Xiaomi/Vivo, set Battery to Unrestricted for the app.
+26. Switch the patient phone to Airplane mode and share: it falls back to a one-time map link and
+    the chat message is queued; it goes out when the phone is online again.
+
 ## When reminders or alerts do not arrive
 1. Settings > **Notification check** lists what is wrong in plain words (blocked notifications,
    exact alarms off, reminders not allowed, nothing scheduled, no push in this build).

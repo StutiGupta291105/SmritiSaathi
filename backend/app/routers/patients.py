@@ -9,7 +9,7 @@ from ..db import utcnow
 from ..deps import (consent_granted, current_user, get_db, patient_for_owner,
                     patient_for_viewer, require_role, settings_of)
 from ..models import (CONSENT_PURPOSES, ROLE_PURPOSE, Consent, GameSession,
-                      CareNote, CareReminder, Conversation, Link, Message, OtpChallenge, Patient, RefreshToken,
+                      CareNote, CareReminder, Conversation, Link, LiveShare, Message, OtpChallenge, Patient, RefreshToken,
                       ReminderMark, ReminderSchedule, User)
 from ..schemas import (BaselineIn, ConsentsIn, InviteIn, LinkOut, PatientIn,
                        PatientOut, SyncIn, SyncOut)
@@ -318,7 +318,7 @@ def erase(patient_id: str, user: User = Depends(current_user),
     db.execute(delete(Message).where(Message.conv_id.in_(
         select(Conversation.id).where(Conversation.patient_id == p.id))))
     for model in (ReminderMark, ReminderSchedule, CareReminder, CareNote, GameSession, Consent,
-                  Link, Conversation):
+                  Link, Conversation, LiveShare):
         db.execute(delete(model).where(model.patient_id == p.id))
     db.execute(delete(Patient).where(Patient.id == p.id))
     db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))

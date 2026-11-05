@@ -8,6 +8,7 @@ import '../../core/reminder_schedule.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/api_client.dart';
 import '../../services/push_events.dart';
 import '../chat/messages_screen.dart';
@@ -1270,6 +1271,8 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
   List<Map<String, dynamic>> _careItems = const [];
   String? _errorKey;
   bool _loading = true;
+  Map<String, dynamic>? _liveLoc; // the patient's shared live location, if any
+  Timer? _liveTimer;
 
   String t(String k) => tr(widget.lang, k);
 
@@ -1277,13 +1280,64 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
   void initState() {
     super.initState();
     _load();
-    if (!widget.canPrescribe) _reloadCare(); // the caregiver's overview shows today's routine
+    if (!widget.canPrescribe) {
+      _reloadCare(); // the caregiver's overview shows today's routine
+      // Only the caregiver sees the live location; check now and every half minute.
+      _loadLive();
+      _liveTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadLive());
+    }
   }
 
   @override
   void dispose() {
+    _liveTimer?.cancel();
     _noteCtl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadLive() async {
+    try {
+      final j = await widget.api.livePatient(widget.patientId);
+      if (mounted) setState(() => _liveLoc = j);
+    } catch (_) {}
+  }
+
+  Widget _liveCard() {
+    final j = _liveLoc;
+    if (j == null || j['active'] != true) return const SizedBox();
+    final at = DateTime.tryParse('${j['updated_at']}')?.toLocal();
+    final ago = at == null ? '' : agoText(widget.lang, at, DateTime.now());
+    final link = 'https://www.google.com/maps?q=${j['lat']},${j['lng']}';
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: AppCard(
+        key: const ValueKey('liveLocationCard'),
+        color: Palette.tileGreen,
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        child: Row(children: [
+          const IconBadge(
+              icon: Icons.my_location_rounded, fg: Palette.green, bg: Colors.white, size: 46),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(t('liveCardTitle'),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700, color: Palette.brandDeep)),
+              if (ago.isNotEmpty)
+                Text(ago, style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
+            ]),
+          ),
+          FilledButton(
+            key: const ValueKey('openLiveMap'),
+            style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 42),
+                padding: const EdgeInsets.symmetric(horizontal: 14)),
+            onPressed: () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication),
+            child: Text(t('openMap'), style: const TextStyle(fontSize: 14)),
+          ),
+        ]),
+      ),
+    );
   }
 
   void _go(_Sec s) {
@@ -1691,6 +1745,7 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         children: [
           _patientHero(r),
+          _liveCard(),
           const SizedBox(height: 14),
           _UnderlineTabs(
             color: widget.accent,

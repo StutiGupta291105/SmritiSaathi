@@ -11,7 +11,7 @@ from .push import FcmPush
 from .ratelimit import SlidingWindowLimiter
 from . import companion as companion_mod
 from . import push as push_mod
-from .routers import admin, auth, care, chat, companion, devices, patients
+from .routers import admin, auth, care, chat, companion, devices, live, patients
 from .sms import SmsProvider, get_provider
 
 log = logging.getLogger("smriti")
@@ -123,6 +123,8 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
     app.include_router(companion.router)
     app.include_router(devices.router)
     app.include_router(chat.router)
+    app.include_router(live.router)
+    app.include_router(live.page)
     if s.admin_enabled:  # without an admin password configured, the portal does not exist
         app.include_router(admin.router)
     return app

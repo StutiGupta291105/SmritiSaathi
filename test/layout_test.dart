@@ -27,6 +27,9 @@ import 'package:smriti_assist/features/chat/doctor_directory_screen.dart';
 import 'package:smriti_assist/features/shell/settings_pages.dart';
 import 'package:smriti_assist/features/shell/games_tab.dart';
 import 'package:smriti_assist/features/games/change_game.dart';
+import 'package:smriti_assist/features/location/live_share_ui.dart';
+import 'package:smriti_assist/services/live_share.dart';
+import 'package:smriti_assist/services/location_service.dart';
 import 'package:smriti_assist/features/games/echo_game.dart';
 import 'package:smriti_assist/features/games/faces_game.dart';
 import 'package:smriti_assist/features/games/sort_game.dart';
@@ -165,6 +168,12 @@ void main() {
     'routine dialog with templates': (l) => Builder(builder: (c) {
           WidgetsBinding.instance.addPostFrameCallback((_) => showAddReminderDialog(c,
               language: l, kinds: const [ReminderKind.activity, ReminderKind.hydration, ReminderKind.appointment]));
+          return const Scaffold();
+        }),
+    'live share sheet': (l) => Builder(builder: (c) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => showLiveShareSheet(c,
+              db: db, patientId: pid, name: 'Asha Devi Sharma', lang: l,
+              controller: LiveShareController(provider: GeolocatorProvider())));
           return const Scaffold();
         }),
     'prescribe dialog': (l) => Builder(builder: (c) {

@@ -483,6 +483,7 @@ class _FamilyListState extends State<_FamilyList> {
       phone: r.phone,
       relation: r.relation,
       photo: r.photo,
+      shareLocation: r.shareLocation,
       by: widget.by,
     );
     await _load();
@@ -516,6 +517,20 @@ class _FamilyListState extends State<_FamilyList> {
                   ),
                 ),
                 IconButton(
+                  key: ValueKey('live_${m['id']}'),
+                  tooltip: t('includeLive'),
+                  icon: Icon(
+                      m['share_location'] == 1
+                          ? Icons.location_on_rounded
+                          : Icons.location_off_outlined,
+                      color: m['share_location'] == 1 ? Palette.green : Palette.muted),
+                  onPressed: () async {
+                    await widget.db.setFamilyShareLocation(widget.patientId,
+                        m['id'] as String, m['share_location'] != 1);
+                    await _load();
+                  },
+                ),
+                IconButton(
                   tooltip: t('delete'),
                   icon: const Icon(Icons.delete_outline_rounded,
                       color: Palette.muted),
@@ -540,9 +555,10 @@ class _FamilyListState extends State<_FamilyList> {
 }
 
 class _NewMember {
-  _NewMember(this.name, this.phone, this.relation, this.photo);
+  _NewMember(this.name, this.phone, this.relation, this.photo, this.shareLocation);
   final String name, phone, relation;
   final Uint8List? photo;
+  final bool shareLocation;
 }
 
 class _FamilyDialog extends StatefulWidget {
@@ -558,6 +574,7 @@ class _FamilyDialogState extends State<_FamilyDialog> {
   final _phone = TextEditingController();
   String _relation = kRelations.first;
   Uint8List? _photo;
+  bool _shareLocation = false;
   String? _error;
 
   String t(String k) => tr(widget.lang, k);
@@ -577,7 +594,7 @@ class _FamilyDialogState extends State<_FamilyDialog> {
       setState(() => _error = t('errPhone'));
     } else {
       Navigator.pop(
-          context, _NewMember(_name.text.trim(), phone, _relation, _photo));
+          context, _NewMember(_name.text.trim(), phone, _relation, _photo, _shareLocation));
     }
   }
 
@@ -617,6 +634,15 @@ class _FamilyDialogState extends State<_FamilyDialog> {
                   DropdownMenuItem(value: r, child: Text(t('rel_$r'))),
               ],
               onChanged: (v) => setState(() => _relation = v!),
+            ),
+            CheckboxListTile(
+              key: const ValueKey('includeLive'),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _shareLocation,
+              onChanged: (v) => setState(() => _shareLocation = v ?? false),
+              title: Text(t('includeLive'), style: const TextStyle(fontSize: 15)),
+              subtitle: Text(t('includeLiveHelp'), style: const TextStyle(fontSize: 12)),
             ),
             if (_error != null)
               Text(_error!,

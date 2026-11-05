@@ -119,6 +119,36 @@ void main() {
     });
   });
 
+  testWidgets('a family member can be included in the live location, and it can be toggled', (t) async {
+    await t.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await t.runAsync(() => db.recordConsent(
+        patientId: pid,
+        purposes: {'gameplay': true, 'reminders': true, 'family_contacts': true},
+        givenByName: 'Asha Devi', givenByRelation: 'self', noticeVersion: 'v2'));
+    final w = (await t.runAsync(() => app(stage: 1)))!;
+    await t.pumpWidget(w);
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await t.pump();
+    await t.tap(find.text('Add family member'));
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField).at(0), 'Meena');
+    await t.enterText(find.byType(TextField).at(1), '9822222222');
+    await t.tap(find.byKey(const ValueKey('includeLive')));
+    await t.pump();
+    await t.tap(find.text('Save'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await t.pumpAndSettle();
+    final rows = (await t.runAsync(() => db.listFamily(pid)))!;
+    expect(rows.single['name'], 'Meena');
+    expect(rows.single['share_location'], 1);
+    // the row has a location toggle
+    await t.tap(find.byKey(ValueKey('live_${rows.single['id']}')));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await t.pump();
+    expect((await t.runAsync(() => db.listFamily(pid)))!.single['share_location'], 0);
+  });
+
   testWidgets('doctor and caregiver have a page each', (t) async {
     final w2 = (await t.runAsync(() => app(stage: 2)))!;
     await t.pumpWidget(w2);

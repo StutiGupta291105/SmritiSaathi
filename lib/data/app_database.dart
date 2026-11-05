@@ -82,7 +82,7 @@ class AppDatabase implements OfflineStore {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 12;
+  static const schemaVersion = 13;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -275,6 +275,10 @@ class AppDatabase implements OfflineStore {
     if (oldVersion < 10) await _createOfflineTables(db);
     if (oldVersion < 11) await _createScheduleDeleted(db);
     if (oldVersion < 12) await _createCompanionMessages(db);
+    // Family members who should get the patient's live location.
+    if (oldVersion < 13) {
+      await _addColumn(db, 'family_members', 'share_location INTEGER NOT NULL DEFAULT 0');
+    }
   }
 
   static Future<void> _addColumn(Database db, String table, String def) async {
@@ -322,6 +326,7 @@ class AppDatabase implements OfflineStore {
         phone TEXT NOT NULL,
         relation TEXT NOT NULL,
         photo BLOB,
+        share_location INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL
       )''');
     // Invites to a doctor or caregiver. Status moves pending -> accepted or
@@ -541,6 +546,7 @@ class AppDatabase implements OfflineStore {
     required String phone,
     required String relation,
     List<int>? photo,
+    bool shareLocation = false,
     required String by,
   }) async {
     await requireConsent(patientId, 'family_contacts');
@@ -552,6 +558,7 @@ class AppDatabase implements OfflineStore {
       'phone': phone,
       'relation': relation,
       'photo': photo == null ? null : Uint8List.fromList(photo),
+      'share_location': shareLocation ? 1 : 0,
       'created_at': _now(),
     });
     await audit(by, 'family_member_added',
@@ -565,6 +572,14 @@ class AppDatabase implements OfflineStore {
     if (!await hasConsent(patientId, 'family_contacts')) return const [];
     return _db.query('family_members',
         where: 'patient_id = ?', whereArgs: [patientId], orderBy: 'rowid');
+  }
+
+  /// Tick or untick "Include in live location" for one family member.
+  Future<void> setFamilyShareLocation(
+      String patientId, String memberId, bool on) async {
+    await requireConsent(patientId, 'family_contacts');
+    await _db.update('family_members', {'share_location': on ? 1 : 0},
+        where: 'id = ? AND patient_id = ?', whereArgs: [memberId, patientId]);
   }
 
   Future<void> deleteFamilyMember(

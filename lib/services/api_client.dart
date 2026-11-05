@@ -587,6 +587,26 @@ class ApiClient {
   Future<void> chatMarkRead(String linkId, int upto) =>
       _raw('POST', '/v1/chat/$linkId/read', body: {'upto': upto});
 
+  // ---- live location ---------------------------------------------------------
+
+  /// Starts a share; returns `{url, expires_at, ...}`. The link opens a public map page.
+  Future<Map<String, dynamic>> liveStart(double lat, double lng,
+          {double accuracy = 0, int minutes = 60}) =>
+      _raw('POST', '/v1/live/start',
+          body: {'lat': lat, 'lng': lng, 'accuracy': accuracy, 'minutes': minutes});
+
+  Future<void> liveUpdate(double lat, double lng, {double accuracy = 0}) =>
+      _raw('PUT', '/v1/live/update', body: {'lat': lat, 'lng': lng, 'accuracy': accuracy});
+
+  Future<void> liveStop() => _raw('POST', '/v1/live/stop');
+
+  /// Whether the signed-in patient has a share running (after the app restarted).
+  Future<Map<String, dynamic>> liveMine() => _raw('GET', '/v1/live/me');
+
+  /// The patient's latest shared point, for a linked caretaker.
+  Future<Map<String, dynamic>> livePatient(String patientId) =>
+      _raw('GET', '/v1/live/patient/$patientId');
+
   // ---- routines and reminders set by a caretaker or doctor -----------------
 
   Future<List<Map<String, dynamic>>> careReminders(String patientId, {bool cached = false}) async {

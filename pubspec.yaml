@@ -28,6 +28,7 @@ dependencies:
   record: ^6.0.0                 # voice notes in chats (recorded to a temp file, sent, then deleted)
   audioplayers: ^6.1.0           # plays voice notes
   path_provider: ^2.1.5          # temp folder for a voice note while it is recorded
+  geolocator: ^13.0.2
 
 dev_dependencies:
   flutter_test:

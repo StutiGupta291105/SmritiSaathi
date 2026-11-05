@@ -3,7 +3,7 @@ in the clear, no photos, no family contacts, no free-text reminder labels."""
 import uuid
 from datetime import datetime
 
-from sqlalchemy import (Boolean, DateTime, LargeBinary, ForeignKey, Index, Integer, String,
+from sqlalchemy import (Boolean, DateTime, Float, LargeBinary, ForeignKey, Index, Integer, String,
                         Text, UniqueConstraint)
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -272,3 +272,18 @@ class CareReminder(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     deleted: Mapped[bool] = mapped_column(Boolean, default=False)
 
+
+class LiveShare(Base):
+    """A live location the patient chose to share for a while. Only the latest point is
+    kept (no trail) and the row is removed when sharing stops, expires, or the patient
+    is erased. The token in the shared link is the only key to the public map page."""
+    __tablename__ = "live_shares"
+    token: Mapped[str] = mapped_column(String(48), primary_key=True)
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), index=True)
+    first_name: Mapped[str] = mapped_column(String(60), default="")
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+    accuracy: Mapped[float] = mapped_column(Float, default=0.0)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)

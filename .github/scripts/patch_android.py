@@ -42,6 +42,8 @@ perms = "".join(
         "CALL_PHONE",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE",  # keeps live location sharing going with the screen off
+        "FOREGROUND_SERVICE_LOCATION",
     )
 )
 patch(manifest, "<application", perms + "    <application", )

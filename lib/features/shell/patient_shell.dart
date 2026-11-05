@@ -18,6 +18,9 @@ import '../../services/push_events.dart';
 import '../../services/reminder_notifier.dart';
 import '../reminders/notify_banner.dart';
 import '../../services/voice.dart';
+import '../../services/live_share.dart';
+import '../../services/location_service.dart';
+import '../location/live_share_ui.dart';
 import '../games/change_game.dart';
 import '../games/echo_game.dart';
 import '../games/faces_game.dart';
@@ -44,7 +47,11 @@ class PatientShell extends StatefulWidget {
     this.hooks,
     this.api,
     this.onConnectOnline,
+    this.locationProvider,
   });
+
+  /// Where the phone is; tests pass a fake.
+  final LocationProvider? locationProvider;
   final ApiClient? api;
   final ServerHooks? hooks;
   final AppDatabase db;
@@ -70,6 +77,7 @@ class _PatientShellState extends State<PatientShell> {
   Timer? _chatTimer;
 
   var _ticks = 0;
+  late final LiveShareController _live;
 
   void _remindersChanged() {
     if (mounted) setState(() {});
@@ -78,6 +86,11 @@ class _PatientShellState extends State<PatientShell> {
   @override
   void initState() {
     super.initState();
+    _live = LiveShareController(
+        provider: widget.locationProvider ?? GeolocatorProvider(), api: widget.api);
+    // A share that was running when the app was closed carries on.
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _live.resume(t('liveNotifyTitle'), t('liveNotifyText')));
     kRemindersRevision.addListener(_remindersChanged);
     kPushOpen.addListener(_onPushOpen);
     // A notification tap that started the app is already waiting.
@@ -135,6 +148,7 @@ class _PatientShellState extends State<PatientShell> {
     kRemindersRevision.removeListener(_remindersChanged);
     kPushOpen.removeListener(_onPushOpen);
     _chatTimer?.cancel();
+    _live.dispose();
     super.dispose();
   }
 
@@ -337,6 +351,17 @@ class _PatientShellState extends State<PatientShell> {
         name: widget.patient['display_name'] as String,
         photo: widget.patient['photo'] as List<int>?,
         lang: _lang,
+        topCard: LiveLocationCard(
+          controller: _live,
+          lang: _lang,
+          onShare: () => showLiveShareSheet(context,
+              db: widget.db,
+              patientId: _id,
+              name: widget.patient['display_name'] as String,
+              lang: _lang,
+              controller: _live,
+              api: widget.api),
+        ),
         onPlay: () => _playGame(kGames.first.id),
         onGames: () => setState(() => _tab = 1),
         onReminders: () => setState(() => _tab = 2),
