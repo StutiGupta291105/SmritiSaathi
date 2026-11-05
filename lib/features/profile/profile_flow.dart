@@ -908,15 +908,17 @@ class _RoutineSetupState extends State<_RoutineSetup> {
         title: t(titleKey),
         defaultBy: widget.by);
     if (r == null) return;
-    await widget.db.addReminder(
-      patientId: widget.patientId,
-      kind: r.kind,
-      label: r.label,
-      hour: r.time.hour,
-      minute: r.time.minute,
-      onDate: r.date,
-      createdBy: r.by,
-    );
+    for (final at in r.allTimes) {
+      await widget.db.addReminder(
+        patientId: widget.patientId,
+        kind: r.kind,
+        label: r.label,
+        hour: at.hour,
+        minute: at.minute,
+        onDate: r.date,
+        createdBy: r.by,
+      );
+    }
     await widget.notifier
         .resync(patientId: widget.patientId, lang: widget.lang);
     await _load();

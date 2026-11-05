@@ -288,7 +288,10 @@ void main() {
     await t.ensureVisible(find.byKey(const ValueKey('addRoutine')));
     await t.tap(find.byKey(const ValueKey('addRoutine')));
     await t.pumpAndSettle();
-    // The dialog asks who is making the change, pre-filled with the patient.
+    // A medicine needs a name before it can be saved.
+    expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save').last).onPressed, isNull);
+    await t.enterText(find.byKey(const ValueKey('rxName')), 'Aspirin');
+    await t.pump();
     await t.tap(find.widgetWithText(FilledButton, 'Save').last);
     await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await t.pumpAndSettle();

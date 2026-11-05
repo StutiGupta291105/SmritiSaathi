@@ -153,6 +153,18 @@ void main() {
     'doctor consult': (l) => RemoteHome(
         api: api, user: const ServerUser('u', 'doctor', 'Dr Rao'),
         lang: l, onLogout: () {}, initialTab: 2),
+    'doctor requests': (l) => RemoteHome(
+        api: api, user: const ServerUser('u', 'doctor', 'Dr Rao'),
+        lang: l, onLogout: () {}, initialTab: 3),
+    'doctor alerts': (l) => RemoteHome(
+        api: api, user: const ServerUser('u', 'doctor', 'Dr Rao'),
+        lang: l, onLogout: () {}, initialTab: 5),
+    'prescribe dialog': (l) => Builder(builder: (c) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => showAddReminderDialog(c,
+              language: l,
+              kinds: const [ReminderKind.medicine, ReminderKind.activity, ReminderKind.appointment]));
+          return const Scaffold();
+        }),
     'remote report': (l) => RemoteReportScreen(
         api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l),
     'remote patient': (l) => RemotePatientScreen(

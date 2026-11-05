@@ -326,6 +326,9 @@ void main() {
   });
 
   testWidgets('a doctor prescribes a medicine and schedules an appointment', (t) async {
+    t.view.physicalSize = const Size(800, 2200);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
     final posts = <Map<String, dynamic>>[];
     final api = _api((r) async {
       final p = r.url.path;
@@ -349,12 +352,20 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('addCareReminder')));
     await t.pumpAndSettle();
-    await t.enterText(find.byType(TextField).last, 'Metformin 500 mg, after food');
+    // A prescription: name, dose, when to take it, and how many times a day.
+    expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save')).onPressed, isNull,
+        reason: 'no medicine name yet');
+    await t.enterText(find.byKey(const ValueKey('rxName')), 'Metformin');
+    await t.enterText(find.byKey(const ValueKey('rxDose')), '500 mg');
+    await t.tap(find.byKey(const ValueKey('food_after')));
+    await t.tap(find.byKey(const ValueKey('rxPreset2'))); // twice a day: 8:00 and 20:00
     await t.pump();
     await t.tap(find.widgetWithText(FilledButton, 'Save'));
     await t.pumpAndSettle();
-    expect(posts.single['kind'], 'medicine'); // a doctor's first choice
-    expect(posts.single['label'], 'Metformin 500 mg, after food');
+    expect(posts.length, 2); // one reminder for each time
+    expect(posts.map((x) => x['kind']), ['medicine', 'medicine']); // a doctor's first choice
+    expect(posts.map((x) => x['label']).toSet(), {'Metformin · 500 mg · After food'});
+    expect(posts.map((x) => x['hour']), [8, 20]);
     await t.tap(find.byKey(const ValueKey('addCareReminder')));
     await t.pumpAndSettle();
     await t.tap(find.byType(DropdownButtonFormField<ReminderKind>));
@@ -472,5 +483,118 @@ void main() {
     await t.pumpAndSettle();
     expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Consult')), findsNothing);
     expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Alerts')), findsOneWidget);
+  });
+
+  testWidgets('editing a prescription shows its name, dose and food timing; only one time', (t) async {
+    t.view.physicalSize = const Size(800, 2200);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    Map<String, dynamic>? edited;
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/reminders') return _j(200, []);
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      if (p.startsWith('/v1/patients/p1/care-reminders/') && r.method == 'PATCH') {
+        edited = jsonDecode(r.body) as Map<String, dynamic>;
+        return _j(200, {'id': 'm1', 'kind': 'medicine', 'label': edited!['label'], 'hour': 21, 'minute': 0,
+                        'days_mask': 127, 'created_by_name': 'Ravi', 'created_by_role': 'doctor', 'mine': true});
+      }
+      if (p == '/v1/patients/p1/care-reminders') {
+        return _j(200, [
+          {'id': 'm1', 'kind': 'medicine', 'label': 'Metformin · 500 mg · After food', 'hour': 20,
+           'minute': 0, 'days_mask': 127, 'on_date': null, 'created_by_name': 'Ravi',
+           'created_by_role': 'doctor', 'mine': true}
+        ]);
+      }
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(_app(api, role: 'doctor'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Asha').first);
+    await t.pumpAndSettle();
+    await t.tap(find.text('Reminders').last);
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('editCare_m1')));
+    await t.pumpAndSettle();
+    expect(t.widget<TextField>(find.byKey(const ValueKey('rxName'))).controller!.text, 'Metformin');
+    expect(t.widget<TextField>(find.byKey(const ValueKey('rxDose'))).controller!.text, '500 mg');
+    expect(t.widget<ChoiceChip>(find.byKey(const ValueKey('food_after'))).selected, isTrue);
+    expect(find.byKey(const ValueKey('rxAddTime')), findsNothing);
+    expect(find.byKey(const ValueKey('rxPreset2')), findsNothing);
+    await t.enterText(find.byKey(const ValueKey('rxDose')), '1000 mg');
+    await t.pump();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    await t.pumpAndSettle();
+    expect(edited!['label'], 'Metformin · 1000 mg · After food');
+  });
+
+  testWidgets('requests: invitations show who and how long ago; the how-it-works guide is there', (t) async {
+    t.view.physicalSize = const Size(800, 2200);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    var invites = [
+      {'id': 'i1', 'patient_display_name': 'Meera Sen', 'member_role': 'doctor',
+       'created_at': DateTime.now().subtract(const Duration(hours: 3)).toUtc().toIso8601String()}
+    ];
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, invites);
+      if (p == '/v1/my-patients') return _j(200, <Object>[]);
+      if (p == '/v1/invites/i1/accept') {
+        invites = [];
+        return _j(200, {});
+      }
+      return _j(200, <Object>[]);
+    });
+    await t.pumpWidget(_app(api, role: 'doctor'));
+    await t.pumpAndSettle();
+    await t.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Requests')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('invite_i1')), findsOneWidget);
+    expect(find.textContaining('Invited you as Doctor'), findsOneWidget);
+    expect(find.textContaining('3 hours ago'), findsOneWidget);
+    expect(find.byKey(const ValueKey('howLinking')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('accept_i1')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('invite_i1')), findsNothing);
+    expect(find.byKey(const ValueKey('noRequests')), findsOneWidget);
+  });
+
+  testWidgets('alerts: urgent first, a back arrow for a doctor, and it leads to the patient', (t) async {
+    t.view.physicalSize = const Size(800, 2200);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') {
+        return _j(200, [
+          {..._patientsJson[0], 'alerts_needing_attention': 1, 'alerts': [
+            {'kind': 'tip_low_accuracy', 'severity': 'info', 'a': 50, 'b': 0},
+            {'kind': 'inactive', 'severity': 'attention', 'a': 5, 'b': 0},
+          ]},
+        ]);
+      }
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      return _j(200, <Object>[]);
+    });
+    await t.pumpWidget(_app(api, role: 'doctor'));
+    await t.pumpAndSettle();
+    await t.tap(find.byIcon(Icons.notifications_none_rounded).first);
+    await t.pumpAndSettle();
+    expect(find.text('Good to know'), findsOneWidget);
+    final urgent = t.getTopLeft(find.text('Has not played for 5 days.')).dy;
+    final gentle = t.getTopLeft(find.text('Good to know')).dy;
+    expect(urgent, lessThan(gentle));
+    await t.tap(find.text('Has not played for 5 days.'));
+    await t.pumpAndSettle();
+    expect(find.byType(RemotePatientScreen), findsOneWidget);
+    await t.pageBack();
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('alertsBack')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('roleHero')), findsOneWidget);
   });
 }

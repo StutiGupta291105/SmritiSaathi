@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/adherence.dart';
 import '../../core/reminder_schedule.dart';
@@ -84,15 +85,17 @@ class _RemindersScreenState extends State<RemindersScreen> {
         kinds: _tabKinds[_tab],
         defaultBy: by);
     if (result == null) return;
-    await widget.db.addReminder(
-      patientId: widget.patientId,
-      kind: result.kind,
-      label: result.label,
-      hour: result.time.hour,
-      minute: result.time.minute,
-      onDate: result.date,
-      createdBy: result.by,
-    );
+    for (final at in result.allTimes) {
+      await widget.db.addReminder(
+        patientId: widget.patientId,
+        kind: result.kind,
+        label: result.label,
+        hour: at.hour,
+        minute: at.minute,
+        onDate: result.date,
+        createdBy: result.by,
+      );
+    }
     await _changed();
   }
 
@@ -403,12 +406,49 @@ class _RemindersScreenState extends State<RemindersScreen> {
 }
 
 class NewReminder {
-  NewReminder(this.kind, this.label, this.time, this.date, this.by);
+  NewReminder(this.kind, this.label, this.time, this.date, this.by,
+      {this.extraTimes = const []});
   final ReminderKind kind;
   final String label;
   final TimeOfDay time;
   final DateTime? date;
   final String by;
+
+  /// A medicine taken more than once a day: its other times (one reminder is
+  /// created for each of [time] and these).
+  final List<TimeOfDay> extraTimes;
+
+  List<TimeOfDay> get allTimes => [time, ...extraTimes];
+}
+
+/// "Metformin · 500 mg · After food": how a prescription is written in the
+/// reminder's label, so it reads the same on the patient's phone.
+String medicineLabel(String lang, String name, String dose, String? food) => [
+      name.trim(),
+      if (dose.trim().isNotEmpty) dose.trim(),
+      if (food != null) tr(lang, 'food${food[0].toUpperCase()}${food.substring(1)}'),
+    ].join(' · ');
+
+const _kFoods = ['before', 'after', 'with', 'any'];
+
+/// Reads a label written by [medicineLabel] back into its parts (for editing).
+({String name, String dose, String? food}) parseMedicineLabel(String lang, String label) {
+  final parts = label.split(' · ').map((x) => x.trim()).toList();
+  String? food;
+  if (parts.length > 1) {
+    for (final f in _kFoods) {
+      if (parts.last == tr(lang, 'food${f[0].toUpperCase()}${f.substring(1)}')) {
+        food = f;
+        parts.removeLast();
+        break;
+      }
+    }
+  }
+  return (
+    name: parts.isEmpty ? '' : parts.first,
+    dose: parts.length > 1 ? parts.sublist(1).join(' · ') : '',
+    food: food,
+  );
 }
 
 /// Kinds that happen on a particular date rather than every day.
@@ -463,14 +503,115 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
       widget.initial?.time ?? const TimeOfDay(hour: 9, minute: 0);
   late DateTime? _date = widget.initial?.date;
   late final _label = TextEditingController(text: widget.initial?.label ?? '');
+  late final _rx = widget.initial?.kind == ReminderKind.medicine
+      ? parseMedicineLabel(widget.language, widget.initial!.label)
+      : (name: '', dose: '', food: null as String?);
+  late final _name = TextEditingController(text: _rx.name);
+  late final _dose = TextEditingController(text: _rx.dose);
+  late String? _food = _rx.food;
+  late List<TimeOfDay> _times = [widget.initial?.time ?? const TimeOfDay(hour: 8, minute: 0)];
+
+  bool get _editing => widget.initial != null;
+  bool get _medicine => _kind == ReminderKind.medicine;
 
   String t(String k) => tr(widget.language, k);
 
   @override
   void dispose() {
     _label.dispose();
+    _name.dispose();
+    _dose.dispose();
     super.dispose();
   }
+
+  Future<void> _pickTime(int i) async {
+    final picked = await showTimePicker(context: context, initialTime: _times[i]);
+    if (picked != null) setState(() => _times[i] = picked);
+  }
+
+  void _preset(int n) => setState(() => _times = switch (n) {
+        1 => const [TimeOfDay(hour: 8, minute: 0)],
+        2 => const [TimeOfDay(hour: 8, minute: 0), TimeOfDay(hour: 20, minute: 0)],
+        _ => const [
+            TimeOfDay(hour: 8, minute: 0),
+            TimeOfDay(hour: 14, minute: 0),
+            TimeOfDay(hour: 20, minute: 0)
+          ],
+      });
+
+  /// Name, dose, when to take it and the times of day: what a prescription needs.
+  List<Widget> _medicineFields(Widget Function(String, Widget) field) => [
+        field(t('rxName'),
+            TextField(
+                key: const ValueKey('rxName'),
+                controller: _name,
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                onChanged: (_) => setState(() {}),
+                textCapitalization: TextCapitalization.words)),
+        field(t('rxDose'),
+            TextField(
+                key: const ValueKey('rxDose'),
+                controller: _dose,
+                inputFormatters: [LengthLimitingTextInputFormatter(30)])),
+        field(
+          t('rxWhen'),
+          Wrap(spacing: 8, runSpacing: 4, children: [
+            for (final f in _kFoods)
+              ChoiceChip(
+                key: ValueKey('food_$f'),
+                label: Text(t('food${f[0].toUpperCase()}${f.substring(1)}')),
+                selected: _food == f,
+                onSelected: (on) => setState(() => _food = on ? f : null),
+              ),
+          ]),
+        ),
+        field(
+          t('rxTimes'),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (!_editing)
+              Wrap(spacing: 8, runSpacing: 4, children: [
+                for (final (n, k) in [(1, 'rxOnce'), (2, 'rxTwice'), (3, 'rxThrice')])
+                  ChoiceChip(
+                    key: ValueKey('rxPreset$n'),
+                    label: Text(t(k)),
+                    selected: _times.length == n,
+                    onSelected: (_) => _preset(n),
+                  ),
+              ]),
+            const SizedBox(height: 8),
+            for (var i = 0; i < _times.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: ValueKey('rxTime$i'),
+                      icon: const Icon(Icons.access_time),
+                      label: Text(_times[i].format(context)),
+                      onPressed: () => _pickTime(i),
+                    ),
+                  ),
+                  if (!_editing && _times.length > 1)
+                    IconButton(
+                      key: ValueKey('rxRemoveTime$i'),
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => setState(() => _times.removeAt(i)),
+                    ),
+                ]),
+              ),
+            if (!_editing && _times.length < 4)
+              TextButton.icon(
+                key: const ValueKey('rxAddTime'),
+                icon: const Icon(Icons.add_rounded),
+                label: Text(t('rxAddTime')),
+                onPressed: () => setState(() {
+                  final last = _times.last;
+                  _times.add(TimeOfDay(hour: (last.hour + 4) % 24, minute: last.minute));
+                }),
+              ),
+          ]),
+        ),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -511,23 +652,27 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                   if (!kDatedKinds.contains(k)) _date = null;
                 }),
               ),
-            field(
-                t('reminderLabel'),
-                TextField(
-                    controller: _label,
-                    textCapitalization: TextCapitalization.sentences)),
-            field(
-              t('pickTime'),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.access_time),
-                label: Text(_time.format(context)),
-                onPressed: () async {
-                  final picked = await showTimePicker(
-                      context: context, initialTime: _time);
-                  if (picked != null) setState(() => _time = picked);
-                },
+            if (_medicine)
+              ..._medicineFields(field)
+            else ...[
+              field(
+                  t('reminderLabel'),
+                  TextField(
+                      controller: _label,
+                      textCapitalization: TextCapitalization.sentences)),
+              field(
+                t('pickTime'),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.access_time),
+                  label: Text(_time.format(context)),
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                        context: context, initialTime: _time);
+                    if (picked != null) setState(() => _time = picked);
+                  },
+                ),
               ),
-            ),
+            ],
             if (dated)
               field(
                 t('pickDate'),
@@ -579,14 +724,30 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
           const SizedBox(width: 12),
           Expanded(
             child: FilledButton(
-              onPressed: (dated && _date == null)
+              onPressed: (dated && _date == null) ||
+                      (_medicine && _name.text.trim().isEmpty)
                   ? null
-                  : () => Navigator.pop(
-                      context,
-                      NewReminder(_kind, _label.text.trim(), _time, _date,
-                          widget.defaultBy.trim().isEmpty
-                              ? 'self'
-                              : widget.defaultBy.trim())),
+                  : () {
+                      final by = widget.defaultBy.trim().isEmpty
+                          ? 'self'
+                          : widget.defaultBy.trim();
+                      if (_medicine) {
+                        final times = [..._times]..sort((a, b) =>
+                            (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+                        Navigator.pop(
+                            context,
+                            NewReminder(
+                                _kind,
+                                medicineLabel(widget.language, _name.text, _dose.text, _food),
+                                times.first,
+                                null,
+                                by,
+                                extraTimes: times.sublist(1)));
+                      } else {
+                        Navigator.pop(context,
+                            NewReminder(_kind, _label.text.trim(), _time, _date, by));
+                      }
+                    },
               child: Text(t('save')),
             ),
           ),

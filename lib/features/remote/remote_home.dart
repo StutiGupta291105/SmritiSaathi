@@ -626,36 +626,96 @@ class _RemoteHomeState extends State<RemoteHome> {
     );
   }
 
-  Widget _inviteCard(Map<String, dynamic> i) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: AppCard(
-          color: Palette.tileOrange,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('${i['patient_display_name']}',
-                  style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w700)),
-              Text(
-                  '${t('rmInvitedAs')} ${t(i['member_role'] == 'doctor' ? 'roleDoctor' : 'roleCaretaker')}',
-                  style: const TextStyle(fontSize: 13.5)),
-              const SizedBox(height: 10),
-              Row(children: [
-                Expanded(
-                  child: FilledButton(
-                      onPressed: () => _answer(i['id'] as String, true),
-                      child: Text(t('rmAccept'))),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                      onPressed: () => _answer(i['id'] as String, false),
-                      child: Text(t('rmDecline'))),
-                ),
-              ]),
-            ],
-          ),
+  Widget _inviteCard(Map<String, dynamic> i) {
+    final since = DateTime.tryParse('${i['created_at'] ?? ''}');
+    final asDoctor = i['member_role'] == 'doctor';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        key: ValueKey('invite_${i['id']}'),
+        color: Palette.tileOrange,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              _avatar('${i['patient_display_name']}', radius: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${i['patient_display_name']}',
+                          style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: Palette.brandDeep)),
+                      const SizedBox(height: 2),
+                      Text(
+                          '${t('rmInvitedAs')} ${t(asDoctor ? 'roleDoctor' : 'roleCaretaker')}'
+                          '${since == null ? '' : ' · ${agoText(widget.lang, since, DateTime.now())}'}',
+                          style: const TextStyle(
+                              fontSize: 13, color: Palette.muted)),
+                    ]),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: FilledButton(
+                    key: ValueKey('accept_${i['id']}'),
+                    onPressed: () => _answer(i['id'] as String, true),
+                    child: Text(t('rmAccept'))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                    key: ValueKey('decline_${i['id']}'),
+                    style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: _accent,
+                        side: BorderSide(color: _accent.withValues(alpha: .4))),
+                    onPressed: () => _answer(i['id'] as String, false),
+                    child: Text(t('rmDecline'))),
+              ),
+            ]),
+          ],
         ),
+      ),
+    );
+  }
+
+  /// Three short steps, so a new doctor or caregiver knows how a patient
+  /// comes to appear in the app.
+  Widget _howLinking() => AppCard(
+        key: const ValueKey('howLinking'),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(t('rqHowTitle'),
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Palette.brandDeep)),
+          const SizedBox(height: 10),
+          for (final (n, k) in [(1, 'rqHow1'), (2, 'rqHow2'), (3, 'rqHow3')])
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                        radius: 12,
+                        backgroundColor: _accent.withValues(alpha: .12),
+                        child: Text('$n',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: _accent))),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child: Text(t(k),
+                            style: const TextStyle(fontSize: 14, height: 1.35))),
+                  ]),
+            ),
+        ]),
       );
 
   // ---- tab 2: requests (invitations from patients) -------------------------
@@ -807,15 +867,24 @@ class _RemoteHomeState extends State<RemoteHome> {
             const Padding(
                 padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator()))
-          else if (_invites.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(t('rmNoRequests'),
-                  key: const ValueKey('noRequests'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: Palette.muted)),
+          else if (_invites.isEmpty) ...[
+            AppCard(
+              color: Palette.tileGreen,
+              child: Row(children: [
+                const Icon(Icons.mark_email_read_outlined,
+                    size: 28, color: Palette.green),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(t('rmNoRequests'),
+                      key: const ValueKey('noRequests'),
+                      style: const TextStyle(fontSize: 14, height: 1.35)),
+                ),
+              ]),
             ),
-          for (final i in _invites) _inviteCard(i),
+          ] else
+            for (final i in _invites) _inviteCard(i),
+          const SizedBox(height: 4),
+          _howLinking(),
         ],
       );
 
@@ -860,6 +929,47 @@ class _RemoteHomeState extends State<RemoteHome> {
 
   // ---- tab 2: alerts -----------------------------------------------------------
 
+  Widget _alertRow(Map<String, dynamic> p, Map<String, dynamic> a) {
+    final attention = a['severity'] == 'attention';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        padding: const EdgeInsets.all(12),
+        onTap: () => _open(p),
+        child: Row(children: [
+          IconBadge(
+              icon: attention
+                  ? Icons.notifications_active_rounded
+                  : Icons.lightbulb_outline_rounded,
+              fg: attention ? Palette.red : Palette.orange,
+              bg: attention ? Palette.tileRed : Palette.tileOrange,
+              size: 44,
+              circle: true),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${p['display_name']}',
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Palette.brandDeep)),
+                Text(
+                    trf(widget.lang, 'alert_${a['kind']}',
+                        a: (a['a'] as int?) ?? 0, b: (a['b'] as int?) ?? 0),
+                    style: const TextStyle(fontSize: 13, color: Palette.muted)),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: Palette.muted),
+        ]),
+      ),
+    );
+  }
+
+  /// Alerts about how the app is being used, most urgent first. A doctor reaches
+  /// this page from the bell on Home, so it has a way back.
   Widget _alertsTab() {
     final items = <(Map<String, dynamic>, Map<String, dynamic>)>[
       for (final p in _patients)
@@ -867,63 +977,68 @@ class _RemoteHomeState extends State<RemoteHome> {
             .cast<Map<String, dynamic>>())
           (p, a)
     ];
+    final urgent = [for (final x in items) if (x.$2['severity'] == 'attention') x];
+    final gentle = [for (final x in items) if (x.$2['severity'] != 'attention') x];
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        ScreenTitle(t('rmStatAlerts')),
+        Row(children: [
+          if (_doctor)
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: InkWell(
+                key: const ValueKey('alertsBack'),
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => setState(() => _tab = 0),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.arrow_back_rounded, color: Palette.brandDeep),
+                ),
+              ),
+            ),
+          Expanded(child: ScreenTitle(t('rmStatAlerts'))),
+          if (items.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                  color: urgent.isEmpty ? Palette.tileOrange : Palette.tileRed,
+                  borderRadius: BorderRadius.circular(14)),
+              child: Text('${items.length}',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: urgent.isEmpty ? Palette.orange : Palette.red)),
+            ),
+        ]),
         const SizedBox(height: 12),
         if (items.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            child: Text(t('rmNoAlertsAll'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 15, color: Palette.muted)),
+          AppCard(
+            color: Palette.tileGreen,
+            child: Row(children: [
+              const Icon(Icons.check_circle_rounded, size: 30, color: Palette.green),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Text(t('rmNoAlertsAll'),
+                      style: const TextStyle(fontSize: 15, height: 1.35))),
+            ]),
           ),
-        for (final (p, a) in items)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: AppCard(
-              padding: const EdgeInsets.all(12),
-              onTap: () => _open(p),
-              child: Row(children: [
-                IconBadge(
-                    icon: a['severity'] == 'attention'
-                        ? Icons.notifications_active_rounded
-                        : Icons.lightbulb_outline_rounded,
-                    fg: a['severity'] == 'attention'
-                        ? Palette.red
-                        : Palette.orange,
-                    bg: a['severity'] == 'attention'
-                        ? Palette.tileRed
-                        : Palette.tileOrange,
-                    size: 44,
-                    circle: true),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${p['display_name']}',
-                          style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Palette.brandDeep)),
-                      Text(
-                          trf(widget.lang, 'alert_${a['kind']}',
-                              a: (a['a'] as int?) ?? 0,
-                              b: (a['b'] as int?) ?? 0),
-                          style: const TextStyle(
-                              fontSize: 12.5, color: Palette.muted)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: Palette.muted),
-              ]),
-            ),
-          ),
+        if (urgent.isNotEmpty) ...[
+          _heading(t('rmStatusAttention')),
+          const SizedBox(height: 8),
+          for (final (p, a) in urgent) _alertRow(p, a),
+          const SizedBox(height: 6),
+        ],
+        if (gentle.isNotEmpty) ...[
+          _heading(t('alertsGentle')),
+          const SizedBox(height: 8),
+          for (final (p, a) in gentle) _alertRow(p, a),
+        ],
         if (items.isNotEmpty)
-          Text(t('alertHelp'),
-              style: const TextStyle(fontSize: 12, color: Palette.muted)),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(t('alertHelp'),
+                style: const TextStyle(fontSize: 12, color: Palette.muted)),
+          ),
       ],
     );
   }
@@ -1169,14 +1284,17 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
     if (r == null) return;
     final d = r.date;
     try {
-      await widget.api.addCareReminder(widget.patientId,
-          kind: r.kind.name,
-          label: r.label,
-          hour: r.time.hour,
-          minute: r.time.minute,
-          onDate: d == null
-              ? null
-              : '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}');
+      // A medicine taken several times a day becomes one reminder per time.
+      for (final at in r.allTimes) {
+        await widget.api.addCareReminder(widget.patientId,
+            kind: r.kind.name,
+            label: r.label,
+            hour: at.hour,
+            minute: at.minute,
+            onDate: d == null
+                ? null
+                : '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}');
+      }
     } on ApiException catch (e) {
       if (mounted) _fail(e);
       return;
