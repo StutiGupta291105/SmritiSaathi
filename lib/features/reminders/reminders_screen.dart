@@ -431,6 +431,18 @@ String medicineLabel(String lang, String name, String dose, String? food) => [
 
 const _kFoods = ['before', 'after', 'with', 'any'];
 
+/// Everyday routines to add with one tap: label key, kind, and a sensible time.
+const kRoutineTemplates = <(String, ReminderKind, int, int)>[
+  ('tplWalk', ReminderKind.activity, 7, 0),
+  ('tplWater', ReminderKind.hydration, 10, 0),
+  ('tplBreakfast', ReminderKind.activity, 8, 30),
+  ('tplLunch', ReminderKind.activity, 13, 0),
+  ('tplDinner', ReminderKind.activity, 20, 0),
+  ('tplExercise', ReminderKind.activity, 17, 0),
+  ('tplCallFamily', ReminderKind.activity, 18, 30),
+  ('tplSleep', ReminderKind.activity, 22, 0),
+];
+
 /// Reads a label written by [medicineLabel] back into its parts (for editing).
 ({String name, String dose, String? food}) parseMedicineLabel(String lang, String label) {
   final parts = label.split(' · ').map((x) => x.trim()).toList();
@@ -639,6 +651,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
           children: [
             if (widget.kinds.length > 1)
               DropdownButtonFormField<ReminderKind>(
+                key: ValueKey(_kind), // follows a template that changes the kind
                 initialValue: _kind,
                 isExpanded: true,
                 borderRadius: BorderRadius.circular(16),
@@ -655,6 +668,23 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
             if (_medicine)
               ..._medicineFields(field)
             else ...[
+              if (!dated && !_editing)
+                field(
+                  t('tplTitle'),
+                  Wrap(spacing: 8, runSpacing: 4, children: [
+                    for (final (key, kind, h, m) in kRoutineTemplates)
+                      if (widget.kinds.contains(kind))
+                        ActionChip(
+                          key: ValueKey('tpl_$key'),
+                          label: Text(t(key)),
+                          onPressed: () => setState(() {
+                            _kind = kind;
+                            _label.text = t(key);
+                            _time = TimeOfDay(hour: h, minute: m);
+                          }),
+                        ),
+                  ]),
+                ),
               field(
                   t('reminderLabel'),
                   TextField(

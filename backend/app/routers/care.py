@@ -8,7 +8,9 @@ from .. import analytics, audit
 from ..db import utcnow
 from ..deps import (consent_granted, current_user, get_db, patient_for_viewer,
                     require_role)
-from ..models import (ROLE_PURPOSE, CareReminder, GameSession, Link, Patient,
+from pydantic import BaseModel, Field
+
+from ..models import (ROLE_PURPOSE, CareNote, CareReminder, GameSession, Link, Patient,
                       ReminderMark, ReminderSchedule, User)
 from .chat import ROUTINE_BODY, notify_user
 from ..schemas import CareReminderIn, CareReminderPatch, InviteForMe
@@ -271,4 +273,57 @@ def delete_care_reminder(patient_id: str, reminder_id: str,
         raise HTTPException(404, "not_found")
     r.deleted = True
     audit.record(db, user.id, "care_reminder_deleted", f"patient={p.id} reminder={r.id}")
+    return Response(status_code=204)
+
+
+# ---- care notes (caregiver and doctor of one patient) --------------------------------
+
+class NoteIn(BaseModel):
+    body: str = Field(min_length=1, max_length=500)
+
+
+def _note_out(n: CareNote, user: User) -> dict:
+    return {"id": n.id, "body": n.body, "author_name": n.author_name,
+            "author_role": n.author_role, "created_at": n.created_at.isoformat(),
+            "mine": n.author_id == user.id}
+
+
+@router.get("/patients/{patient_id}/care-notes")
+def list_care_notes(patient_id: str, user: User = Depends(require_role("caretaker", "doctor")),
+                    db: Session = Depends(get_db)):
+    """Newest first. Only the patient's linked caregiver and doctor (with sharing on)
+    can read them; the patient's own phone never receives them."""
+    p, _ = patient_for_viewer(db, user, patient_id)
+    rows = db.execute(select(CareNote).where(
+        CareNote.patient_id == p.id, CareNote.deleted.is_(False))
+        .order_by(CareNote.created_at.desc(), CareNote.id).limit(100)).scalars().all()
+    return [_note_out(n, user) for n in rows]
+
+
+@router.post("/patients/{patient_id}/care-notes", status_code=201)
+def add_care_note(patient_id: str, body: NoteIn,
+                  user: User = Depends(require_role("caretaker", "doctor")),
+                  db: Session = Depends(get_db)):
+    p, _ = patient_for_viewer(db, user, patient_id)
+    text = body.body.strip()
+    if not text:
+        raise HTTPException(422, "empty_note")
+    n = CareNote(patient_id=p.id, author_id=user.id, author_name=user.name,
+                 author_role=user.role, body=text)
+    db.add(n)
+    db.flush()
+    audit.record(db, user.id, "care_note_added", f"patient={p.id} note={n.id}")
+    return _note_out(n, user)
+
+
+@router.delete("/patients/{patient_id}/care-notes/{note_id}", status_code=204)
+def delete_care_note(patient_id: str, note_id: str,
+                     user: User = Depends(require_role("caretaker", "doctor")),
+                     db: Session = Depends(get_db)):
+    p, _ = patient_for_viewer(db, user, patient_id)
+    n = db.get(CareNote, note_id)
+    if n is None or n.patient_id != p.id or n.deleted or n.author_id != user.id:
+        raise HTTPException(404, "not_found")
+    n.deleted = True
+    audit.record(db, user.id, "care_note_deleted", f"patient={p.id} note={n.id}")
     return Response(status_code=204)

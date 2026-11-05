@@ -232,7 +232,10 @@ def threads(user: User = Depends(current_user), db: Session = Depends(get_db)):
             peer_name = peer.name if peer else ""
             peer_role = "doctor" if user.role == "caretaker" else "caretaker"
         out.append({
-            "link_id": c.id, "kind": c.kind, "patient_id": None, "patient_name": p.display_name,
+            # A care-team chat is about a patient both people are linked to, so its id
+            # is shown; an opinion chat never reveals one (the doctor has no access).
+            "link_id": c.id, "kind": c.kind,
+            "patient_id": p.id if c.kind == "pro" else None, "patient_name": p.display_name,
             "member_role": "doctor" if user.role == "patient" else peer_role,
             "member_name": peer_name, "peer_name": peer_name, "peer_role": peer_role,
             "member_phone": None,

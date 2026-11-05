@@ -147,6 +147,9 @@ void main() {
     'remote home': (l) => RemoteHome(
         api: api, user: const ServerUser('u', 'caretaker', 'Ravi Kumar Sharma'),
         lang: l, onLogout: () {}),
+    'caregiver consult': (l) => RemoteHome(
+        api: api, user: const ServerUser('u', 'caretaker', 'Ravi Kumar Sharma'),
+        lang: l, onLogout: () {}, initialTab: 2),
     'doctor home': (l) => RemoteHome(
         api: api, user: const ServerUser('u', 'doctor', 'Dr Ananthanarayanan Venkataraghavan'),
         lang: l, onLogout: () {}),
@@ -159,6 +162,11 @@ void main() {
     'doctor alerts': (l) => RemoteHome(
         api: api, user: const ServerUser('u', 'doctor', 'Dr Rao'),
         lang: l, onLogout: () {}, initialTab: 5),
+    'routine dialog with templates': (l) => Builder(builder: (c) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => showAddReminderDialog(c,
+              language: l, kinds: const [ReminderKind.activity, ReminderKind.hydration, ReminderKind.appointment]));
+          return const Scaffold();
+        }),
     'prescribe dialog': (l) => Builder(builder: (c) {
           WidgetsBinding.instance.addPostFrameCallback((_) => showAddReminderDialog(c,
               language: l,
@@ -167,6 +175,9 @@ void main() {
         }),
     'remote report': (l) => RemoteReportScreen(
         api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l),
+    'caregiver patient': (l) => RemotePatientScreen(
+        api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l,
+        canSetBaseline: true, onMessage: () {}, onMessageDoctor: () {}),
     'remote patient': (l) => RemotePatientScreen(
         api: api, patientId: 'p1', name: 'Asha Ramchandra Prasad', lang: l, canSetBaseline: true),
     'allow permissions': (l) => OnboardingScreen(

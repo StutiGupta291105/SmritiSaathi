@@ -36,8 +36,12 @@ class GardenHeader extends StatelessWidget {
     required this.progress,
     required this.progressText,
     required this.now,
+    this.trailing,
   });
   final String greeting, name, progressText;
+
+  /// Something small in the bottom-right corner (a notification bell, say).
+  final Widget? trailing;
   final List<int>? photo;
   final double progress;
   final DateTime now;
@@ -103,6 +107,8 @@ class GardenHeader extends StatelessWidget {
                         fontSize: 14, fontWeight: FontWeight.w700, color: Palette.green)),
               ),
             ),
+            if (trailing != null)
+              Positioned(right: 12, bottom: 10, child: trailing!),
           ]),
         ),
       ),
