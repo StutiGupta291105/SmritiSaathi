@@ -1,5 +1,10 @@
 # Real-phone test checklist (offline and reminders)
 
+> **"App not installed"?** Android refuses an update that is signed with a different key than
+> the installed app. Test builds before the fixed test key (`.github/keys/`) each had a random key.
+> Uninstall Smriti Sathi once (account data stays on the server; anything saved only on the phone
+> is lost), then install the new APK. After that, every new test APK installs over the old one.
+
 The automated tests use a real server and the real app code, but cannot toggle a phone's
 radio or kill its battery. Run this once on a physical Android phone with the APK from the
 `build-apk.yml` workflow. Tick each line; note the phone model and Android version.

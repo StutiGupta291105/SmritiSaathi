@@ -67,7 +67,14 @@ jobs:
             echo "SMRITI_KEY_PASSWORD=$SMRITI_KEY_PASSWORD" >> "$GITHUB_ENV"
             SMRITI_KEYSTORE_PATH="$RUNNER_TEMP/release.jks" python3 .github/scripts/sign_android.py
           else
-            echo "No signing key configured; using the debug key."
+            # A fixed, public, test-only key (see .github/keys/README.md): every test build
+            # then has the same signature, so a new APK installs over the old one instead
+            # of failing with "App not installed".
+            echo "SMRITI_KEYSTORE_PATH=$GITHUB_WORKSPACE/.github/keys/smriti-test.jks" >> "$GITHUB_ENV"
+            echo "SMRITI_KEYSTORE_PASSWORD=smriti-test" >> "$GITHUB_ENV"
+            echo "SMRITI_KEY_ALIAS=smriti-test" >> "$GITHUB_ENV"
+            echo "SMRITI_KEY_PASSWORD=smriti-test" >> "$GITHUB_ENV"
+            SMRITI_KEYSTORE_PATH="$GITHUB_WORKSPACE/.github/keys/smriti-test.jks" python3 .github/scripts/sign_android.py
           fi
       - name: Generate the launcher icon from the logo
         run: dart run flutter_launcher_icons
