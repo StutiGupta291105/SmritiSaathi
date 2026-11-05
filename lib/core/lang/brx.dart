@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangBrx = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "chatToday": "दिनै",
+    "chatYesterday": "सोमा",
+    "chatEarlier": "आगोमानि बिबार्थि फोरमायना",
+    "chatClear": "चैट इतिहास मेटाआ",
+    "chatClearAsk": "बे फोनथिनिफ्रायनो स्मृतिजों नोंनि गासै चैटफोरखौ मेटानो नङा?",
+    "chatKeptNote": "स्मृतिजों नोंनि चैटफोर बे फोनाव जिबो थाङो।",
     "repeatOn": "बे सानफोरआव फिन",
     "rxNameNeeded": "नाजाबो बैसाग्रानि मुंखौ बिजिर।",
     "notesTab": "नोट",

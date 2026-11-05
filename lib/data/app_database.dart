@@ -81,7 +81,7 @@ class AppDatabase implements OfflineStore {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 11;
+  static const schemaVersion = 12;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -164,6 +164,7 @@ class AppDatabase implements OfflineStore {
     await _createCareReminderTables(db);
     await _createWaterLog(db);
     await _createOfflineTables(db);
+    await _createCompanionMessages(db);
   }
 
   /// What the phone keeps to work offline: the last answer to a few server reads
@@ -192,6 +193,16 @@ class AppDatabase implements OfflineStore {
     await db.execute(
         'CREATE TABLE IF NOT EXISTS care_reminder_deleted(remote_id TEXT PRIMARY KEY)');
     await _createScheduleDeleted(db);
+  }
+
+  /// 'Talk to Smriti' conversation, kept on this phone only (encrypted).
+  static Future<void> _createCompanionMessages(Database db) async {
+    await db.execute('CREATE TABLE IF NOT EXISTS companion_messages('
+        'id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id TEXT NOT NULL, '
+        'from_user INTEGER NOT NULL, text TEXT NOT NULL, '
+        'created_at TEXT NOT NULL, emergency INTEGER NOT NULL DEFAULT 0)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_companion_messages_p '
+        'ON companion_messages(patient_id, id)');
   }
 
   /// Reminders deleted on this phone whose copy on the server (the timing the
@@ -262,6 +273,7 @@ class AppDatabase implements OfflineStore {
     if (oldVersion < 9) await _createWaterLog(db);
     if (oldVersion < 10) await _createOfflineTables(db);
     if (oldVersion < 11) await _createScheduleDeleted(db);
+    if (oldVersion < 12) await _createCompanionMessages(db);
   }
 
   static Future<void> _addColumn(Database db, String table, String def) async {
@@ -1535,7 +1547,8 @@ class AppDatabase implements OfflineStore {
       'family_members',
       'care_links',
       'reminder_log',
-      'water_log'
+      'water_log',
+      'companion_messages'
     ]) {
       await _db.delete(t, where: 'patient_id = ?', whereArgs: [patientId]);
     }
@@ -1546,4 +1559,33 @@ class AppDatabase implements OfflineStore {
     await audit(requestedBy, 'patient_erased',
         'patient=$patientId account=${accountId ?? '-'}');
   }
+
+  /// Saves one line of the Smriti conversation.
+  Future<void> addCompanionMessage(String patientId,
+      {required bool fromUser,
+      required String text,
+      DateTime? at,
+      bool emergency = false}) async {
+    await _db.insert('companion_messages', {
+      'patient_id': patientId,
+      'from_user': fromUser ? 1 : 0,
+      'text': text,
+      'created_at': (at ?? DateTime.now()).toIso8601String(),
+      'emergency': emergency ? 1 : 0,
+    });
+  }
+
+  /// Newest [limit] lines, oldest first; [beforeId] pages further back.
+  Future<List<Map<String, Object?>>> companionMessages(String patientId,
+      {int limit = 40, int? beforeId}) async {
+    final rows = await _db.query('companion_messages',
+        where: beforeId == null ? 'patient_id = ?' : 'patient_id = ? AND id < ?',
+        whereArgs: beforeId == null ? [patientId] : [patientId, beforeId],
+        orderBy: 'id DESC',
+        limit: limit);
+    return rows.reversed.toList();
+  }
+
+  Future<void> clearCompanionMessages(String patientId) => _db.delete(
+      'companion_messages', where: 'patient_id = ?', whereArgs: [patientId]);
 }

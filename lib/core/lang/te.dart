@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangTe = LangData(
   strings: {
     "appName": "స్మృతి సాథీ",
+    "chatToday": "ఈ రోజు",
+    "chatYesterday": "నిన్న",
+    "chatEarlier": "పాత సందేశాలను చూపించు",
+    "chatClear": "చాట్ చరిత్రను తొలగించు",
+    "chatClearAsk": "ఈ ఫోన్ నుండి స్మృతితో మీ చాట్‌లన్నీ తొలగించాలా?",
+    "chatKeptNote": "స్మృతితో మీ చాట్‌లు ఈ ఫోన్‌లో మాత్రమే భద్రంగా ఉంటాయి.",
     "repeatOn": "ఈ రోజుల్లో పునరావృతం",
     "rxNameNeeded": "దయచేసి మందు పేరు నమోదు చేయండి.",
     "notesTab": "గమనికలు",

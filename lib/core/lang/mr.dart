@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangMr = LangData(
   strings: {
     "appName": "स्मृती साथी",
+    "chatToday": "आज",
+    "chatYesterday": "काल",
+    "chatEarlier": "जुने संदेश दाखवा",
+    "chatClear": "चॅट इतिहास पुसा",
+    "chatClearAsk": "या फोनवरून स्मृतीसोबतच्या तुमच्या सर्व चॅट पुसायच्या का?",
+    "chatKeptNote": "स्मृतीसोबतच्या तुमच्या चॅट फक्त याच फोनवर जतन केल्या जातात.",
     "repeatOn": "या दिवशी पुन्हा",
     "rxNameNeeded": "कृपया औषधाचे नाव टाका.",
     "notesTab": "नोंदी",

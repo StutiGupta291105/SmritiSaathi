@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangKok = LangData(
   strings: {
     "appName": "स्मृती साथी",
+    "chatToday": "आज",
+    "chatYesterday": "काल",
+    "chatEarlier": "जुने संदेश दाखय",
+    "chatClear": "चॅट इतिहास पुसून उडय",
+    "chatClearAsk": "ह्या फोनार सावन स्मृतीकडले तुमचे सगळे चॅट पुसून उडोवचे?",
+    "chatKeptNote": "स्मृतीकडले तुमचे चॅट फकत ह्याच फोनार सांबाळटात.",
     "repeatOn": "ह्या दिसांक परत",
     "rxNameNeeded": "कृपया औषदाचें नांव घालात.",
     "notesTab": "नोंदी",

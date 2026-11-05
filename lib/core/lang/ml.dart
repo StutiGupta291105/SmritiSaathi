@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangMl = LangData(
   strings: {
     "appName": "സ്മൃതി സാഥി",
+    "chatToday": "ഇന്ന്",
+    "chatYesterday": "ഇന്നലെ",
+    "chatEarlier": "പഴയ സന്ദേശങ്ങൾ കാണിക്കുക",
+    "chatClear": "ചാറ്റ് ചരിത്രം മായ്ക്കുക",
+    "chatClearAsk": "ഈ ഫോണിൽ നിന്ന് സ്മൃതിയുമായുള്ള എല്ലാ ചാറ്റുകളും മായ്ക്കണോ?",
+    "chatKeptNote": "സ്മൃതിയുമായുള്ള നിങ്ങളുടെ ചാറ്റുകൾ ഈ ഫോണിൽ മാത്രമേ സൂക്ഷിക്കൂ.",
     "repeatOn": "ഈ ദിവസങ്ങളിൽ ആവർത്തിക്കുക",
     "rxNameNeeded": "ദയവായി മരുന്നിന്റെ പേര് നൽകുക.",
     "notesTab": "കുറിപ്പുകൾ",

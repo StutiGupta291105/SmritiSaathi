@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangUr = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "chatToday": "آج",
+    "chatYesterday": "کل",
+    "chatEarlier": "پرانے پیغامات دکھائیں",
+    "chatClear": "چیٹ کی تاریخ مٹائیں",
+    "chatClearAsk": "کیا اس فون سے سمرتی کے ساتھ آپ کی تمام چیٹس مٹا دیں؟",
+    "chatKeptNote": "سمرتی کے ساتھ آپ کی چیٹس صرف اسی فون میں محفوظ رہتی ہیں۔",
     "repeatOn": "ان دنوں دہرائیں",
     "rxNameNeeded": "براہِ کرم دوا کا نام درج کریں۔",
     "notesTab": "نوٹس",

@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangKs = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "chatToday": "اَز",
+    "chatYesterday": "راتھ",
+    "chatEarlier": "پرانۍ پیغام ہیٹھ",
+    "chatClear": "چیٹ ہسٹری مٹاو",
+    "chatClearAsk": "کیا اتھ فونہ پیٹھ سمرتی سیتی تُہنزن سارنی چیٹن مٹاوُن؟",
+    "chatKeptNote": "سمرتی سیتی تُہنزن چیٹن چھیہ صرف اتھ فونس منز محفوظ۔",
     "repeatOn": "یِم دۅہ دوبارہ",
     "rxNameNeeded": "مہربانی کرِتھ دوایہِ ناو درج کرو۔",
     "notesTab": "نوٹ",

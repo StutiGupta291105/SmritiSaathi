@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangTa = LangData(
   strings: {
     "appName": "ஸ்மிருதி சாத்தி",
+    "chatToday": "இன்று",
+    "chatYesterday": "நேற்று",
+    "chatEarlier": "முந்தைய செய்திகளைக் காட்டு",
+    "chatClear": "அரட்டை வரலாற்றை அழி",
+    "chatClearAsk": "இந்த ஃபோனிலிருந்து ஸ்மிருதியுடனான உங்கள் எல்லா அரட்டைகளையும் அழிக்கவா?",
+    "chatKeptNote": "ஸ்மிருதியுடனான உங்கள் அரட்டைகள் இந்த ஃபோனில் மட்டுமே சேமிக்கப்படும்.",
     "repeatOn": "இந்த நாட்களில் மீண்டும்",
     "rxNameNeeded": "மருந்தின் பெயரை உள்ளிடவும்.",
     "notesTab": "குறிப்புகள்",

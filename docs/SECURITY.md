@@ -61,6 +61,11 @@ end).
 
 ## Talk to Smriti (AI companion): what to know before turning it on
 
+- **Chat history** is one continuous conversation with date and time, kept only in the
+  phone's encrypted database (table `companion_messages`). It is deleted with the
+  patient (erasure) or by "Clear chat history" in the chat menu. The server still stores
+  no message content; it receives only the last 20 lines as context for each answer.
+
 - **Two styles** (`SMRITI_COMPANION_STYLE`): `assistant` (the default) is a basic AI
   helper that replies in the language the person writes in (all 23 supported
   languages, including Indian languages typed in English letters), keeps them company,

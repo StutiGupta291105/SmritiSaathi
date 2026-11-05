@@ -182,7 +182,7 @@ void main() {
           patientId: pid,
           lang: 'en',
           firstName: 'Asha',
-          history: const [ChatTurn(false, 'Hi'), ChatTurn(true, 'Hello')],
+          history: [ChatTurn(false, 'Hi'), ChatTurn(true, 'Hello')],
           text: 'Tell me a story');
       expect(r.text, 'I am here.');
       expect(calls, ['/v1/patients/srv-1/companion/chat']);

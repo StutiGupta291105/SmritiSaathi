@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangSat = LangData(
   strings: {
     "appName": "ᱥᱚᱢᱨᱤᱛᱤ ᱥᱟᱛᱷᱤ",
+    "chatToday": "आज",
+    "chatYesterday": "काल",
+    "chatEarlier": "आगु मेसेज़ पेचा",
+    "chatClear": "चैट इतिहास मेटा",
+    "chatClearAsk": "इ फोन ठे स्मृति सेत् आपनाक् अदोक् चैट मेटा?",
+    "chatKeptNote": "स्मृति सेत् आपनाक् चैट इ फोनरेहे सहेदोक्।",
     "repeatOn": "ᱱᱚᱶᱟ ᱢᱟᱦᱟ ᱨᱮ ᱫᱚᱦᱲᱟ",
     "rxNameNeeded": "ᱫᱟᱭᱟ ᱠᱟᱛᱮ ᱚᱞᱚᱝ ᱧᱩᱛᱩᱢ ᱚᱞ ᱢᱮ।",
     "notesTab": "ᱱᱚᱴ",

@@ -5,9 +5,14 @@ import '../data/app_database.dart';
 import 'api_client.dart';
 
 class ChatTurn {
-  const ChatTurn(this.fromUser, this.text);
+  ChatTurn(this.fromUser, this.text, {DateTime? at, this.id})
+      : at = at ?? DateTime.now();
   final bool fromUser;
   final String text;
+  final DateTime at;
+
+  /// Row id in the local history (null until saved).
+  final int? id;
 }
 
 class CompanionReply {
@@ -30,7 +35,8 @@ class CompanionReply {
 /// 'Talk to Smriti'. Emergencies are answered on the phone with fixed text and
 /// never leave it. With the 'companion' consent and a signed-in server account,
 /// other messages go to the server's AI companion; otherwise (or if that fails)
-/// the on-device helper answers. Chat history lives in memory only.
+/// the on-device helper answers. The conversation is kept on the phone only (encrypted); the server
+/// receives just the last few lines as context and stores none of it.
 class CompanionService {
   CompanionService({required this.db, this.api, DateTime Function()? clock})
       : _clock = clock ?? DateTime.now;
@@ -112,7 +118,7 @@ class CompanionService {
       final out = await api!.companionChat(
         (await _serverId(patientId))!,
         messages: [
-          for (final t in history.take(history.length))
+          for (final t in history.skip(history.length > 20 ? history.length - 20 : 0))
             {'role': t.fromUser ? 'user' : 'assistant', 'content': t.text},
           {'role': 'user', 'content': text},
         ],

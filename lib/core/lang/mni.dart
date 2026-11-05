@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangMni = LangData(
   strings: {
     "appName": "ꯁ꯭ꯃꯔꯤꯇꯤ ꯁꯥꯊꯤ",
+    "chatToday": "ঙসি",
+    "chatYesterday": "নৈ",
+    "chatEarlier": "মুংদা মেসেজ উৎলু",
+    "chatClear": "চেট হিস্ট্রি কাংলু",
+    "chatClearAsk": "ইম ফোনদগী স্মৃতি দা নখোইগী চেট অমসুং থম্লিবনি?",
+    "chatKeptNote": "স্মৃতি দা নখোইগী চেটশিং ইম ফোনদা চৈৎকনি।",
     "repeatOn": "ꯅꯨꯃꯤꯠ ꯃꯁꯤꯗꯥ ꯑꯃꯨꯛ ꯍꯟꯅꯕ",
     "rxNameNeeded": "ꯃꯦꯗꯤꯁꯤꯅꯒꯤ ꯃꯤꯡ ꯏꯌꯨ꯫",
     "notesTab": "ꯅꯣꯠ",

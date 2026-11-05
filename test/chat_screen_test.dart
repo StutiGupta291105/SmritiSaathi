@@ -48,10 +48,12 @@ void main() {
 
   testWidgets('greets, answers the day button, and shows the helper note', (t) async {
     await t.pumpWidget(app());
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
     await t.pump();
     expect(find.textContaining('not a person, doctor or lawyer'), findsOneWidget);
     expect(find.textContaining('I am Smriti'), findsOneWidget);
     await t.tap(find.text('What day is it?'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
     await t.pump();
     await t.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('Today is Tuesday, 10 March 2026'), findsOneWidget);
@@ -81,5 +83,39 @@ void main() {
     await t.pump(const Duration(milliseconds: 400));
     expect(find.text('I can tell you the day.'), findsOneWidget);
     expect(find.text('Online helper: 503 companion_unavailable'), findsOneWidget);
+  });
+
+  testWidgets('the conversation is remembered: date, time, continuation, clear', (t) async {
+    await t.runAsync(() async {
+      await db.addCompanionMessage('p',
+          fromUser: true, text: 'Old question', at: DateTime(2020, 1, 5, 9, 7));
+      await db.addCompanionMessage('p',
+          fromUser: false, text: 'Old answer', at: DateTime(2020, 1, 5, 9, 8));
+    });
+    await t.pumpWidget(app());
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump();
+    expect(find.text('Old question'), findsOneWidget);
+    expect(find.text('Old answer'), findsOneWidget);
+    expect(find.text('5 Jan 2020'), findsOneWidget);
+    expect(find.text('09:07'), findsOneWidget);
+    expect(find.textContaining('I am Smriti'), findsNothing); // not a fresh chat
+    // A new message continues the same thread and is saved.
+    await t.tap(find.text('What day is it?'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(find.text('Today'), findsOneWidget);
+    final rows = await t.runAsync(() => db.companionMessages('p'));
+    expect(rows!.length, 4);
+    // Clear history after confirming.
+    await t.tap(find.byType(PopupMenuButton<String>));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Clear chat history'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Delete'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump();
+    expect(find.text('Old question'), findsNothing);
+    expect((await t.runAsync(() => db.companionMessages('p')))!, isEmpty);
   });
 }

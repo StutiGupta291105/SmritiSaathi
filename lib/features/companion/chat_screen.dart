@@ -47,15 +47,85 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _offlineNote = false;
   String? _why; // why the online helper could not answer, shown in small print
   bool _canAskOnline = false; // server possible but the person has not agreed
+  bool _loaded = false;
+  bool _hasMore = false;
+  static const _page = 40;
 
   String t(String k) => tr(widget.lang, k);
 
   @override
   void initState() {
     super.initState();
-    _turns.add(ChatTurn(false, t('chatHello')));
+    _loadHistory();
     _checkOnline();
   }
+
+  ChatTurn _fromRow(Map<String, Object?> r) => ChatTurn(
+      (r['from_user'] as int) == 1, r['text'] as String,
+      at: DateTime.tryParse(r['created_at'] as String) ?? DateTime.now(),
+      id: r['id'] as int);
+
+  /// The whole conversation is one continuous thread kept on this phone.
+  Future<void> _loadHistory() async {
+    final rows = await widget.db.companionMessages(widget.patientId, limit: _page);
+    if (!mounted) return;
+    setState(() {
+      _turns.insertAll(0, rows.map(_fromRow));
+      _hasMore = rows.length == _page;
+      _loaded = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    });
+  }
+
+  Future<void> _loadEarlier() async {
+    final firstId = _turns.isEmpty ? null : _turns.first.id;
+    if (firstId == null) return;
+    final rows = await widget.db
+        .companionMessages(widget.patientId, limit: _page, beforeId: firstId);
+    if (!mounted) return;
+    setState(() {
+      _turns.insertAll(0, rows.map(_fromRow));
+      _hasMore = rows.length == _page;
+    });
+  }
+
+  Future<void> _clear() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        content: Text(t('chatClearAsk')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(t('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(t('delete'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await widget.db.clearCompanionMessages(widget.patientId);
+    if (mounted) setState(() {
+      _turns.clear();
+      _hasMore = false;
+      _emergency = false;
+      _offlineNote = false;
+      _why = null;
+    });
+  }
+
+  String _dayLabel(DateTime d) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(d.year, d.month, d.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return t('chatToday');
+    if (diff == 1) return t('chatYesterday');
+    const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${d.day} ${m[d.month - 1]} ${d.year}';
+  }
+
+  String _clock(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   @override
   void dispose() {
@@ -73,6 +143,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _add(ChatTurn turn, {bool emergency = false, bool offline = false}) {
+    widget.db.addCompanionMessage(widget.patientId,
+        fromUser: turn.fromUser, text: turn.text, at: turn.at, emergency: emergency)
+        .catchError((_) {}); // history is a convenience; never block the chat
     setState(() {
       _turns.add(turn);
       _busy = false;
@@ -104,7 +177,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.isEmpty || _busy) return;
     _input.clear();
     setState(() => _busy = true);
-    final before = List<ChatTurn>.from(_turns.skip(1)); // without the greeting
+    final before = List<ChatTurn>.from(_turns);
     _add(ChatTurn(true, text));
     setState(() => _busy = true);
     final r = await widget.service.ask(
@@ -135,7 +208,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _bubble(ChatTurn turn) => Align(
         alignment: turn.fromUser ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
+        child: Column(
+          crossAxisAlignment:
+              turn.fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+        Container(
           margin: const EdgeInsets.symmetric(vertical: 5),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           constraints:
@@ -146,6 +223,22 @@ class _ChatScreenState extends State<ChatScreen> {
             border: Border.all(color: Palette.line),
           ),
           child: Text(turn.text, style: const TextStyle(fontSize: 16, height: 1.35)),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Text(_clock(turn.at),
+              style: const TextStyle(fontSize: 11, color: Palette.muted)),
+        ),
+      ]));
+
+  Widget _dayChip(DateTime d) => Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+              color: Palette.tileGreen, borderRadius: BorderRadius.circular(12)),
+          child: Text(_dayLabel(d),
+              style: const TextStyle(fontSize: 12, color: Palette.muted)),
         ),
       );
 
@@ -166,7 +259,15 @@ class _ChatScreenState extends State<ChatScreen> {
             MediaQuery.of(context).viewInsets.bottom >=
         640;
     return Scaffold(
-      appBar: AppBar(centerTitle: true, title: Text(t('chatTitle'))),
+      appBar: AppBar(centerTitle: true, title: Text(t('chatTitle')), actions: [
+        PopupMenuButton<String>(
+          tooltip: t('chatClear'),
+          onSelected: (_) => _clear(),
+          itemBuilder: (_) => [
+            PopupMenuItem(value: 'clear', child: Text(t('chatClear'))),
+          ],
+        ),
+      ]),
       body: SafeArea(
         child: Column(children: [
           Expanded(
@@ -190,11 +291,25 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SizedBox(height: 14),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(t('chatNote'),
+                  child: Text('${t('chatNote')}\n${t('chatKeptNote')}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 12, color: Palette.muted)),
                 ),
-                for (final turn in _turns) _bubble(turn),
+                if (_hasMore)
+                  Center(
+                    child: TextButton(
+                        onPressed: _loadEarlier, child: Text(t('chatEarlier'))),
+                  ),
+                if (_loaded && _turns.isEmpty)
+                  _bubble(ChatTurn(false, t('chatHello'))),
+                for (var i = 0; i < _turns.length; i++) ...[
+                  if (i == 0 ||
+                      DateTime(_turns[i].at.year, _turns[i].at.month, _turns[i].at.day) !=
+                          DateTime(_turns[i - 1].at.year, _turns[i - 1].at.month,
+                              _turns[i - 1].at.day))
+                    _dayChip(_turns[i].at),
+                  _bubble(_turns[i]),
+                ],
                 if (_busy)
                   Padding(
                     padding: const EdgeInsets.all(8),

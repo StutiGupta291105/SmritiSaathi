@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangPa = LangData(
   strings: {
     "appName": "ਸਮ੍ਰਿਤੀ ਸਾਥੀ",
+    "chatToday": "ਅੱਜ",
+    "chatYesterday": "ਕੱਲ੍ਹ",
+    "chatEarlier": "ਪੁਰਾਣੇ ਸੁਨੇਹੇ ਵੇਖੋ",
+    "chatClear": "ਚੈਟ ਇਤਿਹਾਸ ਮਿਟਾਓ",
+    "chatClearAsk": "ਕੀ ਇਸ ਫ਼ੋਨ ਤੋਂ ਸਮ੍ਰਿਤੀ ਨਾਲ ਤੁਹਾਡੀਆਂ ਸਾਰੀਆਂ ਚੈਟਾਂ ਮਿਟਾਉਣੀਆਂ ਹਨ?",
+    "chatKeptNote": "ਸਮ੍ਰਿਤੀ ਨਾਲ ਤੁਹਾਡੀਆਂ ਚੈਟਾਂ ਸਿਰਫ਼ ਇਸੇ ਫ਼ੋਨ ਵਿੱਚ ਸੰਭਾਲੀਆਂ ਜਾਂਦੀਆਂ ਹਨ।",
     "repeatOn": "ਇਹਨਾਂ ਦਿਨਾਂ ਵਿੱਚ ਦੁਹਰਾਓ",
     "rxNameNeeded": "ਕਿਰਪਾ ਕਰਕੇ ਦਵਾਈ ਦਾ ਨਾਮ ਭਰੋ।",
     "notesTab": "ਨੋਟ",

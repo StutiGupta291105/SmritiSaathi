@@ -4,6 +4,12 @@ import '../lang_data.dart';
 const LangData kLangGu = LangData(
   strings: {
     "appName": "સ્મૃતિ સાથી",
+    "chatToday": "આજે",
+    "chatYesterday": "ગઈકાલે",
+    "chatEarlier": "જૂના સંદેશા બતાવો",
+    "chatClear": "ચેટ ઇતિહાસ કાઢી નાખો",
+    "chatClearAsk": "આ ફોનમાંથી સ્મૃતિ સાથેની તમારી બધી ચેટ કાઢી નાખવી છે?",
+    "chatKeptNote": "સ્મૃતિ સાથેની તમારી ચેટ ફક્ત આ ફોનમાં જ સચવાય છે.",
     "repeatOn": "આ દિવસોએ પુનરાવર્તન",
     "rxNameNeeded": "કૃપા કરીને દવાનું નામ દાખલ કરો.",
     "notesTab": "નોંધો",
