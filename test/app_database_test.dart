@@ -949,4 +949,13 @@ void main() {
       expect(await db.waterToday(pid), 0);
     });
   });
+
+  test('upgrading from schema 10 adds the queue of reminder deletions for the server', () async {
+    final old = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
+        options: OpenDatabaseOptions(singleInstance: false));
+    await AppDatabase.upgradeSchema(old, 10);
+    await old.insert('schedule_deleted', {'id': 'r1'}); // the table now exists
+    expect((await old.query('schedule_deleted')).length, 1);
+    await old.close();
+  });
 }

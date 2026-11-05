@@ -81,7 +81,7 @@ class AppDatabase implements OfflineStore {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 10;
+  static const schemaVersion = 11;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -191,7 +191,13 @@ class AppDatabase implements OfflineStore {
         'CREATE TABLE IF NOT EXISTS care_reminder_seen(remote_id TEXT PRIMARY KEY)');
     await db.execute(
         'CREATE TABLE IF NOT EXISTS care_reminder_deleted(remote_id TEXT PRIMARY KEY)');
+    await _createScheduleDeleted(db);
   }
+
+  /// Reminders deleted on this phone whose copy on the server (the timing the
+  /// caregiver and doctor see) still has to be removed.
+  static Future<void> _createScheduleDeleted(Database db) => db.execute(
+      'CREATE TABLE IF NOT EXISTS schedule_deleted(id TEXT PRIMARY KEY)');
 
   /// Upgrade from an older installed version.
   static Future<void> upgradeSchema(Database db, int oldVersion) async {
@@ -255,6 +261,7 @@ class AppDatabase implements OfflineStore {
     }
     if (oldVersion < 9) await _createWaterLog(db);
     if (oldVersion < 10) await _createOfflineTables(db);
+    if (oldVersion < 11) await _createScheduleDeleted(db);
   }
 
   static Future<void> _addColumn(Database db, String table, String def) async {
@@ -809,6 +816,9 @@ class AppDatabase implements OfflineStore {
         whereArgs: [patientId])) {
       if (!remoteIds.contains(row['remote_id'])) {
         await _db.delete('reminders', where: 'id = ?', whereArgs: [row['id']]);
+        // its timing may still be on the server from an earlier sync: remove it there
+        await _db.insert('schedule_deleted', {'id': row['id']},
+            conflictAlgorithm: ConflictAlgorithm.ignore);
         changed = true; // they removed it
       }
     }
@@ -820,6 +830,14 @@ class AppDatabase implements OfflineStore {
         for (final r in await _db.query('care_reminder_deleted'))
           r['remote_id'] as String
       ];
+
+  /// Local reminder ids whose server copy still has to be deleted.
+  Future<List<String>> pendingScheduleDeletes() async => [
+        for (final r in await _db.query('schedule_deleted')) r['id'] as String
+      ];
+
+  Future<void> clearScheduleDelete(String id) =>
+      _db.delete('schedule_deleted', where: 'id = ?', whereArgs: [id]);
 
   Future<void> clearCareReminderDelete(String remoteId) => _db.delete(
       'care_reminder_deleted', where: 'remote_id = ?', whereArgs: [remoteId]);
@@ -850,6 +868,14 @@ class AppDatabase implements OfflineStore {
     final remote = row.isEmpty ? null : row.first['remote_id'] as String?;
     await _db.delete('reminders',
         where: 'id = ? AND patient_id = ?', whereArgs: [reminderId, patientId]);
+    // Its done-marks go with it, so they are not uploaded again for a routine that
+    // no longer exists.
+    await _db.delete('reminder_log',
+        where: 'patient_id = ? AND reminder_id = ?', whereArgs: [patientId, reminderId]);
+    // Whoever set it, the copy of its timing on the server is removed too (once
+    // online), so the caregiver and doctor stop seeing it.
+    await _db.insert('schedule_deleted', {'id': reminderId},
+        conflictAlgorithm: ConflictAlgorithm.ignore);
     // One a caregiver or doctor set: tell the server too, once online.
     if (remote != null) {
       await _db.insert('care_reminder_deleted', {'remote_id': remote},
@@ -1222,6 +1248,7 @@ class AppDatabase implements OfflineStore {
         b.sessions.length +
         b.marks.length +
         (await pendingCareReminderDeletes()).length +
+        (await pendingScheduleDeletes()).length +
         (await outboxList()).length;
   }
 

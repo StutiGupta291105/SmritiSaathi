@@ -73,8 +73,10 @@ def chat(patient_id: str, body: ChatIn, request: Request,
     except companion.CompanionUnavailable as e:
         # "Not set up" and "set up but the service failed (quota, bad key, outage)"
         # need different fixes, so the app is told which.
+        # The short reason (http_429, http_404, URLError...) rides along so the person
+        # helping can see it without the server's logs; it never holds what was said.
         raise HTTPException(503, "ai_not_configured" if str(e) == "no_api_key"
-                            else "companion_unavailable")
+                            else f"companion_unavailable: {str(e)[:40]}")
 
     if usage is None:
         db.add(ChatUsage(patient_id=p.id, day=today, count=1))

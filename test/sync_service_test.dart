@@ -24,6 +24,8 @@ void main() {
   Map<String, dynamic>? lastInvite;
   var careList = <Map<String, dynamic>>[];
   final careDeleted = <String>[];
+  final scheduleDeleted = <String>[];
+  var scheduleDeleteStatus = 204;
   var offline = false;
   var existing = false;
   var serverBaseline = 2;
@@ -62,6 +64,10 @@ void main() {
               return _j(200, {'sessions': 1, 'schedules': 1, 'marks': 0});
             }
             if (p.endsWith('/care-reminders') && r.method == 'GET') return _j(200, careList);
+            if (r.method == 'DELETE' && p.contains('/reminders/') && !p.contains('care-reminders')) {
+              scheduleDeleted.add(p.split('/').last);
+              return http.Response('', scheduleDeleteStatus);
+            }
             if (p.contains('/care-reminders/') && r.method == 'DELETE') {
               careDeleted.add(p.split('/').last);
               return http.Response('', 204);
@@ -77,6 +83,8 @@ void main() {
   setUp(() async {
     careList = [];
     careDeleted.clear();
+    scheduleDeleted.clear();
+    scheduleDeleteStatus = 204;
     sqfliteFfiInit();
     raw = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
         options: OpenDatabaseOptions(
@@ -396,5 +404,77 @@ void main() {
             tokens: MemoryTokenStore(),
             client: MockClient((r) async => _j(401, {'detail': 'invalid_token'}))));
     expect(await s.run(pid), SyncOutcome.signedOut);
+  });
+
+  group('a reminder deleted on the phone is removed from the server for good', () {
+    Future<String> addAndDelete(ReminderKind kind, {bool sync = true}) async {
+      final id = await db.addReminder(
+          patientId: pid, kind: kind, label: 'Walk', hour: 7, minute: 0, createdBy: 'Asha');
+      if (sync) expect(await make().run(pid), SyncOutcome.done); // it reaches the server
+      await db.deleteReminder(pid, id, 'Asha');
+      return id;
+    }
+
+    test('the deletion is queued, counted, then sent before anything is uploaded again', () async {
+      final id = await addAndDelete(ReminderKind.activity);
+      expect(await db.pendingScheduleDeletes(), [id]);
+      expect(await db.pendingSyncCount(pid), greaterThanOrEqualTo(1));
+      calls.clear();
+      lastSync = {}; // forget the first upload: only what the next sync sends counts
+      expect(await make().run(pid), SyncOutcome.done);
+      expect(scheduleDeleted, [id]);
+      expect(await db.pendingScheduleDeletes(), isEmpty);
+      final del = calls.indexWhere((c) => c.startsWith('DELETE') && c.contains('/reminders/'));
+      final up = calls.indexOf('POST /v1/patients/srv-p/sync');
+      expect(del, isNonNegative);
+      if (up >= 0) expect(del, lessThan(up), reason: 'deleted first so it is never uploaded again');
+      expect(jsonEncode(lastSync), isNot(contains(id)));
+    });
+
+    test('with no connection it waits, and goes out when the phone is online', () async {
+      final id = await addAndDelete(ReminderKind.hydration);
+      offline = true;
+      expect(await make().run(pid), SyncOutcome.offline);
+      expect(await db.pendingScheduleDeletes(), [id]); // still waiting
+      offline = false;
+      expect(await make().run(pid), SyncOutcome.done);
+      expect(scheduleDeleted, [id]);
+      expect(await db.pendingScheduleDeletes(), isEmpty);
+    });
+
+    test('the server not knowing it (404) is fine: the queue clears and does not retry for ever', () async {
+      final id = await addAndDelete(ReminderKind.activity);
+      scheduleDeleteStatus = 404;
+      expect(await make().run(pid), SyncOutcome.done);
+      expect(await db.pendingScheduleDeletes(), isEmpty);
+      scheduleDeleted.clear();
+      await make().run(pid);
+      expect(scheduleDeleted, isEmpty);
+      expect(id, isNotEmpty);
+    });
+
+    test('its done-marks are removed too, so they are not uploaded for a routine that is gone', () async {
+      final id = await db.addReminder(
+          patientId: pid, kind: ReminderKind.medicine, label: 'Pill', hour: 8, minute: 0, createdBy: 'Asha');
+      await db.setReminderDone(patientId: pid, reminderId: id, day: DateTime.now(), done: true, by: 'patient');
+      expect((await db.syncBatch(pid)).marks, isNotEmpty);
+      await db.deleteReminder(pid, id, 'Asha');
+      expect((await db.syncBatch(pid)).marks, isEmpty);
+    });
+
+    test('a routine the caregiver removes also has its timing removed from the server', () async {
+      careList = [
+        {'id': 'c1', 'kind': 'activity', 'label': 'Walk', 'hour': 7, 'minute': 0, 'days_mask': 127,
+         'on_date': null, 'created_by_name': 'Ravi', 'created_by_role': 'caretaker', 'mine': false}
+      ];
+      await make().run(pid); // copied to the phone
+      final local = (await db.listReminders(pid)).single;
+      await make().run(pid); // uploads its timing
+      careList = []; // the caregiver removes it
+      calls.clear();
+      await make().run(pid);
+      expect(await db.listReminders(pid), isEmpty);
+      expect(scheduleDeleted, contains(local.id));
+    });
   });
 }

@@ -807,4 +807,38 @@ void main() {
     expect(posts.single['days_mask'], (1 << 0) | (1 << 2) | (1 << 4)); // Mon, Wed, Fri
     expect(find.textContaining('Mon, Wed, Fri'), findsOneWidget);
   });
+
+  testWidgets('a routine the patient deleted disappears from the caregiver\'s list the next time the tab opens', (t) async {
+    t.view.physicalSize = const Size(800, 2400);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    var rows = <Map<String, dynamic>>[
+      {'id': 'a', 'kind': 'activity', 'hour': 7, 'minute': 0, 'days_mask': 127, 'on_date': null, 'active': true, 'done_today': false},
+      {'id': 'b', 'kind': 'hydration', 'hour': 10, 'minute': 30, 'days_mask': 127, 'on_date': null, 'active': true, 'done_today': false},
+    ];
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      if (p == '/v1/patients/p1/reminders') return _j(200, rows);
+      if (p == '/v1/patients/p1/care-reminders') return _j(200, <Object>[]);
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(_app(api));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Asha').first);
+    await t.pumpAndSettle();
+    await t.tap(find.text('Routine').last);
+    await t.pumpAndSettle();
+    expect(find.textContaining('07:00'), findsOneWidget);
+    expect(find.textContaining('10:30'), findsOneWidget);
+    await t.tap(find.text('Overview').last); // look away...
+    await t.pumpAndSettle();
+    rows = [rows[1]]; // ...the patient deletes the 7:00 one on their phone and it syncs
+    await t.tap(find.text('Routine').last);
+    await t.pumpAndSettle();
+    expect(find.textContaining('07:00'), findsNothing);
+    expect(find.textContaining('10:30'), findsOneWidget);
+  });
 }

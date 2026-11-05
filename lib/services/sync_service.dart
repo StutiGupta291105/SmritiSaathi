@@ -35,6 +35,21 @@ class SyncService {
     }
   }
 
+  /// Removes, on the server, the timing of reminders deleted on this phone.
+  /// A 404 means it is already gone; offline or signed out stops the run and the
+  /// rest stay queued.
+  Future<void> _flushScheduleDeletes(String serverId) async {
+    for (final id in await db.pendingScheduleDeletes()) {
+      try {
+        await api.deleteReminderSchedule(serverId, id);
+        await db.clearScheduleDelete(id);
+      } on ApiException catch (e) {
+        if (e.isNetwork || e.isUnauthorized) rethrow;
+        if (e.status == 404 || e.status == 403) await db.clearScheduleDelete(id);
+      }
+    }
+  }
+
   Future<SyncOutcome> run(String patientId) async {
     try {
       final patient = await db.patientById(patientId);
@@ -103,6 +118,10 @@ class SyncService {
         }
       }
 
+      // Reminders deleted here go first, so their timing is not uploaded again and the
+      // caregiver and doctor stop seeing them (and are told). Safe to repeat.
+      await _flushScheduleDeletes(serverId);
+
       final batch = await db.syncBatch(patientId);
       if (!batch.isEmpty) {
         await api.sync(serverId, {
@@ -130,6 +149,9 @@ class SyncService {
       }
       remindersChanged =
           await db.applyCareReminders(patientId, await api.careReminders(serverId));
+      // A routine the caregiver or doctor just removed is gone from this phone now:
+      // remove its timing from the server in the same round.
+      await _flushScheduleDeletes(serverId);
       return SyncOutcome.done;
     } on ApiException catch (e) {
       if (e.isNetwork) return SyncOutcome.offline;

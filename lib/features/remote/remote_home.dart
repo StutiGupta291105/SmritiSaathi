@@ -1444,8 +1444,9 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
     }
   }
 
+  /// Loaded every time the tab is opened, so a routine the patient just deleted
+  /// is not still shown from an earlier look.
   Future<void> _loadReminders() async {
-    if (_reminders != null) return;
     try {
       final r = await widget.api.patientReminders(widget.patientId);
       final c = await widget.api.careReminders(widget.patientId, cached: true);

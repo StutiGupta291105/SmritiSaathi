@@ -172,3 +172,10 @@ patient's data export and are erased with the patient. Tests: `test_care_notes.p
 
 ## Admin portal
 A read-only desktop portal for monitoring users, supervision links and the access log; see `docs/ADMIN_PORTAL.md`. There is one fixed admin set in the server settings (not a user account, not in any table), who signs in with a password and, if configured, an authenticator code, with tokens that the app endpoints reject, and the whole `/v1/admin` API is GET only (tested). Blocked attempts to reach a patient are logged as `access_denied`.
+
+## Deleting a reminder
+When a patient deletes a reminder, `DELETE /v1/patients/{id}/reminders/{rid}` removes its
+server copy (the timing the caregiver and doctor see) and its done-marks permanently; routines a
+caregiver or doctor set are hard-deleted too (no hidden `deleted` rows). The care team is sent a
+push with no details ("A routine was removed by the patient."). The audit log keeps only that a
+removal happened. Tests: `test_care_reminders.py` (the "patient deletes" group), `sync_service_test.dart`.

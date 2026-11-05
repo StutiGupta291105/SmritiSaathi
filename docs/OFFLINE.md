@@ -15,7 +15,7 @@ share, and only when a connection exists.
 | Games played, medicine marked taken | Saved on the phone, sent in the next sync, never sent twice |
 | Consent changes, including withdrawals | Queued and sent first at the next sync |
 | Inviting a caregiver or doctor by Care ID | Queued; sent when online |
-| Deleting a routine a caregiver set | Queued; sent, and not copied back |
+| Deleting a reminder or routine (any kind) | Queued; sent when online. The server removes its timing and done-marks for good, and the patient's caregiver and doctor get a generic "a routine was removed" alert. A caregiver-set routine is also deleted permanently, and not copied back |
 | Chat messages (text, photo, voice note) | Shown as "Waiting to send", kept in the encrypted database (so they survive closing the app), sent in order as soon as any request gets through |
 | A message the server refuses for good (the link ended) | Dropped, so it cannot block the queue |
 

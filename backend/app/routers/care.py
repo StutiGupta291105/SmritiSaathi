@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.orm import Session
 
 from .. import analytics, audit
@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from ..models import (ROLE_PURPOSE, CareNote, CareReminder, GameSession, Link, Patient,
                       ReminderMark, ReminderSchedule, User)
 from .chat import ROUTINE_BODY, notify_user
+from ..deps import patient_for_owner
 from ..schemas import CareReminderIn, CareReminderPatch, InviteForMe
 
 router = APIRouter(prefix="/v1", tags=["care"])
@@ -271,10 +272,40 @@ def delete_care_reminder(patient_id: str, reminder_id: str, request: Request,
         raise HTTPException(404, "not_found")
     if kind == "member" and r.created_by != user.id:
         raise HTTPException(404, "not_found")
-    r.deleted = True
+    db.delete(r)  # removed for good, not just hidden
     audit.record(db, user.id, "care_reminder_deleted", f"patient={p.id} reminder={r.id}")
     if kind == "member":  # the patient's own phone already knows when they remove one
         notify_user(request, db, p.user_id, ROUTINE_BODY, data={"type": "routine"}, silent=True)
+    return Response(status_code=204)
+
+
+# ---- a patient removes one of their own reminders ---------------------------------------
+
+ROUTINE_REMOVED_BODY = "A routine was removed by the patient."
+
+
+@router.delete("/patients/{patient_id}/reminders/{reminder_id}", status_code=204)
+def remove_reminder(patient_id: str, reminder_id: str, request: Request,
+                    user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """The patient deleted a reminder on their phone. Its copy here (the timing the
+    caregiver and doctor see) and its done-marks are deleted for good, and the
+    patient's caregiver and doctor are told that a routine was removed (no
+    details: lock screens are visible to other people). Safe to repeat: the
+    phone retries until it hears back."""
+    p = patient_for_owner(db, user, patient_id)
+    row = db.get(ReminderSchedule, reminder_id)
+    existed = row is not None and row.patient_id == p.id
+    if existed:
+        db.execute(delete(ReminderMark).where(
+            ReminderMark.patient_id == p.id, ReminderMark.reminder_id == reminder_id))
+        db.delete(row)
+        audit.record(db, user.id, "reminder_removed", f"patient={p.id} reminder={reminder_id}")
+        for ln in db.execute(select(Link).where(
+                Link.patient_id == p.id, Link.status == "accepted",
+                Link.member_user_id.is_not(None))).scalars():
+            if consent_granted(db, p.id, ROLE_PURPOSE[ln.member_role]):
+                notify_user(request, db, ln.member_user_id, ROUTINE_REMOVED_BODY,
+                            data={"type": "routine_removed"})
     return Response(status_code=204)
 
 

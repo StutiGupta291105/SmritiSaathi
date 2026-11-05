@@ -76,7 +76,10 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
         return {"status": "ok",
                 "ai": isinstance(app.state.companion, (companion_mod.AnthropicCompanion,
                                                          companion_mod.OpenAICompatCompanion)),
-                "push": isinstance(app.state.push, FcmPush)}
+                "push": isinstance(app.state.push, FcmPush),
+                # why the last AI call failed (empty when it works): the provider's own
+                # short error, never what anyone said
+                "ai_error": (getattr(app.state.companion, "last_error", "") or "")[:200]}
 
     app.include_router(auth.router)
     app.include_router(patients.router)

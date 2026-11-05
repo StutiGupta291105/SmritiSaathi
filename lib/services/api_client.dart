@@ -645,6 +645,11 @@ class ApiClient {
   Future<void> deleteCareNote(String patientId, String noteId) =>
       _raw('DELETE', '/v1/patients/$patientId/care-notes/$noteId');
 
+  /// The patient deleted a reminder on the phone: remove its copy here and tell the
+  /// care team. Safe to repeat.
+  Future<void> deleteReminderSchedule(String patientId, String reminderId) =>
+      _raw('DELETE', '/v1/patients/$patientId/reminders/$reminderId');
+
   Future<void> deleteCareReminder(String patientId, String reminderId) =>
       _raw('DELETE', '/v1/patients/$patientId/care-reminders/$reminderId');
 

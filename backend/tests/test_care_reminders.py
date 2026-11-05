@@ -137,3 +137,91 @@ def test_edit_and_delete_racing_each_other_end_cleanly(env):
     assert env.client.delete(url, headers=cg.headers).status_code == 404
     assert env.client.delete(url, headers=a.headers).status_code == 404   # a repeated queued delete
     assert env.client.get(f"/v1/patients/{pid}/care-reminders", headers=a.headers).json() == []
+
+
+# ---- a patient deletes a routine: gone for everyone, for good, and the care team is told ----
+
+def _sync_schedule(env, a, pid, rid, kind="activity", hour=8):
+    r = env.client.post(f"/v1/patients/{pid}/sync", headers=a.headers, json={
+        "sessions": [], "marks": [{"reminder_id": rid, "day": "2026-05-01", "marked_at": "2026-05-01T08:00:00Z"}],
+        "schedules": [{"id": rid, "kind": kind, "hour": hour, "minute": 0, "days_mask": 127,
+                       "on_date": None, "active": True, "created_at": "2026-05-01T00:00:00Z"}]})
+    assert r.status_code in (200, 201), r.text
+
+
+def _schedules(env, who, pid):
+    return [x["id"] for x in env.client.get(f"/v1/patients/{pid}/reminders", headers=who.headers).json()]
+
+
+def test_a_reminder_the_patient_deletes_disappears_for_the_caregiver_and_doctor(env):
+    a, pid = env.make_patient(PATIENT)
+    env.consent(a, pid, "sync", True)
+    cg = env.link_member(a, pid, "caretaker", CARER)
+    dr = env.link_member(a, pid, "doctor", DOCTOR)
+    rid = "11111111-1111-1111-1111-111111111111"
+    keep = "22222222-2222-2222-2222-222222222222"
+    _sync_schedule(env, a, pid, rid, hour=8)
+    _sync_schedule(env, a, pid, keep, hour=9)
+    for who in (cg, dr, a):
+        assert set(_schedules(env, who, pid)) == {rid, keep}
+    before = len(env.app.state.push.outbox_data) + len(getattr(env.app.state.push, "outbox", []))
+    r = env.client.delete(f"/v1/patients/{pid}/reminders/{rid}", headers=a.headers)
+    assert r.status_code == 204
+    for who in (cg, dr, a):
+        assert _schedules(env, who, pid) == [keep]  # gone for every role
+    # its done-marks are gone from the database too
+    from sqlalchemy import select
+    from app.models import ReminderMark, ReminderSchedule
+    with env.app.state.sessionmaker() as s:
+        assert s.get(ReminderSchedule, rid) is None
+        assert not s.execute(select(ReminderMark).where(ReminderMark.reminder_id == rid)).first()
+    # repeating the call (the phone retries) is harmless
+    assert env.client.delete(f"/v1/patients/{pid}/reminders/{rid}", headers=a.headers).status_code == 204
+
+
+def test_deleting_a_reminder_notifies_the_care_team_without_details(env):
+    a, pid = env.make_patient(PATIENT)
+    env.consent(a, pid, "sync", True)
+    cg = env.link_member(a, pid, "caretaker", CARER)
+    dr = env.link_member(a, pid, "doctor", DOCTOR)
+    for who in (cg, dr):
+        env.client.post("/v1/devices", headers=who.headers, json={"token": "tok-" + who.user["role"] + "-" * 20, "platform": "android"})
+    rid = "33333333-3333-3333-3333-333333333333"
+    _sync_schedule(env, a, pid, rid)
+    push = env.app.state.push
+    start = len(push.outbox)
+    assert env.client.delete(f"/v1/patients/{pid}/reminders/{rid}", headers=a.headers).status_code == 204
+    sent = push.outbox[start:]
+    assert len(sent) == 2  # the caregiver and the doctor, not the patient
+    assert all(m[2] == "A routine was removed by the patient." for m in sent)
+    assert all("Walk" not in m[2] and rid not in m[2] for m in sent)  # no details on a lock screen
+    # a reminder that was never uploaded, or an unknown id: nothing to tell anyone
+    n = len(push.outbox)
+    assert env.client.delete(f"/v1/patients/{pid}/reminders/{rid}", headers=a.headers).status_code == 204
+    assert len(push.outbox) == n
+
+
+def test_only_the_patient_can_remove_a_reminder_and_only_their_own(env):
+    a, pid = env.make_patient(PATIENT)
+    env.consent(a, pid, "sync", True)
+    cg = env.link_member(a, pid, "caretaker", CARER)
+    other, opid = env.make_patient("+919844444444", "Bina")
+    env.consent(other, opid, "sync", True)
+    rid = "44444444-4444-4444-4444-444444444444"
+    _sync_schedule(env, a, pid, rid)
+    assert env.client.delete(f"/v1/patients/{pid}/reminders/{rid}", headers=cg.headers).status_code == 404
+    assert env.client.delete(f"/v1/patients/{pid}/reminders/{rid}", headers=other.headers).status_code == 404
+    assert env.client.delete(f"/v1/patients/{opid}/reminders/{rid}", headers=other.headers).status_code == 204  # not theirs: nothing happens
+    assert _schedules(env, a, pid) == [rid]
+
+
+def test_a_deleted_care_reminder_is_removed_from_the_database_not_just_hidden(env):
+    a, pid = env.make_patient(PATIENT)
+    cg = env.link_member(a, pid, "caretaker", CARER)
+    rid = _add(env, cg, pid, kind="activity", label="Walk").json()["id"]
+    assert env.client.delete(f"/v1/patients/{pid}/care-reminders/{rid}", headers=a.headers).status_code == 204
+    from app.models import CareReminder
+    with env.app.state.sessionmaker() as s:
+        assert s.get(CareReminder, rid) is None  # the row itself is gone
+    assert env.client.get(f"/v1/patients/{pid}/care-reminders", headers=cg.headers).json() == []
+    assert env.client.get(f"/v1/patients/{pid}/care-reminders", headers=a.headers).json() == []
