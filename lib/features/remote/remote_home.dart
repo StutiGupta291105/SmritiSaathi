@@ -575,6 +575,14 @@ class _RemoteHomeState extends State<RemoteHome> {
               _threadRow(th),
             const SizedBox(height: 10),
           ],
+          if (recent.any((p) => _alertCount(p) > 0)) ...[
+            // Who to look at first.
+            _heading(t('rmStatusAttention')),
+            const SizedBox(height: 8),
+            for (final p in recent.where((p) => _alertCount(p) > 0))
+              _patientRow(p, chip: true),
+            const SizedBox(height: 10),
+          ],
           _heading(t('rmRecent')),
           const SizedBox(height: 10),
           if (recent.isEmpty)
@@ -1068,6 +1076,117 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
     await _load();
   }
 
+  void _openReport() => Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => RemoteReportScreen(
+          api: widget.api,
+          patientId: widget.patientId,
+          name: widget.name,
+          lang: widget.lang,
+          accent: widget.accent,
+          onSignedOut: widget.onSignedOut)));
+
+  /// Who this is at a glance, and the three things a doctor or caregiver does
+  /// most from here: message, read the report, add to the routine.
+  Widget _patientHero(Map<String, dynamic>? r) {
+    final alerts = r == null
+        ? const <Map<String, dynamic>>[]
+        : (r['alerts'] as List).cast<Map<String, dynamic>>();
+    final attention = alerts.any((a) => a['severity'] == 'attention');
+    final last = r == null ? null : r['last_played'] as String?;
+    final lastDt = last == null ? null : DateTime.tryParse(last);
+    final tint = widget.canPrescribe ? Palette.tileBlue : Palette.tileGreen;
+    Widget action(Key key, IconData icon, String label, VoidCallback? onTap) =>
+        Expanded(
+          child: OutlinedButton(
+            key: key,
+            onPressed: onTap,
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: widget.accent,
+              side: BorderSide(color: widget.accent.withValues(alpha: .25)),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: 22),
+              const SizedBox(height: 4),
+              Text(label,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+        );
+    return Container(
+      key: const ValueKey('patientHero'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [tint, Colors.white]),
+        border: Border.all(color: widget.accent.withValues(alpha: .18)),
+      ),
+      child: Column(children: [
+        Row(children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white,
+            child: Text(
+                widget.name.trim().isEmpty ? '?' : widget.name.trim()[0].toUpperCase(),
+                style: const TextStyle(
+                    fontSize: 26, fontWeight: FontWeight.w800, color: Palette.brandDeep)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(widget.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.w800, color: Palette.brandDeep)),
+              const SizedBox(height: 6),
+              if (r != null)
+                Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                        color: attention ? Palette.tileRed : Palette.tileGreen,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: Text(t(attention ? 'rmStatusAttention' : 'rmStatusOk'),
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700,
+                            color: attention ? Palette.red : Palette.green)),
+                  ),
+                  Text(
+                      lastDt == null
+                          ? t('rmNoGamesYet')
+                          : agoText(widget.lang, lastDt, DateTime.now()),
+                      style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
+                ]),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 14),
+        Row(children: [
+          action(const ValueKey('heroMessage'), Icons.chat_rounded, t('chatMessages'),
+              widget.onMessage),
+          const SizedBox(width: 8),
+          action(const ValueKey('heroReport'), Icons.insights_rounded, t('rmReportTitle'),
+              r == null ? null : _openReport),
+          const SizedBox(width: 8),
+          action(const ValueKey('heroRoutine'), Icons.add_alarm_rounded, t('addReminder'),
+              () {
+            setState(() => _tab = 2);
+            _loadReminders();
+          }),
+        ]),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = _report;
@@ -1082,30 +1201,12 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
               onPressed: widget.onMessage,
             ),
         ],
-        titleSpacing: 0,
-        title: Row(children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: Palette.tileGreen,
-            child: Text(
-                widget.name.trim().isEmpty
-                    ? '?'
-                    : widget.name.trim()[0].toUpperCase(),
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700, color: Palette.brandDeep)),
-          ),
-          const SizedBox(width: 10),
-          Flexible(
-            child: Text(widget.name,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-          ),
-        ]),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         children: [
+          _patientHero(r),
+          const SizedBox(height: 14),
           _UnderlineTabs(
             color: widget.accent,
             labels: [t('overviewTitle'), t('tabGames'), t('reminders')],

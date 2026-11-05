@@ -103,7 +103,7 @@ void main() {
     await t.pumpAndSettle();
     // The dashboard lists only people who already share; a request is not one.
     expect(find.text('Meera'), findsNothing);
-    expect(find.text('Asha'), findsOneWidget);
+    expect(find.text('Asha'), findsWidgets);
     // Requests have their own tab, with a badge and the person's Care ID.
     await t.tap(find.text('Requests'));
     await t.pumpAndSettle();
@@ -135,7 +135,7 @@ void main() {
     });
     await t.pumpWidget(_app(api));
     await t.pumpAndSettle();
-    await t.tap(find.text('Asha'));
+    await t.tap(find.text('Asha').first);
     await t.pumpAndSettle();
     expect(find.text('Has not played for 3 days.'), findsOneWidget);
     expect(find.text('Games played'), findsOneWidget);
@@ -158,7 +158,7 @@ void main() {
     });
     await t.pumpWidget(_app(api));
     await t.pumpAndSettle();
-    await t.tap(find.text('Asha'));
+    await t.tap(find.text('Asha').first);
     await t.pumpAndSettle();
     expect(find.text('This person is no longer sharing with you.'), findsOneWidget);
 
@@ -196,9 +196,9 @@ void main() {
 
     // dashboard: counts and recent activity, doctor wording
     expect(find.text('Your patients, at a glance'), findsOneWidget);
-    expect(find.text('Asha'), findsOneWidget);
-    expect(find.textContaining('Played a game'), findsOneWidget);
-    expect(find.text('No games yet'), findsOneWidget);
+    expect(find.text('Asha'), findsWidgets);
+    expect(find.textContaining('Played a game'), findsWidgets);
+    expect(find.text('No games yet', skipOffstage: false), findsOneWidget);
 
     // patients tab: search and status chips
     await t.tap(find.text('Patients').last);
@@ -281,7 +281,7 @@ void main() {
     });
     await t.pumpWidget(_app(api));
     await t.pumpAndSettle();
-    await t.tap(find.text('Asha'));
+    await t.tap(find.text('Asha').first);
     await t.pumpAndSettle();
     await t.tap(find.text('Reminders').last);
     await t.pumpAndSettle();
@@ -341,7 +341,7 @@ void main() {
     });
     await t.pumpWidget(_app(api, role: 'doctor'));
     await t.pumpAndSettle();
-    await t.tap(find.text('Asha'));
+    await t.tap(find.text('Asha').first);
     await t.pumpAndSettle();
     await t.tap(find.text('Reminders').last);
     await t.pumpAndSettle();
@@ -360,5 +360,55 @@ void main() {
     await t.tap(find.text('Appointment').last);
     await t.pumpAndSettle();
     expect(find.text('Medicine'), findsNothing);
+  });
+
+  testWidgets('the patient screen opens with a header: name, status and quick actions', (t) async {
+    t.view.physicalSize = const Size(800, 1800);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      if (p == '/v1/patients/p1/reminders') return _j(200, []);
+      if (p == '/v1/patients/p1/care-reminders') return _j(200, []);
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(MaterialApp(
+        home: RemotePatientScreen(
+            api: api, patientId: 'p1', name: 'Asha Devi', lang: 'en',
+            canPrescribe: true, accent: Colors.blue, onMessage: () {})));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('patientHero')), findsOneWidget);
+    expect(find.text('Asha Devi'), findsOneWidget);
+    expect(find.text('Needs attention'), findsWidgets); // the report has an attention alert
+    expect(find.byKey(const ValueKey('heroMessage')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('heroRoutine')));
+    await t.pumpAndSettle();
+    expect(find.text('Add reminder'), findsWidgets);
+    await t.tap(find.byKey(const ValueKey('heroReport')));
+    await t.pumpAndSettle();
+    expect(find.byType(RemoteReportScreen), findsOneWidget);
+  });
+
+  testWidgets('the dashboard lists patients needing attention before recent activity', (t) async {
+    t.view.physicalSize = const Size(800, 1800);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final api = _api((r) async {
+      if (r.url.path == '/v1/invites') return _j(200, []);
+      if (r.url.path == '/v1/my-patients') return _j(200, _patientsJson);
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(_app(api, role: 'doctor'));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('roleHero')), findsOneWidget);
+    final attention = t.getTopLeft(find.text('Needs attention').first).dy;
+    final recent = t.getTopLeft(find.text('Recent activity')).dy;
+    expect(attention, lessThan(recent));
+    // Babul has no alert: only Asha is in the attention list, so Asha shows twice.
+    expect(find.text('Asha'), findsNWidgets(2));
+    expect(find.text('Babul'), findsOneWidget);
   });
 }
