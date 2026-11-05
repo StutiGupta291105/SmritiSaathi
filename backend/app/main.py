@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from fastapi import FastAPI, Request
+from fastapi import HTTPException, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .config import Settings, load_settings
@@ -80,6 +80,27 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
                 # why the last AI call failed (empty when it works): the provider's own
                 # short error, never what anyone said
                 "ai_error": (getattr(app.state.companion, "last_error", "") or "")[:200]}
+
+    ai_check_cache: dict = {"at": 0.0, "out": None}
+
+    @app.get("/healthz/ai")
+    def healthz_ai():
+        """One real, made-up question to the AI provider plus a connection timing, so a
+        test server can be diagnosed from a browser. Test servers only (404 in production),
+        and at most once a minute (the answer is reused), so it cannot be used to run up
+        the provider's quota."""
+        import time as _t
+        if app.state.settings.is_prod:
+            raise HTTPException(404, "not_found")
+        now = _t.monotonic()
+        if ai_check_cache["out"] is None or now - ai_check_cache["at"] > 60:
+            prov = app.state.companion
+            out = companion_mod.ai_check(prov)
+            out["models_tried"] = getattr(prov, "_models", [])
+            base = getattr(prov, "base_url", "")
+            out["network"] = companion_mod.network_probe(base) if base else []
+            ai_check_cache.update(at=now, out=out)
+        return ai_check_cache["out"]
 
     app.include_router(auth.router)
     app.include_router(patients.router)

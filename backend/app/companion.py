@@ -13,6 +13,9 @@ Safety design, in order of importance:
      count per day is kept (to limit use).
 """
 import json
+import ssl
+import socket
+import http.client
 import logging
 import os
 import time
@@ -219,6 +222,70 @@ class UnavailableCompanion:
         raise CompanionUnavailable("no_api_key")
 
 
+def order_addresses(infos: list) -> list:
+    """IPv4 addresses first. Some hosts have IPv6 that is announced but does not work;
+    trying it first makes every call wait for it to time out before the working address
+    is used, which looks like the provider timing out."""
+    return sorted(infos, key=lambda i: i[0] != socket.AF_INET)
+
+
+class _V4FirstHTTPSConnection(http.client.HTTPSConnection):
+    CONNECT_TIMEOUT = 8.0
+
+    def connect(self) -> None:
+        last: OSError | None = None
+        sock = None
+        for fam, typ, proto, _, addr in order_addresses(
+                socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM)):
+            try:
+                sock = socket.socket(fam, typ, proto)
+                sock.settimeout(self.CONNECT_TIMEOUT)
+                sock.connect(addr)
+                break
+            except OSError as e:
+                last = e
+                if sock is not None:
+                    sock.close()
+                sock = None
+        if sock is None:
+            raise last or OSError("no address to connect to")
+        sock.settimeout(self.timeout)
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+
+
+class _V4FirstHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_V4FirstHTTPSConnection, req, context=self._context)
+
+
+def network_probe(url: str) -> list[dict]:
+    """How long it takes to open a connection to the provider, per address, so a slow
+    or broken route (IPv6, firewall) can be told apart from a slow model."""
+    from urllib.parse import urlparse
+    host = urlparse(url).hostname or ""
+    out: list[dict] = []
+    try:
+        infos = socket.getaddrinfo(host, 443, 0, socket.SOCK_STREAM)
+    except OSError as e:
+        return [{"addr": host, "ok": False, "ms": 0, "error": f"dns: {type(e).__name__}"}]
+    for fam, typ, proto, _, addr in infos[:6]:
+        t0 = time.monotonic()
+        row = {"addr": addr[0], "family": "ipv4" if fam == socket.AF_INET else "ipv6",
+               "ok": False, "ms": 0, "error": ""}
+        s = socket.socket(fam, typ, proto)
+        try:
+            s.settimeout(6)
+            s.connect(addr)
+            row["ok"] = True
+        except OSError as e:
+            row["error"] = type(e).__name__
+        finally:
+            s.close()
+            row["ms"] = int((time.monotonic() - t0) * 1000)
+        out.append(row)
+    return out
+
+
 class OpenAICompatCompanion:
     """Any service that speaks the common 'chat completions' protocol, which
     includes several with a free tier (Google Gemini, Groq, OpenRouter). Uses only
@@ -243,13 +310,14 @@ class OpenAICompatCompanion:
     def __init__(self, base_url: str, api_key: str, model: str,
                  max_tokens: int = COMPAT_REPLY_TOKENS, reasoning_effort: str = "",
                  fallback_models: tuple[str, ...] | list[str] = (),
-                 retry_delay: float = 1.5, call_timeout: float = 25.0,
-                 budget: float = 55.0) -> None:
+                 retry_delay: float = 1.5, call_timeout: float = 20.0,
+                 budget: float = 40.0) -> None:
         self._url = base_url.rstrip("/") + "/chat/completions"
         self._key, self._model = api_key, model
         self._models = [model] + [m for m in fallback_models if m and m != model]
         self._max_tokens, self._effort = max_tokens, reasoning_effort.strip()
         self._retry_delay, self._timeout, self._budget = retry_delay, call_timeout, budget
+        self.base_url = base_url
         self._models_url = base_url.rstrip("/") + "/models"
         self._discovered: list[str] | None = None
         self._discovered_at = 0.0
@@ -425,6 +493,7 @@ def get_provider(provider: str, model: str) -> CompanionProvider:
         base = os.environ.get("SMRITI_COMPANION_BASE_URL", "")
         if not key or not base.startswith("https://"):
             return UnavailableCompanion()
+        urllib.request.install_opener(urllib.request.build_opener(_V4FirstHandler()))
         return OpenAICompatCompanion(
             base, key, model,
             int(os.environ.get("SMRITI_COMPANION_MAX_TOKENS", COMPAT_REPLY_TOKENS)),

@@ -545,3 +545,50 @@ def test_a_provider_that_will_not_list_models_just_fails_normally(monkeypatch):
     with pytest.raises(CompanionUnavailable):
         c.reply("s", [{"role": "user", "content": "hi"}])
     assert c._discover() == []
+
+
+# ---- diagnosing a provider that times out ---------------------------------------------
+
+def test_ipv4_addresses_are_tried_before_ipv6():
+    import socket
+    from app.companion import order_addresses
+    infos = [(socket.AF_INET6, 1, 6, "", ("2a00::1", 443, 0, 0)),
+             (socket.AF_INET, 1, 6, "", ("1.2.3.4", 443)),
+             (socket.AF_INET6, 1, 6, "", ("2a00::2", 443, 0, 0)),
+             (socket.AF_INET, 1, 6, "", ("5.6.7.8", 443))]
+    out = order_addresses(infos)
+    assert [i[4][0] for i in out] == ["1.2.3.4", "5.6.7.8", "2a00::1", "2a00::2"]  # order kept within a family
+
+
+def test_healthz_ai_runs_one_check_and_reuses_it_for_a_minute(env, monkeypatch):
+    calls = []
+
+    class Fake:
+        base_url = ""
+        _models = ["m1", "m2"]
+        last_error = ""
+
+        def reply(self, system, messages):
+            calls.append(1)
+            return "Hello, the sun is a star."
+
+    env.app.state.companion = Fake()
+    a = env.client.get("/healthz/ai").json()
+    assert a["ok"] is True and a["models_tried"] == ["m1", "m2"] and a["network"] == []
+    env.client.get("/healthz/ai")
+    assert len(calls) == 1  # the second call within a minute is answered from memory
+
+
+def test_healthz_ai_names_the_failure_and_is_off_in_production(env):
+    import dataclasses
+    env.app.state.companion = companion.UnavailableCompanion()  # a server with no key
+    a = env.client.get("/healthz/ai").json()
+    assert a["ok"] is False and a["error"].startswith("no_api_key")
+    env.app.state.settings = dataclasses.replace(env.app.state.settings, env="prod")
+    assert env.client.get("/healthz/ai").status_code == 404
+
+
+def test_network_probe_reports_dns_failures_without_raising():
+    from app.companion import network_probe
+    out = network_probe("https://this-host-does-not-exist.invalid/v1")
+    assert out and out[0]["ok"] is False and out[0]["error"].startswith("dns")
