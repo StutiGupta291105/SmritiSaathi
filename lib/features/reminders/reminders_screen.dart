@@ -573,6 +573,80 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
           ],
       });
 
+  /// The common routines this form may offer, in order through the day.
+  List<(String, ReminderKind, int, int)> get _templates => [
+        for (final x in kRoutineTemplates)
+          if (widget.kinds.contains(x.$2)) x
+      ]..sort((a, b) => (a.$3 * 60 + a.$4).compareTo(b.$3 * 60 + b.$4));
+
+  Future<void> _pickTemplate() async {
+    final picked = await showModalBottomSheet<(String, ReminderKind, int, int)>(
+      context: context,
+      backgroundColor: Palette.cream,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(sheet).size.height * 0.8),
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+                child: Text(t('tplTitle'),
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w800, color: Palette.brandDeep)),
+              ),
+              for (final x in _templates)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: AppCard(
+                    key: ValueKey('tpl_${x.$1}'),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    onTap: () => Navigator.pop(sheet, x),
+                    child: Row(children: [
+                      IconBadge(
+                          icon: _templateIcon(x.$1),
+                          fg: kindStyle(x.$2).fg,
+                          bg: kindStyle(x.$2).bg,
+                          size: 42,
+                          circle: true),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(t(x.$1),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      ),
+                      Text(TimeOfDay(hour: x.$3, minute: x.$4).format(sheet),
+                          style: const TextStyle(fontSize: 14, color: Palette.muted)),
+                    ]),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _kind = picked.$2;
+      _label.text = t(picked.$1);
+      _time = TimeOfDay(hour: picked.$3, minute: picked.$4);
+    });
+  }
+
+  static IconData _templateIcon(String key) => switch (key) {
+        'tplWalk' => Icons.directions_walk_rounded,
+        'tplWater' => Icons.water_drop_rounded,
+        'tplBreakfast' => Icons.free_breakfast_rounded,
+        'tplLunch' => Icons.lunch_dining_rounded,
+        'tplDinner' => Icons.dinner_dining_rounded,
+        'tplExercise' => Icons.self_improvement_rounded,
+        'tplCallFamily' => Icons.call_rounded,
+        'tplSleep' => Icons.bedtime_rounded,
+        _ => Icons.alarm_rounded,
+      };
+
   /// S M T W T F S: tap the days it should run; "Every day" selects all.
   Widget _daysPicker() {
     const order = [6, 0, 1, 2, 3, 4, 5]; // Sunday first, as on a calendar
@@ -794,39 +868,32 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
             if (_medicine)
               ..._medicineFields(field)
             else ...[
-              if (!dated && !_editing)
-                field(
-                  t('tplTitle'),
-                  // One scrolling row, so the form stays short on a small phone.
-                  SizedBox(
-                    height: 40,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(children: [
-                        for (final (key, kind, h, m) in kRoutineTemplates)
-                          if (widget.kinds.contains(kind))
-                            Padding(
-                              padding: const EdgeInsetsDirectional.only(end: 8),
-                              child: ActionChip(
-                                key: ValueKey('tpl_$key'),
-                                visualDensity: VisualDensity.compact,
-                                label: Text(t(key)),
-                                onPressed: () => setState(() {
-                                  _kind = kind;
-                                  _label.text = t(key);
-                                  _time = TimeOfDay(hour: h, minute: m);
-                                }),
-                              ),
-                            ),
-                      ]),
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(
+                      child: Text(t('reminderLabel'),
+                          style: kTitleMedium.copyWith(fontSize: 15, height: 1.25)),
                     ),
-                  ),
-                ),
-              field(
-                  t('reminderLabel'),
+                    // Common routines in one tidy list, instead of a row of chips.
+                    if (!dated && !_editing && _templates.isNotEmpty)
+                      TextButton.icon(
+                        key: const ValueKey('quickAdd'),
+                        style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 8)),
+                        icon: const Icon(Icons.bolt_rounded, size: 18),
+                        label: Text(t('tplTitle')),
+                        onPressed: _pickTemplate,
+                      ),
+                  ]),
+                  const SizedBox(height: 6),
                   TextField(
                       controller: _label,
-                      textCapitalization: TextCapitalization.sentences)),
+                      textCapitalization: TextCapitalization.sentences),
+                ]),
+              ),
               field(
                 t('pickTime'),
                 OutlinedButton.icon(

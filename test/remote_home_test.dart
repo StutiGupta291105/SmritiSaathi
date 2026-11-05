@@ -745,8 +745,10 @@ void main() {
     await t.tap(find.byKey(const ValueKey('addCareReminder')));
     await t.pumpAndSettle();
     expect(find.text('Quick add'), findsOneWidget);
-    await t.ensureVisible(find.byKey(const ValueKey('tpl_tplWater')));
-    await t.tap(find.byKey(const ValueKey('tpl_tplWater'))); // changes the kind to water, 10:00
+    await t.tap(find.byKey(const ValueKey('quickAdd')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('tpl_tplWater')));
+    await t.pumpAndSettle(); // changes the kind to water, 10:00
     await t.pumpAndSettle();
     await t.tap(find.widgetWithText(FilledButton, 'Save'));
     await t.pumpAndSettle();
@@ -791,8 +793,10 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('addCareReminder')));
     await t.pumpAndSettle();
-    await t.ensureVisible(find.byKey(const ValueKey('tpl_tplWalk')));
+    await t.tap(find.byKey(const ValueKey('quickAdd')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('tpl_tplWalk')));
+    await t.pumpAndSettle();
     for (final bit in [1, 3, 5, 6]) {
       await t.ensureVisible(find.byKey(ValueKey('day$bit')));
       await t.tap(find.byKey(ValueKey('day$bit'))); // Tue, Thu, Sat, Sun off

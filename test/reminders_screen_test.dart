@@ -129,8 +129,10 @@ void main() {
     await t.tap(find.byKey(const ValueKey('addReminder')));
     await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300))); // reads the patient first
     await t.pumpAndSettle();
-    await t.ensureVisible(find.byKey(const ValueKey('tpl_tplLunch')));
+    await t.tap(find.byKey(const ValueKey('quickAdd')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('tpl_tplLunch')));
+    await t.pumpAndSettle();
     await t.pumpAndSettle();
     await t.tap(find.widgetWithText(FilledButton, 'Save'));
     for (var i = 0; i < 4; i++) {
@@ -227,5 +229,41 @@ void main() {
     final saved = (await t.runAsync(() => db.listReminders(pid)))!.firstWhere((r) => r.label == 'Weekend walk');
     expect(saved.daysMask, (1 << 5) | (1 << 6)); // Saturday and Sunday
     expect(find.textContaining('Sat, Sun'), findsOneWidget); // and the list says so
+  });
+
+  testWidgets('Quick add lists common routines in order through the day, with their times', (t) async {
+    t.view.physicalSize = const Size(800, 2200);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    await open(t);
+    await t.tap(find.byKey(const ValueKey('remTab1')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('addReminder')));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await t.pumpAndSettle();
+    // the dialog itself stays short: one small button, no row of chips
+    expect(find.byKey(const ValueKey('quickAdd')), findsOneWidget);
+    expect(find.byKey(const ValueKey('tpl_tplWalk')), findsNothing);
+    await t.tap(find.byKey(const ValueKey('quickAdd')));
+    await t.pumpAndSettle();
+    final order = ['tplWalk', 'tplBreakfast', 'tplWater', 'tplLunch', 'tplExercise', 'tplCallFamily', 'tplDinner', 'tplSleep'];
+    final ys = [for (final k in order) t.getTopLeft(find.byKey(ValueKey('tpl_$k'))).dy];
+    expect(ys, [...ys]..sort(), reason: 'sorted by time of day');
+    expect(find.text('7:00 AM'), findsOneWidget);
+    expect(find.text('10:00 PM'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('tpl_tplWater')));
+    await t.pumpAndSettle();
+    expect(t.widget<TextField>(find.byType(TextField).last).controller!.text, 'Drink a glass of water');
+    expect(find.text('10:00 AM'), findsOneWidget); // the time moved too
+    await t.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+    await t.pumpAndSettle();
+    // the medicine form has no Quick add (it has its own fields)
+    await t.tap(find.byKey(const ValueKey('remTab0')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('addReminder')));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('rxName')), findsOneWidget);
+    expect(find.byKey(const ValueKey('quickAdd')), findsNothing);
   });
 }
