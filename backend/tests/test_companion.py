@@ -451,14 +451,23 @@ def test_when_the_main_model_stays_busy_the_fallback_model_answers(monkeypatch):
     assert [m for m, _ in seen] == ["big", "big", "small"]
 
 
-def test_a_timeout_also_falls_back_and_all_failing_raises_the_last_reason(monkeypatch):
+def test_a_timeout_goes_straight_to_the_next_model_and_all_failing_raises_the_last_reason(monkeypatch):
     from app.companion import OpenAICompatCompanion
-    seen = _provider_script(monkeypatch, ["timeout", "timeout", 503, 503])
+    seen = _provider_script(monkeypatch, ["timeout", 503, 503])
     c = OpenAICompatCompanion("https://x.test", "K", "big", fallback_models=["small"], retry_delay=0)
     with pytest.raises(CompanionUnavailable) as e:
         c.reply("s", [{"role": "user", "content": "hi"}])
     assert str(e.value) == "http_503" and c.last_error.startswith("http_503")
-    assert [m for m, _ in seen] == ["big", "big", "small", "small"]
+    # the slow model is not asked twice; a busy one (503) is
+    assert [m for m, _ in seen] == ["big", "small", "small"]
+
+
+def test_a_slow_main_model_does_not_hold_up_a_fast_one(monkeypatch):
+    from app.companion import OpenAICompatCompanion
+    seen = _provider_script(monkeypatch, ["timeout", "fast answer"])
+    c = OpenAICompatCompanion("https://x.test", "K", "slow", fallback_models=["fast"], retry_delay=0)
+    assert c.reply("s", [{"role": "user", "content": "hi"}]) == "fast answer"
+    assert [m for m, _ in seen] == ["slow", "fast"]
 
 
 def test_a_rejected_key_is_not_retried_and_a_missing_model_tries_the_next(monkeypatch):

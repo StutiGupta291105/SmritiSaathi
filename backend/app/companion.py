@@ -310,8 +310,8 @@ class OpenAICompatCompanion:
     def __init__(self, base_url: str, api_key: str, model: str,
                  max_tokens: int = COMPAT_REPLY_TOKENS, reasoning_effort: str = "",
                  fallback_models: tuple[str, ...] | list[str] = (),
-                 retry_delay: float = 1.5, call_timeout: float = 20.0,
-                 budget: float = 40.0) -> None:
+                 retry_delay: float = 1.5, call_timeout: float = 30.0,
+                 budget: float = 55.0) -> None:
         self._url = base_url.rstrip("/") + "/chat/completions"
         self._key, self._model = api_key, model
         self._models = [model] + [m for m in fallback_models if m and m != model]
@@ -322,6 +322,11 @@ class OpenAICompatCompanion:
         self._discovered: list[str] | None = None
         self._discovered_at = 0.0
         self.last_error = ""
+
+    # A timeout means this model is slow right now (often a "thinking" model), not that
+    # it is briefly busy: asking it again would just wait as long again, so the next
+    # model is tried at once.
+    _SLOW = {"TimeoutError", "timeout"}
 
     # Words that mark a model as not a plain chat model (or as unstable).
     _SKIP = ("image", "tts", "embed", "live", "audio", "vision", "imagen", "veo",
@@ -442,7 +447,7 @@ class OpenAICompatCompanion:
                     last = e
                     if str(e) in ("http_401", "http_403"):
                         raise
-                    if str(e) in self._TRANSIENT and attempt == 0:
+                    if str(e) in self._TRANSIENT and str(e) not in self._SLOW and attempt == 0:
                         time.sleep(self._retry_delay)
                         continue
                     break  # not transient, or the retry failed too: try the next model

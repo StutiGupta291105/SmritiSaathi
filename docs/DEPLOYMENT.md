@@ -56,7 +56,7 @@ phone: Talk to Smriti > allow the online helper once, then ask away.
   `SMRITI_COMPANION_REASONING_EFFORT` (`low`, or empty to leave it out).
 * **"Model is overloaded" (HTTP 503 / 429).** Free models are sometimes "experiencing high
   demand". The server asks again once, then tries each model in `SMRITI_COMPANION_FALLBACK_MODELS`
-  (comma separated, for example `gemini-flash-lite-latest,gemini-2.0-flash`), within about a
+  (comma separated, for example `gemini-2.0-flash,gemini-flash-latest`). Prefer a fast "lite" model as the main one: a "thinking" model (for example `gemini-flash-latest`) can take 30 seconds to answer a short question, and a timeout moves straight on to the next model, within about a
   minute. If all of those fail, the server asks the provider which models this key can use (`GET /models`) and tries up to three plain "flash" ones (lite first), so a retired or overloaded name does not stop the helper. A rejected key (401/403) is not retried. The reason for the last failure is in
   `/healthz` (`ai_error`) and the Render logs.
 * **Checking the AI from a browser (test servers only):** `/healthz/ai` asks one made-up question
