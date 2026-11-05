@@ -480,3 +480,68 @@ def test_fallback_models_come_from_the_environment(monkeypatch):
     monkeypatch.setenv("SMRITI_COMPANION_FALLBACK_MODELS", " small , tiny ,, ")
     c = get_provider("openai_compat", "big")
     assert isinstance(c, OpenAICompatCompanion) and c._models == ["big", "small", "tiny"]
+
+
+# ---- when every configured model fails, models the provider lists for this key are tried ----
+
+def _script_with_models(monkeypatch, steps, models_json):
+    import io, json, urllib.error, urllib.request
+    seen = []
+
+    class Resp(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    def fake(req, timeout=None):
+        if req.full_url.endswith("/models"):
+            seen.append(("LIST", None))
+            return Resp(json.dumps(models_json).encode())
+        model = json.loads(req.data)["model"]
+        step = steps.pop(0)
+        seen.append((model, step))
+        if isinstance(step, int):
+            raise urllib.error.HTTPError(req.full_url, step, "x", {}, io.BytesIO(b"{}"))
+        return Resp(json.dumps({"choices": [{"message": {"content": step}}]}).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake)
+    return seen
+
+
+def test_a_missing_or_overloaded_name_is_replaced_by_a_model_the_provider_lists(monkeypatch):
+    from app.companion import OpenAICompatCompanion
+    listing = {"data": [
+        {"id": "models/gemini-2.0-flash"}, {"id": "models/gemini-2.5-flash-lite"},
+        {"id": "models/gemini-2.5-pro"}, {"id": "models/gemini-2.5-flash-image"},
+        {"id": "models/gemini-3-flash-preview"}, {"id": "models/text-embedding-004"},
+        {"id": "models/gemini-flash-latest"}]}
+    # the configured model: 404 (no such model); then the lite model answers
+    seen = _script_with_models(monkeypatch, [404, "Hello from lite"], listing)
+    c = OpenAICompatCompanion("https://x.test/v1", "K", "gemini-flash-latest", retry_delay=0)
+    assert c.reply("s", [{"role": "user", "content": "hi"}]) == "Hello from lite"
+    tried = [m for m, _ in seen if m != "LIST"]
+    assert tried == ["gemini-flash-latest", "gemini-2.5-flash-lite"]  # lite first; pro, image, preview skipped
+    assert ("LIST", None) in seen
+
+
+def test_discovery_gives_up_after_three_and_names_what_was_tried(monkeypatch):
+    from app.companion import OpenAICompatCompanion
+    listing = {"data": [{"id": f"gemini-{i}-flash"} for i in (1, 2, 3, 4, 5)]}
+    seen = _script_with_models(monkeypatch, [503] * 20, listing)
+    c = OpenAICompatCompanion("https://x.test/v1", "K", "main", retry_delay=0)
+    with pytest.raises(CompanionUnavailable):
+        c.reply("s", [{"role": "user", "content": "hi"}])
+    tried = list(dict.fromkeys(m for m, _ in seen if m != "LIST"))
+    assert tried == ["main", "gemini-5-flash", "gemini-4-flash", "gemini-3-flash"]  # newest first, three only
+    assert "tried: main, gemini-5-flash" in c.last_error and "http_503" in c.last_error
+
+
+def test_a_provider_that_will_not_list_models_just_fails_normally(monkeypatch):
+    import urllib.error, urllib.request
+    from app.companion import OpenAICompatCompanion
+    def fake(req, timeout=None):
+        raise urllib.error.URLError("down")
+    monkeypatch.setattr(urllib.request, "urlopen", fake)
+    c = OpenAICompatCompanion("https://x.test/v1", "K", "main", retry_delay=0)
+    with pytest.raises(CompanionUnavailable):
+        c.reply("s", [{"role": "user", "content": "hi"}])
+    assert c._discover() == []

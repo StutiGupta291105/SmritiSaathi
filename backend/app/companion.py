@@ -250,7 +250,43 @@ class OpenAICompatCompanion:
         self._models = [model] + [m for m in fallback_models if m and m != model]
         self._max_tokens, self._effort = max_tokens, reasoning_effort.strip()
         self._retry_delay, self._timeout, self._budget = retry_delay, call_timeout, budget
+        self._models_url = base_url.rstrip("/") + "/models"
+        self._discovered: list[str] | None = None
+        self._discovered_at = 0.0
         self.last_error = ""
+
+    # Words that mark a model as not a plain chat model (or as unstable).
+    _SKIP = ("image", "tts", "embed", "live", "audio", "vision", "imagen", "veo",
+             "robotics", "computer", "learnlm", "gemma", "aqa", "exp", "preview",
+             "thinking", "-latest", "pro")
+
+    def _discover(self) -> list[str]:
+        """Models this key can use, newest-stable first, read from the provider
+        (`GET /models`, part of the common protocol). Used when the configured models
+        all failed: a wrong, retired or overloaded name then does not stop the helper.
+        Cached for ten minutes. Returns [] if the provider will not say."""
+        now = time.monotonic()
+        if self._discovered is not None and now - self._discovered_at < 600:
+            return self._discovered
+        found: list[str] = []
+        try:
+            req = urllib.request.Request(self._models_url,
+                                         headers={"Authorization": f"Bearer {self._key}"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.load(r)
+            for m in data.get("data") or data.get("models") or []:
+                mid = str(m.get("id") or m.get("name") or "").removeprefix("models/")
+                low = mid.lower()
+                if mid and "flash" in low and not any(w in low for w in self._SKIP):
+                    found.append(mid)
+        except Exception as e:  # any failure: just no suggestions
+            log.warning("could not list the provider's models: %s", type(e).__name__)
+        # "lite" models are the cheapest and least crowded; then the rest, newest first
+        found.sort(key=lambda m: (("lite" not in m.lower()), [-int(x) if x.isdigit() else 0
+                                                              for x in re.findall(r"\d+", m)]))
+        self._discovered, self._discovered_at = found, now
+        log.info("provider models usable as fallbacks: %s", ", ".join(found[:6]) or "none")
+        return found
 
     @staticmethod
     def _text(message: dict) -> str:
@@ -312,13 +348,22 @@ class OpenAICompatCompanion:
 
     def reply(self, system: str, messages: list[dict]) -> str:
         """Asks the model; if the provider is busy or briefly unreachable, asks once
-        more, then the next model in the fallback list, within a time budget. A bad
-        or rejected key is not retried (every model would fail the same way)."""
+        more, then the next model in the fallback list, within a time budget. If all of
+        those fail, models the provider itself lists for this key are tried (up to
+        three). A rejected key (401/403) is not retried: every model fails the same way."""
         started = time.monotonic()
+        tried: list[str] = []
         last: CompanionUnavailable | None = None
-        for model in self._models:
+        queue = list(self._models)
+        discovered = False
+        while queue:
+            model = queue.pop(0)
+            if model in tried:
+                continue
+            tried.append(model)
             for attempt in range(2):
                 if last is not None and time.monotonic() - started > self._budget:
+                    self.last_error = f"{self.last_error or last} (tried: {', '.join(tried)})"
                     raise last
                 try:
                     text = self._reply_one(model, system, messages)
@@ -333,7 +378,12 @@ class OpenAICompatCompanion:
                         time.sleep(self._retry_delay)
                         continue
                     break  # not transient, or the retry failed too: try the next model
+            if not queue and not discovered:
+                discovered = True  # nothing configured is left: ask the provider what works
+                queue = [m for m in self._discover() if m not in tried][:3]
         assert last is not None
+        # keep the provider's own short error (set by the failed call) and add what was tried
+        self.last_error = f"{self.last_error or last} (tried: {', '.join(tried)})"
         raise last
 
 

@@ -57,7 +57,7 @@ phone: Talk to Smriti > allow the online helper once, then ask away.
 * **"Model is overloaded" (HTTP 503 / 429).** Free models are sometimes "experiencing high
   demand". The server asks again once, then tries each model in `SMRITI_COMPANION_FALLBACK_MODELS`
   (comma separated, for example `gemini-flash-lite-latest,gemini-2.0-flash`), within about a
-  minute. A rejected key (401/403) is not retried. The reason for the last failure is in
+  minute. If all of those fail, the server asks the provider which models this key can use (`GET /models`) and tries up to three plain "flash" ones (lite first), so a retired or overloaded name does not stop the helper. A rejected key (401/403) is not retried. The reason for the last failure is in
   `/healthz` (`ai_error`) and the Render logs.
 * Free tiers have per-minute and per-day limits, and the patient has a daily limit of 40
   questions (`SMRITI_COMPANION_DAILY_LIMIT`).
