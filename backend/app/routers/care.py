@@ -226,7 +226,7 @@ def add_care_reminder(patient_id: str, body: CareReminderIn, request: Request,
     db.add(r)
     db.flush()
     audit.record(db, user.id, "care_reminder_added", f"patient={p.id} reminder={r.id} kind={r.kind}")
-    notify_user(request, db, p.user_id, ROUTINE_BODY)
+    notify_user(request, db, p.user_id, ROUTINE_BODY, data={"type": "routine"}, silent=True)
     return _care_reminder_out(r, user)
 
 
@@ -257,12 +257,12 @@ def edit_care_reminder(patient_id: str, reminder_id: str, body: CareReminderPatc
     elif body.on_date is not None:
         r.on_date = body.on_date
     audit.record(db, user.id, "care_reminder_edited", f"patient={p.id} reminder={r.id}")
-    notify_user(request, db, p.user_id, ROUTINE_BODY)
+    notify_user(request, db, p.user_id, ROUTINE_BODY, data={"type": "routine"}, silent=True)
     return _care_reminder_out(r, user)
 
 
 @router.delete("/patients/{patient_id}/care-reminders/{reminder_id}", status_code=204)
-def delete_care_reminder(patient_id: str, reminder_id: str,
+def delete_care_reminder(patient_id: str, reminder_id: str, request: Request,
                          user: User = Depends(current_user), db: Session = Depends(get_db)):
     """The patient may remove any of them; a caretaker or doctor only their own."""
     p, kind = patient_for_viewer(db, user, patient_id)
@@ -273,6 +273,8 @@ def delete_care_reminder(patient_id: str, reminder_id: str,
         raise HTTPException(404, "not_found")
     r.deleted = True
     audit.record(db, user.id, "care_reminder_deleted", f"patient={p.id} reminder={r.id}")
+    if kind == "member":  # the patient's own phone already knows when they remove one
+        notify_user(request, db, p.user_id, ROUTINE_BODY, data={"type": "routine"}, silent=True)
     return Response(status_code=204)
 
 

@@ -9,6 +9,7 @@ import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../services/api_client.dart';
+import '../../services/push_events.dart';
 import '../chat/messages_screen.dart';
 import '../reminders/reminder_style.dart';
 import '../shell/offline_bar.dart';
@@ -70,10 +71,30 @@ class _RemoteHomeState extends State<RemoteHome> {
     super.initState();
     _load();
     _chatTimer = Timer.periodic(const Duration(seconds: 20), (_) => _loadThreads());
+    kPushOpen.addListener(_onPushOpen);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onPushOpen());
+  }
+
+  /// A tapped message notification opens that conversation.
+  Future<void> _onPushOpen() async {
+    final open = kPushOpen.value;
+    if (open == null || !mounted || open.type != 'chat') return;
+    kPushOpen.value = null;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    try {
+      final rows = await widget.api.chatThreads();
+      if (!mounted) return;
+      setState(() => _threads = rows);
+      final th = rows.where((x) => x['link_id'] == open.linkId).toList();
+      if (th.isNotEmpty) await _openChat(th.first);
+    } on ApiException {
+      // Offline: stay on the home screen.
+    }
   }
 
   @override
   void dispose() {
+    kPushOpen.removeListener(_onPushOpen);
     _chatTimer?.cancel();
     super.dispose();
   }

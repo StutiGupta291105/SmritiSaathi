@@ -171,3 +171,26 @@ def test_the_patient_gets_a_generic_push_when_the_care_team_changes_a_routine(en
     assert r.status_code == 201
     assert prov.outbox and prov.outbox[-1][2] == "Your daily routine was updated."
     assert "Secret" not in str(prov.outbox)
+
+
+def test_routine_push_carries_a_routing_hint_and_is_silent_on_android(env):
+    from tests.test_chat import _setup
+    a, pid, m, link = _setup(env)
+    prov = env.client.app.state.push
+    from app.models import DeviceToken
+    with env.client.app.state.sessionmaker() as s:
+        s.add(DeviceToken(user_id=a.user["id"], token="t" * 30, platform="android"))
+        s.commit()
+    r = env.client.post(f"/v1/patients/{pid}/care-reminders", headers=m.headers,
+                        json={"kind": "hydration", "label": "Secret title", "hour": 9, "minute": 0})
+    assert r.status_code == 201
+    assert prov.outbox_data[-1] == ({"type": "routine"}, True)
+
+
+def test_fcm_silent_message_has_no_notification_block_on_android():
+    from app.push import FcmPush
+    msg = FcmPush._message("tok", "T", "B", {"type": "routine"}, True)
+    assert "notification" not in msg and msg["data"] == {"type": "routine"}
+    assert msg["apns"]["payload"]["aps"]["content-available"] == 1
+    plain = FcmPush._message("tok", "T", "B", {"type": "chat", "link_id": "x"}, False)
+    assert plain["notification"]["body"] == "B" and plain["data"]["link_id"] == "x"
