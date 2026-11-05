@@ -114,7 +114,10 @@ class InviteForMe(BaseModel):
 
 class SessionIn(BaseModel):
     id: str = Field(max_length=36)
-    game: Literal["memory_match", "word_recall", "puzzle_fix", "number_order",
+    # The first six are the current games; the rest are retired games whose
+    # saved sessions can still arrive from phones that have not synced yet.
+    game: Literal["faces", "echo", "where", "change", "sort", "tile",
+                  "memory_match", "word_recall", "puzzle_fix", "number_order",
                   "attention", "routine"]
     started_at: datetime
     ended_at: datetime

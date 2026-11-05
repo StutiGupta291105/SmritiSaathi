@@ -1903,8 +1903,7 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
   }
 
   Widget _gameBar(Map<String, dynamic> g) {
-    final info =
-        kGames.firstWhere((x) => x.id == g['game'], orElse: () => kGames.first);
+    final info = gameInfoFor('${g['game']}');
     final pct = ((g['accuracy'] as num) * 100).round();
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -2265,8 +2264,7 @@ class _RemoteReportScreenState extends State<RemoteReportScreen> {
                   for (final g in perGame)
                     Expanded(
                       child: Builder(builder: (_) {
-                        final info = kGames.firstWhere((x) => x.id == g['game'],
-                            orElse: () => kGames.first);
+                        final info = gameInfoFor('${g['game']}');
                         final pct = ((g['accuracy'] as num) * 100).round();
                         return Column(
                           children: [

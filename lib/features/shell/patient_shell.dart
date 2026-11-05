@@ -10,6 +10,7 @@ import '../../services/companion_service.dart';
 import '../../services/sync_service.dart';
 import '../companion/chat_screen.dart';
 
+import '../../core/games.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../data/app_database.dart';
@@ -17,12 +18,13 @@ import '../../services/push_events.dart';
 import '../../services/reminder_notifier.dart';
 import '../reminders/notify_banner.dart';
 import '../../services/voice.dart';
-import '../games/attention_game.dart';
-import '../games/memory_match_game.dart';
-import '../games/number_order_game.dart';
-import '../games/puzzle_fix_game.dart';
-import '../games/word_recall_game.dart';
-import '../games/routine_game.dart';
+import '../games/change_game.dart';
+import '../games/echo_game.dart';
+import '../games/faces_game.dart';
+import '../games/sort_game.dart';
+import '../games/tile_game.dart';
+import '../games/round_game.dart';
+import '../games/where_game.dart';
 import '../reminders/reminders_screen.dart';
 import 'games_tab.dart';
 import 'home_tab.dart';
@@ -262,100 +264,47 @@ class _PatientShellState extends State<PatientShell> {
     if (mounted) setState(() {});
   }
 
-  void _playMemory() => _play(
-    'memory_match',
-    (lvl) => MemoryMatchGame(
-      db: widget.db,
-      patientId: _id,
-      baselineLevel: _baseline,
-      language: _lang,
-      voice: widget.voice,
-      startLevel: lvl,
-      voiceOn: _voiceOn,
-    ),
-  );
-
-  void _playAttention() => _play(
-    'attention',
-    (lvl) => AttentionGame(
-      db: widget.db,
-      patientId: _id,
-      baselineLevel: _baseline,
-      language: _lang,
-      voice: widget.voice,
-      startLevel: lvl,
-      voiceOn: _voiceOn,
-    ),
-  );
-
-  void _playRoutine() => _play(
-    'routine',
-    (lvl) => RoutineGame(
-      db: widget.db,
-      patientId: _id,
-      baselineLevel: _baseline,
-      language: _lang,
-      voice: widget.voice,
-      startLevel: lvl,
-      voiceOn: _voiceOn,
-    ),
-  );
-
-  void _playWordRecall() => _play(
-    'word_recall',
-    (lvl) => WordRecallGame(
-      db: widget.db,
-      patientId: _id,
-      baselineLevel: _baseline,
-      language: _lang,
-      voice: widget.voice,
-      startLevel: lvl,
-      voiceOn: _voiceOn,
-    ),
-  );
-
-  void _playPuzzleFix() => _play(
-    'puzzle_fix',
-    (lvl) => PuzzleFixGame(
-      db: widget.db,
-      patientId: _id,
-      baselineLevel: _baseline,
-      language: _lang,
-      voice: widget.voice,
-      startLevel: lvl,
-      voiceOn: _voiceOn,
-    ),
-  );
-
-  void _playNumberOrder() => _play(
-    'number_order',
-    (lvl) => NumberOrderGame(
-      db: widget.db,
-      patientId: _id,
-      baselineLevel: _baseline,
-      language: _lang,
-      voice: widget.voice,
-      startLevel: lvl,
-      voiceOn: _voiceOn,
-    ),
-  );
-
   void _playGame(String id) {
     switch (id) {
-      case 'memory_match':
-        return _playMemory();
-      case 'word_recall':
-        return _playWordRecall();
-      case 'puzzle_fix':
-        return _playPuzzleFix();
-      case 'number_order':
-        return _playNumberOrder();
-      case 'attention':
-        return _playAttention();
+      case 'faces':
+        return _start(id, FacesGame.new);
+      case 'echo':
+        return _start(id, EchoGame.new);
+      case 'where':
+        return _start(id, WhereGame.new);
+      case 'change':
+        return _start(id, ChangeGame.new);
+      case 'sort':
+        return _start(id, SortGame.new);
       default:
-        return _playRoutine();
+        return _start('tile', TileGame.new);
     }
   }
+
+  void _start(
+    String id,
+    RoundGame Function({
+      Key? key,
+      required AppDatabase db,
+      required String patientId,
+      required int baselineLevel,
+      required int startLevel,
+      required String language,
+      required Voice voice,
+      required bool voiceOn,
+    }) make,
+  ) => _play(
+    id,
+    (lvl) => make(
+      db: widget.db,
+      patientId: _id,
+      baselineLevel: _baseline,
+      language: _lang,
+      voice: widget.voice,
+      startLevel: lvl,
+      voiceOn: _voiceOn,
+    ),
+  );
 
   void _openProgress() => Navigator.of(context).push(
     MaterialPageRoute(
@@ -388,7 +337,7 @@ class _PatientShellState extends State<PatientShell> {
         name: widget.patient['display_name'] as String,
         photo: widget.patient['photo'] as List<int>?,
         lang: _lang,
-        onPlay: _playMemory,
+        onPlay: () => _playGame(kGames.first.id),
         onGames: () => setState(() => _tab = 1),
         onReminders: () => setState(() => _tab = 2),
         onProgress: _openProgress,

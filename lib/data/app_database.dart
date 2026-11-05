@@ -13,6 +13,7 @@ import '../core/ability_model.dart';
 import '../services/api_client.dart' show OfflineStore;
 import '../core/adherence.dart';
 import '../core/adaptive_engine.dart';
+import '../core/progression.dart';
 import '../core/engagement_alerts.dart';
 import '../core/reminder_schedule.dart';
 
@@ -1382,12 +1383,17 @@ class AppDatabase implements OfflineStore {
       AbilityModel.fit(
           stats: await levelStats(patientId, game), baseline: baseline);
 
-  /// Level a game should start at: the model's pick inside the caregiver's band.
-  Future<int> recommendedStartLevel(
+  /// Where the next play of [game] starts (see `gameProgress`): the same level
+  /// for a few clears, then a little harder, always inside the caregiver's band.
+  Future<GameProgress> gameProgressFor(
       String patientId, String game, int baseline) async {
-    final model = await abilityModel(patientId, game, baseline);
-    return model.recommend(DifficultyBand(baseline));
+    final all = await sessionRecords(patientId);
+    return gameProgress(all.where((s) => s.game == game), DifficultyBand(baseline));
   }
+
+  Future<int> recommendedStartLevel(
+          String patientId, String game, int baseline) async =>
+      (await gameProgressFor(patientId, game, baseline)).level;
 
   /// Alerts for the patient right now, or none when sharing with the caregiver
   /// is not consented. Used for the badge on the Caregiver area entry.

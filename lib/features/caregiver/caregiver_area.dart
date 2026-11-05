@@ -19,7 +19,10 @@ import '../profile/photo_picker.dart' show Avatar;
 import '../reminders/reminders_screen.dart';
 
 
-final _games = {for (final g in kGames) g.id: g.titleKey};
+final _games = {
+  for (final g in kGames) g.id: g.titleKey,
+  ...kLegacyGameTitles,
+};
 
 /// Opens the caregiver area: PIN first, then the dashboard.
 Future<void> openCaregiverArea(
@@ -248,7 +251,7 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
         weekAdherence: week,
       ),
       {
-        for (final g in _games.keys)
+        for (final g in kGameIds)
           g: await widget.db.abilityModel(widget.patientId, g, baseline)
       },
       await widget.db.listFamily(widget.patientId),
@@ -530,10 +533,10 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                for (final e in _games.entries)
+                for (final g in kGames)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Text(_modelLine(e.value, d.models[e.key]!, baseline),
+                    child: Text(_modelLine(g.titleKey, d.models[g.id]!, baseline),
                         style: const TextStyle(fontSize: 16)),
                   ),
                 const SizedBox(height: 6),

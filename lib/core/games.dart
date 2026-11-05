@@ -12,22 +12,42 @@ class GameInfo {
 }
 
 const kGames = [
-  GameInfo('memory_match', 'memoryGame', 'memoryGameDesc',
+  GameInfo('faces', 'gameFaces', 'gameFacesDesc',
+      Icons.face_retouching_natural_rounded, Color(0xFFA477E1)),
+  GameInfo('echo', 'gameEcho', 'gameEchoDesc',
+      Icons.graphic_eq_rounded, Color(0xFF3196F1)),
+  GameInfo('where', 'gameWhere', 'gameWhereDesc',
       Icons.grid_view_rounded, Color(0xFFF26B5E)),
-  GameInfo('word_recall', 'gameWordRecall', 'gameWordRecallDesc',
-      Icons.psychology_alt_rounded, Color(0xFF1F8B68)),
-  GameInfo('puzzle_fix', 'gamePuzzleFix', 'gamePuzzleFixDesc',
-      Icons.extension_rounded, Color(0xFFA477E1)),
-  GameInfo('number_order', 'gameNumberOrder', 'gameNumberOrderDesc',
-      Icons.pin_rounded, Color(0xFF3196F1)),
-  GameInfo('attention', 'gameAttention', 'gameAttentionDesc',
-      Icons.center_focus_strong_rounded, Color(0xFF69B64C)),
-  GameInfo('routine', 'gameRoutine', 'gameRoutineDesc',
-      Icons.checklist_rounded, Color(0xFFF2A63B)),
+  GameInfo('change', 'gameChange', 'gameChangeDesc',
+      Icons.compare_rounded, Color(0xFFF2A63B)),
+  GameInfo('sort', 'gameSort', 'gameSortDesc',
+      Icons.category_rounded, Color(0xFF69B64C)),
+  GameInfo('tile', 'gameTile', 'gameTileDesc',
+      Icons.dashboard_customize_rounded, Color(0xFF1F8B68)),
 ];
+
+/// Games that were replaced. Their saved sessions stay in the history and
+/// keep their names, but they can no longer be played.
+const kLegacyGameTitles = {
+  'memory_match': 'memoryGame',
+  'word_recall': 'gameWordRecall',
+  'puzzle_fix': 'gamePuzzleFix',
+  'number_order': 'gameNumberOrder',
+  'attention': 'gameAttention',
+  'routine': 'gameRoutine',
+};
 
 final kGameIds = [for (final g in kGames) g.id];
 
-/// Title key for a stored game id (falls back to the memory game's).
-String gameTitleKey(String id) =>
-    kGames.firstWhere((g) => g.id == id, orElse: () => kGames.first).titleKey;
+/// Title key for a stored game id, old or new.
+String gameTitleKey(String id) {
+  for (final g in kGames) {
+    if (g.id == id) return g.titleKey;
+  }
+  return kLegacyGameTitles[id] ?? kGames.first.titleKey;
+}
+
+/// Look up a game for its icon and colour; old ids get a neutral look.
+GameInfo gameInfoFor(String id) => kGames.firstWhere((g) => g.id == id,
+    orElse: () => GameInfo(id, gameTitleKey(id), '', Icons.extension_rounded,
+        const Color(0xFF8B96A5)));

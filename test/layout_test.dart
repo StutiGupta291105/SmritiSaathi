@@ -22,16 +22,16 @@ import 'package:smriti_assist/features/onboarding/onboarding_screen.dart';
 import 'package:smriti_assist/features/profile/profile_flow.dart';
 import 'package:smriti_assist/features/auth/welcome_screen.dart';
 import 'package:smriti_assist/features/companion/chat_screen.dart';
-import 'package:smriti_assist/features/games/attention_game.dart';
-import 'package:smriti_assist/features/games/memory_match_game.dart';
-import 'package:smriti_assist/features/games/number_order_game.dart';
-import 'package:smriti_assist/features/games/puzzle_fix_game.dart';
-import 'package:smriti_assist/features/games/routine_game.dart';
-import 'package:smriti_assist/features/games/word_recall_game.dart';
 import 'package:smriti_assist/features/onboarding/restore_screen.dart';
 import 'package:smriti_assist/features/chat/doctor_directory_screen.dart';
 import 'package:smriti_assist/features/shell/settings_pages.dart';
 import 'package:smriti_assist/features/shell/games_tab.dart';
+import 'package:smriti_assist/features/games/change_game.dart';
+import 'package:smriti_assist/features/games/echo_game.dart';
+import 'package:smriti_assist/features/games/faces_game.dart';
+import 'package:smriti_assist/features/games/sort_game.dart';
+import 'package:smriti_assist/features/games/tile_game.dart';
+import 'package:smriti_assist/features/games/where_game.dart';
 import 'package:smriti_assist/features/shell/home_tab.dart';
 import 'package:smriti_assist/features/shell/profile_tab.dart';
 import 'package:smriti_assist/features/shell/progress_screen.dart';
@@ -136,12 +136,12 @@ void main() {
       }));
 
   final screens = <String, Widget Function(String lang)>{
-    'memory game': (l) => MemoryMatchGame(db: db, patientId: pid, baselineLevel: 3, startLevel: 3, language: l, voice: Voice(), voiceOn: false),
-    'attention game': (l) => AttentionGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
-    'routine game': (l) => RoutineGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
-    'word recall game': (l) => WordRecallGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
-    'puzzle game': (l) => PuzzleFixGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
-    'number game': (l) => NumberOrderGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'faces game': (l) => FacesGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'echo game': (l) => EchoGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'where game': (l) => WhereGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'change game': (l) => ChangeGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'sort game': (l) => SortGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
+    'tile game': (l) => TileGame(db: db, patientId: pid, baselineLevel: 5, startLevel: 5, language: l, voice: Voice(), voiceOn: false),
     'reminders': (l) => RemindersScreen(
         db: db, notifier: ReminderNotifier(db), patientId: pid, language: l, embedded: true),
     'remote home': (l) => RemoteHome(
