@@ -111,6 +111,14 @@ end).
 6. Clinical review of every message the app shows about the person's use of it.
 
 
+## Care notes
+
+A caregiver and a doctor linked to the same patient can leave each other short notes
+(`GET/POST/DELETE /v1/patients/{id}/care-notes`, `care.py`). Only accepted, consented members
+can read them; only the author can delete (a soft delete); the patient's phone never receives
+them. They are stored on the server in readable form (like routine titles), are part of the
+patient's data export and are erased with the patient. Tests: `test_care_notes.py`.
+
 ## Chat between a patient and their caretaker or doctor
 
 - A conversation is the accepted link between the two. Both sides can read and write

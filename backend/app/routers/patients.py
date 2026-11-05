@@ -9,7 +9,7 @@ from ..db import utcnow
 from ..deps import (consent_granted, current_user, get_db, patient_for_owner,
                     patient_for_viewer, require_role, settings_of)
 from ..models import (CONSENT_PURPOSES, ROLE_PURPOSE, Consent, GameSession,
-                      CareReminder, Conversation, Link, Message, OtpChallenge, Patient, RefreshToken,
+                      CareNote, CareReminder, Conversation, Link, Message, OtpChallenge, Patient, RefreshToken,
                       ReminderMark, ReminderSchedule, User)
 from ..schemas import (BaselineIn, ConsentsIn, InviteIn, LinkOut, PatientIn,
                        PatientOut, SyncIn, SyncOut)
@@ -244,6 +244,7 @@ def export(patient_id: str, user: User = Depends(current_user),
         "reminder_schedules": rows(ReminderSchedule, ReminderSchedule.patient_id == p.id),
         "reminder_marks": rows(ReminderMark, ReminderMark.patient_id == p.id),
         "care_reminders": rows(CareReminder, CareReminder.patient_id == p.id),
+        "care_notes": rows(CareNote, CareNote.patient_id == p.id),
         # text and timing; photos and voice notes are listed without their bytes
         "messages": [{c.name: (v.isoformat() if isinstance(v := getattr(m, c.name), datetime) else v)
                       for c in Message.__table__.columns if c.name != "media"}
@@ -316,8 +317,8 @@ def erase(patient_id: str, user: User = Depends(current_user),
     db.execute(delete(Message).where(Message.link_id.in_(link_ids)))
     db.execute(delete(Message).where(Message.conv_id.in_(
         select(Conversation.id).where(Conversation.patient_id == p.id))))
-    for model in (ReminderMark, ReminderSchedule, CareReminder, GameSession, Consent, Link,
-                  Conversation):
+    for model in (ReminderMark, ReminderSchedule, CareReminder, CareNote, GameSession, Consent,
+                  Link, Conversation):
         db.execute(delete(model).where(model.patient_id == p.id))
     db.execute(delete(Patient).where(Patient.id == p.id))
     db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))

@@ -237,6 +237,22 @@ class Message(Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class CareNote(Base):
+    """A short note one member of a patient's care team leaves for the rest of it
+    (the linked caregiver and doctor): "slept badly", "refused lunch". Visible only
+    to accepted, consented members, written and deleted by its author, included in
+    the patient's export and removed when the patient is erased."""
+    __tablename__ = "care_notes"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), index=True)
+    author_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    author_name: Mapped[str] = mapped_column(String(120))
+    author_role: Mapped[str] = mapped_column(String(12))
+    body: Mapped[str] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
 class CareReminder(Base):
     """A routine or reminder a caretaker or doctor set for the patient. Unlike the
     patient's own reminders, its title is stored here, because the patient's phone

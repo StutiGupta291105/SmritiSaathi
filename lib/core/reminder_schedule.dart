@@ -97,3 +97,87 @@ List<PlannedAlert> plannedAlerts(List<Reminder> reminders, DateTime now,
   out.sort((a, b) => a.at.compareTo(b.at));
   return out.take(limit).toList();
 }
+
+/// How often one scheduled notification repeats by itself.
+enum AlertRepeat { none, daily, weekly, yearly }
+
+/// A notification the phone repeats on its own (the OS keeps repeating it with
+/// no help from the app), so reminders keep ringing even if the app is not
+/// opened for weeks. [first] is the first time it rings; later times follow
+/// from [repeat].
+class RepeatingAlert {
+  const RepeatingAlert(this.first, this.kind, this.headsUp, this.repeat);
+  final DateTime first;
+  final ReminderKind kind;
+  final bool headsUp;
+  final AlertRepeat repeat;
+}
+
+/// The next time of a repeating alert strictly after [now], stepping by whole
+/// calendar days (not 24h) so the wall-clock time survives a DST change.
+DateTime _firstAfter(DateTime t, DateTime now, AlertRepeat repeat) {
+  var out = t;
+  while (!out.isAfter(now)) {
+    switch (repeat) {
+      case AlertRepeat.daily:
+        out = DateTime(out.year, out.month, out.day + 1, out.hour, out.minute);
+      case AlertRepeat.weekly:
+        out = DateTime(out.year, out.month, out.day + 7, out.hour, out.minute);
+      case AlertRepeat.yearly:
+        out = DateTime(out.year + 1, out.month, out.day, out.hour, out.minute);
+      case AlertRepeat.none:
+        return out;
+    }
+  }
+  return out;
+}
+
+/// What to hand to the OS so it repeats reminders by itself:
+///  * every-day reminders: one daily alarm (plus one daily heads-up),
+///  * some days of the week: one weekly alarm per day (plus heads-ups),
+///  * birthdays: yearly,
+///  * dated appointments and events: one-off.
+/// The platform keeps at most [limit] pending (iOS: 64), so the alerts at the
+/// time itself are kept before the 30-minute heads-ups.
+List<RepeatingAlert> repeatingAlerts(List<Reminder> reminders, DateTime now,
+    {int limit = 60}) {
+  final main = <RepeatingAlert>[];
+  final heads = <RepeatingAlert>[];
+  void add(DateTime at, ReminderKind kind, AlertRepeat repeat) {
+    main.add(RepeatingAlert(at, kind, false, repeat));
+    final before = _firstAfter(at.subtract(kReminderLead), now, repeat);
+    // A one-off heads-up that is already past is simply skipped.
+    if (repeat != AlertRepeat.none || before.isAfter(now)) {
+      heads.add(RepeatingAlert(before, kind, true, repeat));
+    }
+  }
+
+  for (final r in reminders) {
+    if (!r.active) continue;
+    if (r.onDate != null) {
+      final next = nextOccurrences(r, now);
+      if (next.isEmpty) continue;
+      add(next.first,
+          r.kind, r.kind == ReminderKind.birthday ? AlertRepeat.yearly : AlertRepeat.none);
+      continue;
+    }
+    final mask = r.daysMask & 127;
+    if (mask == 0) continue;
+    if (mask == 127) {
+      final next = nextOccurrences(r, now);
+      if (next.isNotEmpty) add(next.first, r.kind, AlertRepeat.daily);
+      continue;
+    }
+    var days = 0;
+    for (var b = 0; b < 7; b++) {
+      if ((mask >> b) & 1 == 1) days++;
+    }
+    // The next [days] occurrences are exactly one per chosen weekday.
+    for (final at in nextOccurrences(r, now, count: days)) {
+      add(at, r.kind, AlertRepeat.weekly);
+    }
+  }
+  main.sort((a, b) => a.first.compareTo(b.first));
+  heads.sort((a, b) => a.first.compareTo(b.first));
+  return [...main, ...heads].take(limit).toList();
+}

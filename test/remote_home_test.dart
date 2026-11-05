@@ -137,9 +137,9 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(find.text('Asha').first);
     await t.pumpAndSettle();
-    expect(find.text('Has not played for 3 days.'), findsOneWidget);
-    expect(find.text('Games played'), findsOneWidget);
-    expect(find.text('4'), findsOneWidget);
+    expect(find.text('Has not played for 3 days.', skipOffstage: false), findsOneWidget);
+    expect(find.text('Games played', skipOffstage: false), findsOneWidget);
+    expect(find.text('4', skipOffstage: false), findsOneWidget);
     await t.tap(find.text('Games').last); // the Games pill on the patient screen
     await t.pumpAndSettle();
     expect(find.textContaining('75%'), findsOneWidget);
@@ -285,7 +285,7 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(find.text('Asha').first);
     await t.pumpAndSettle();
-    await t.tap(find.text('Reminders').last);
+    await t.tap(find.text('Routine').last); // a caregiver's tab is called Routine
     await t.pumpAndSettle();
     expect(find.text('Drink water'), findsOneWidget);
     expect(find.text('Added by Dr Rao'), findsOneWidget);
@@ -473,7 +473,7 @@ void main() {
     expect(find.text('Alerts'), findsWidgets);
   });
 
-  testWidgets('a caregiver has no Consult tab', (t) async {
+  testWidgets('a caregiver also has a Consult tab: patients and doctors', (t) async {
     final api = _api((r) async {
       if (r.url.path == '/v1/invites') return _j(200, []);
       if (r.url.path == '/v1/my-patients') return _j(200, _patientsJson);
@@ -481,8 +481,9 @@ void main() {
     });
     await t.pumpWidget(_app(api));
     await t.pumpAndSettle();
-    expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Consult')), findsNothing);
-    expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Alerts')), findsOneWidget);
+    final nav = find.byType(NavigationBar);
+    expect(find.descendant(of: nav, matching: find.text('Consult')), findsOneWidget);
+    expect(find.descendant(of: nav, matching: find.text('Alerts')), findsNothing); // the bell instead
   });
 
   testWidgets('editing a prescription shows its name, dose and food timing; only one time', (t) async {
@@ -596,5 +597,164 @@ void main() {
     await t.tap(find.byKey(const ValueKey('alertsBack')));
     await t.pumpAndSettle();
     expect(find.byKey(const ValueKey('roleHero')), findsOneWidget);
+  });
+
+  testWidgets('caregiver home is a garden with today\'s routines as a timeline', (t) async {
+    t.view.physicalSize = const Size(800, 2400);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/care-reminders') {
+        return _j(200, [
+          {'id': 'c1', 'kind': 'activity', 'label': 'Evening walk', 'hour': 23, 'minute': 30,
+           'days_mask': 127, 'on_date': null, 'created_by_name': 'Ravi', 'created_by_role': 'caretaker', 'mine': true},
+          {'id': 'c2', 'kind': 'activity', 'label': 'Not today', 'hour': 9, 'minute': 0,
+           'days_mask': 0, 'on_date': null, 'created_by_name': 'Ravi', 'created_by_role': 'caretaker', 'mine': true},
+        ]);
+      }
+      return _j(200, <Object>[]);
+    });
+    await t.pumpWidget(_app(api));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('caregiverGarden')), findsOneWidget);
+    expect(find.byKey(const ValueKey('roleHero')), findsNothing, reason: 'that is the doctor\'s header');
+    expect(find.text('0 of 2 active today'), findsOneWidget);
+    expect(find.text("Today's routines"), findsOneWidget);
+    expect(find.text('Evening walk'), findsOneWidget);
+    expect(find.textContaining('Asha'), findsWidgets);
+    expect(find.text('Not today'), findsNothing); // a routine that does not run today
+    await t.tap(find.byKey(const ValueKey('gardenBell'))); // the bell leads to the alerts page
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('alertsBack')), findsOneWidget);
+  });
+
+  testWidgets('caregiver Consult: patients, and doctors of their patients', (t) async {
+    t.view.physicalSize = const Size(800, 1800);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/chat/threads') {
+        return _j(200, [
+          {'link_id': 'L1', 'kind': 'care', 'patient_id': 'p1', 'patient_name': 'Asha', 'peer_name': 'Asha',
+           'member_role': 'caretaker', 'unread': 0, 'last_at': null, 'last_kind': null},
+          {'link_id': 'P1', 'kind': 'pro', 'patient_id': 'p1', 'patient_name': 'Asha', 'peer_name': 'Dr Rao',
+           'member_role': 'doctor', 'unread': 3, 'last_at': '2026-05-02T10:00:00', 'last_kind': 'text'},
+          // a caregiver must never see an opinion request, even if one were sent by mistake
+          {'link_id': 'C7', 'kind': 'opinion', 'patient_id': null, 'patient_name': 'Stranger Sen',
+           'peer_name': 'Stranger Sen', 'member_role': 'patient', 'unread': 0, 'last_at': null, 'last_kind': null},
+        ]);
+      }
+      return _j(200, <Object>[]);
+    });
+    await t.pumpWidget(_app(api));
+    await t.pumpAndSettle();
+    final nav = find.byType(NavigationBar);
+    await t.tap(find.descendant(of: nav, matching: find.text('Consult')));
+    await t.pumpAndSettle();
+    expect(find.text('Your patients'), findsOneWidget);
+    expect(find.text('Questions from other patients'), findsNothing); // only a doctor gets those
+    expect(find.text('Stranger Sen'), findsNothing);
+    expect(find.text('Dr Rao'), findsNothing);
+    await t.tap(find.byKey(const ValueKey('consultSegCaregivers'))); // second segment: Doctors
+    await t.pumpAndSettle();
+    expect(find.text('Doctors'), findsOneWidget);
+    expect(find.text('Dr Rao'), findsOneWidget);
+    expect(find.textContaining('Care team chat'), findsOneWidget);
+  });
+
+  testWidgets('care notes: a caregiver writes, sees the doctor\'s, and deletes only their own', (t) async {
+    t.view.physicalSize = const Size(800, 2400);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final notes = <Map<String, dynamic>>[
+      {'id': 'n1', 'body': 'Reduce evening dose', 'author_name': 'Dr Rao', 'author_role': 'doctor',
+       'created_at': DateTime.now().toUtc().toIso8601String(), 'mine': false},
+    ];
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      if (p == '/v1/patients/p1/reminders') return _j(200, []);
+      if (p == '/v1/patients/p1/care-reminders') return _j(200, []);
+      if (p == '/v1/patients/p1/care-notes' && r.method == 'POST') {
+        final b = jsonDecode(r.body) as Map<String, dynamic>;
+        notes.insert(0, {'id': 'n2', 'body': b['body'], 'author_name': 'Ravi', 'author_role': 'caretaker',
+                         'created_at': DateTime.now().toUtc().toIso8601String(), 'mine': true});
+        return _j(201, notes.first);
+      }
+      if (p == '/v1/patients/p1/care-notes/n2' && r.method == 'DELETE') {
+        notes.removeWhere((n) => n['id'] == 'n2');
+        return http.Response('', 204);
+      }
+      if (p == '/v1/patients/p1/care-notes') return _j(200, notes);
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(_app(api));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Asha').first);
+    await t.pumpAndSettle();
+    await t.tap(find.text('Notes').last);
+    await t.pumpAndSettle();
+    expect(find.text('Reduce evening dose'), findsOneWidget);
+    expect(find.byKey(const ValueKey('deleteNote_n1')), findsNothing); // the doctor's note: not theirs
+    await t.enterText(find.byKey(const ValueKey('noteField')), 'Ate well at lunch');
+    await t.tap(find.byKey(const ValueKey('addNote')));
+    await t.pumpAndSettle();
+    expect(find.text('Ate well at lunch'), findsOneWidget);
+    expect(find.byKey(const ValueKey('deleteNote_n2')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('deleteNote_n2')));
+    await t.pumpAndSettle();
+    expect(find.text('Ate well at lunch'), findsNothing);
+    expect(find.text('Reduce evening dose'), findsOneWidget);
+  });
+
+  testWidgets('a caregiver adds a routine from a quick template', (t) async {
+    t.view.physicalSize = const Size(800, 2400);
+    t.view.devicePixelRatio = 2;
+    addTearDown(t.view.reset);
+    final posts = <Map<String, dynamic>>[];
+    final api = _api((r) async {
+      final p = r.url.path;
+      if (p == '/v1/invites') return _j(200, []);
+      if (p == '/v1/my-patients') return _j(200, _patientsJson);
+      if (p == '/v1/patients/p1/report') return _j(200, _report);
+      if (p == '/v1/patients/p1/reminders') return _j(200, []);
+      if (p == '/v1/patients/p1/care-reminders' && r.method == 'POST') {
+        posts.add(jsonDecode(r.body) as Map<String, dynamic>);
+        return _j(201, {'id': 'z', ...posts.last, 'days_mask': 127, 'created_by_name': 'Ravi',
+                        'created_by_role': 'caretaker', 'mine': true});
+      }
+      if (p == '/v1/patients/p1/care-reminders') return _j(200, <Object>[]);
+      return _j(404, {'detail': 'x'});
+    });
+    await t.pumpWidget(_app(api));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Asha').first);
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('heroRoutine')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('addCareReminder')));
+    await t.pumpAndSettle();
+    expect(find.text('Quick add'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('tpl_tplWater'))); // changes the kind to water, 10:00
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Save'));
+    await t.pumpAndSettle();
+    expect(posts.single['kind'], 'hydration');
+    expect(posts.single['label'], 'Drink a glass of water');
+    expect((posts.single['hour'], posts.single['minute']), (10, 0));
+    // a caregiver never sees a medicine choice
+    await t.tap(find.byKey(const ValueKey('addCareReminder')));
+    await t.pumpAndSettle();
+    await t.tap(find.byType(DropdownButtonFormField<ReminderKind>));
+    await t.pumpAndSettle();
+    expect(find.text('Medicine'), findsNothing);
   });
 }

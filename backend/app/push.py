@@ -15,19 +15,29 @@ OK, INVALID, FAILED = "ok", "invalid", "failed"
 
 
 class PushProvider(Protocol):
-    def send(self, token: str, title: str, body: str) -> str:
-        """Returns OK, INVALID (token is dead: delete it) or FAILED (try later)."""
+    def send(self, token: str, title: str, body: str,
+             data: dict[str, str] | None = None, silent: bool = False) -> str:
+        """Returns OK, INVALID (token is dead: delete it) or FAILED (try later).
+
+        `data` is a small routing hint for the app (e.g. {"type": "chat",
+        "link_id": ...}); it never carries health or message content. `silent`
+        asks Android to wake the app's background handler instead of showing a
+        system notification, so the phone can fetch and schedule a changed
+        routine without the patient opening the app (iOS still shows the alert)."""
 
 
 class DevPush:
     def __init__(self) -> None:
         self.outbox: list[tuple[str, str, str]] = []
+        self.outbox_data: list[tuple[dict[str, str] | None, bool]] = []
         self.dead: set[str] = set()
 
-    def send(self, token: str, title: str, body: str) -> str:
+    def send(self, token: str, title: str, body: str,
+             data: dict[str, str] | None = None, silent: bool = False) -> str:
         if token in self.dead:
             return INVALID
         self.outbox.append((token, title, body))
+        self.outbox_data.append((data, silent))
         return OK
 
 
@@ -50,7 +60,8 @@ class FcmPush:
         self._creds = creds
         self._url = f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
 
-    def send(self, token: str, title: str, body: str) -> str:
+    def send(self, token: str, title: str, body: str,
+             data: dict[str, str] | None = None, silent: bool = False) -> str:
         import requests
         if not self._creds.valid:
             import google.auth.transport.requests as gtr
@@ -59,9 +70,7 @@ class FcmPush:
             r = requests.post(
                 self._url, timeout=10,
                 headers={"Authorization": f"Bearer {self._creds.token}"},
-                json={"message": {"token": token,
-                                  "notification": {"title": title, "body": body},
-                                  "android": {"priority": "HIGH"}}})
+                json={"message": self._message(token, title, body, data, silent)})
         except requests.RequestException:
             return FAILED
         if r.status_code == 200:
@@ -69,6 +78,23 @@ class FcmPush:
         if r.status_code in (400, 404):  # malformed or unregistered token
             return INVALID
         return FAILED
+
+    @staticmethod
+    def _message(token: str, title: str, body: str,
+                 data: dict[str, str] | None, silent: bool) -> dict:
+        msg: dict = {"token": token, "android": {"priority": "HIGH"}}
+        if data:
+            msg["data"] = {k: str(v) for k, v in data.items()}  # FCM data values are strings
+        if silent and data:
+            # Android: data only, so the app's background handler runs (syncs and
+            # schedules the alarms, then shows the generic text itself). iOS: the
+            # alert is carried by APNs and the app is woken as well.
+            msg["apns"] = {"headers": {"apns-priority": "10"},
+                           "payload": {"aps": {"alert": {"title": title, "body": body},
+                                               "content-available": 1}}}
+        else:
+            msg["notification"] = {"title": title, "body": body}
+        return msg
 
 
 def get_provider(name: str) -> PushProvider:

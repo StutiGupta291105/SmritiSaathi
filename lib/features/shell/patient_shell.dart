@@ -13,7 +13,9 @@ import '../companion/chat_screen.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../data/app_database.dart';
+import '../../services/push_events.dart';
 import '../../services/reminder_notifier.dart';
+import '../reminders/notify_banner.dart';
 import '../../services/voice.dart';
 import '../games/attention_game.dart';
 import '../games/memory_match_game.dart';
@@ -75,6 +77,9 @@ class _PatientShellState extends State<PatientShell> {
   void initState() {
     super.initState();
     kRemindersRevision.addListener(_remindersChanged);
+    kPushOpen.addListener(_onPushOpen);
+    // A notification tap that started the app is already waiting.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onPushOpen());
     if (widget.api != null) {
       widget.api!.online.addListener(_onlineChanged);
       _loadThreads();
@@ -83,6 +88,32 @@ class _PatientShellState extends State<PatientShell> {
         // About once a minute, pick up routines a caregiver or doctor added.
         if (++_ticks % 3 == 0) widget.hooks?.syncNow();
       });
+    }
+  }
+
+  /// A tapped notification: the reminders tab for a routine or reminder, the
+  /// conversation itself for a message.
+  Future<void> _onPushOpen() async {
+    final open = kPushOpen.value;
+    if (open == null || !mounted) return;
+    kPushOpen.value = null;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    switch (open.type) {
+      case 'routine':
+      case 'reminder':
+        setState(() => _tab = 2);
+      case 'chat':
+        final api = widget.api;
+        if (api == null) return;
+        try {
+          final rows = await api.chatThreads();
+          if (!mounted) return;
+          setState(() => _threads = rows);
+          final th = rows.where((x) => x['link_id'] == open.linkId).toList();
+          if (th.isNotEmpty) await _pushThread(th.first);
+        } on ApiException {
+          // Offline: the app is open on the home tab, the chat buttons still work.
+        }
     }
   }
 
@@ -100,6 +131,7 @@ class _PatientShellState extends State<PatientShell> {
   void dispose() {
     widget.api?.online.removeListener(_onlineChanged);
     kRemindersRevision.removeListener(_remindersChanged);
+    kPushOpen.removeListener(_onPushOpen);
     _chatTimer?.cancel();
     super.dispose();
   }
@@ -170,13 +202,17 @@ class _PatientShellState extends State<PatientShell> {
             ),
           );
     if (th == null || !mounted) return;
+    await _pushThread(th);
+  }
+
+  Future<void> _pushThread(Map<String, dynamic> th) async {
     await Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => MessagesScreen(
         api: widget.api!,
         linkId: th['link_id'] as String,
         title: '${th['member_name']}',
         lang: _lang,
-        accent: role == 'doctor' ? Palette.purple : Palette.action,
+        accent: th['member_role'] == 'doctor' ? Palette.purple : Palette.action,
         callPhone: th['member_phone'] as String?,
         onActivity: _loadThreads,
       ),
@@ -388,6 +424,7 @@ class _PatientShellState extends State<PatientShell> {
           if (widget.api != null)
             OfflineBar(
                 api: widget.api!, lang: _lang, db: widget.db, patientId: _id),
+          NotifyAccessBanner(notifier: widget.notifier, lang: _lang),
           Expanded(child: pages[_tab]),
         ]),
       ),

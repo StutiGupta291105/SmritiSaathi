@@ -9,10 +9,13 @@ import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../services/api_client.dart';
+import '../../services/push_events.dart';
 import '../chat/messages_screen.dart';
 import '../reminders/reminder_style.dart';
 import '../shell/offline_bar.dart';
 import '../reminders/reminders_screen.dart' show showAddReminderDialog, NewReminder;
+import '../shell/garden.dart' show GardenHeader;
+import 'care_timeline.dart';
 import '../shell/settings_pages.dart';
 
 /// Blue for doctors, green for caretakers, as on the design sheet.
@@ -57,6 +60,9 @@ class _RemoteHomeState extends State<RemoteHome> {
   Timer? _chatTimer;
   late int _tab = widget.initialTab;
 
+  /// Today's routines across this caregiver's patients (for the garden home).
+  List<TodayItem> _today = const [];
+
   String t(String k) => tr(widget.lang, k);
   Color get _accent => accentFor(widget.user.role);
 
@@ -65,10 +71,30 @@ class _RemoteHomeState extends State<RemoteHome> {
     super.initState();
     _load();
     _chatTimer = Timer.periodic(const Duration(seconds: 20), (_) => _loadThreads());
+    kPushOpen.addListener(_onPushOpen);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onPushOpen());
+  }
+
+  /// A tapped message notification opens that conversation.
+  Future<void> _onPushOpen() async {
+    final open = kPushOpen.value;
+    if (open == null || !mounted || open.type != 'chat') return;
+    kPushOpen.value = null;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    try {
+      final rows = await widget.api.chatThreads();
+      if (!mounted) return;
+      setState(() => _threads = rows);
+      final th = rows.where((x) => x['link_id'] == open.linkId).toList();
+      if (th.isNotEmpty) await _openChat(th.first);
+    } on ApiException {
+      // Offline: stay on the home screen.
+    }
   }
 
   @override
   void dispose() {
+    kPushOpen.removeListener(_onPushOpen);
     _chatTimer?.cancel();
     super.dispose();
   }
@@ -76,7 +102,7 @@ class _RemoteHomeState extends State<RemoteHome> {
   bool get _doctor => widget.user.role == 'doctor';
 
   /// Where the bell goes: the alerts page.
-  int get _alertsIndex => _doctor ? 5 : 3;
+  int get _alertsIndex => 5;
 
   int get _unreadTotal =>
       _threads.fold<int>(0, (n, x) => n + ((x['unread'] as int?) ?? 0));
@@ -150,6 +176,7 @@ class _RemoteHomeState extends State<RemoteHome> {
         _patients = patients;
         _loading = false;
       });
+      if (!_doctor) unawaited(_loadToday(patients));
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.isUnauthorized) return widget.onSignedOut?.call();
@@ -158,6 +185,22 @@ class _RemoteHomeState extends State<RemoteHome> {
         _loading = false;
       });
     }
+  }
+
+  /// The routines set for today for up to ten patients, soonest first. A patient
+  /// whose list cannot be fetched is skipped; the rest still show.
+  Future<void> _loadToday(List<Map<String, dynamic>> patients) async {
+    final now = DateTime.now();
+    final lists = await Future.wait([
+      for (final p in patients.take(10))
+        widget.api
+            .careReminders(p['patient_id'] as String, cached: true)
+            .then((c) => todayItems(c, now, patient: '${p['display_name']}'))
+            .catchError((Object _) => <TodayItem>[]),
+    ]);
+    if (!mounted) return;
+    setState(() => _today = [for (final l in lists) ...l]
+      ..sort((a, b) => a.at.compareTo(b.at)));
   }
 
   Future<void> _answer(String id, bool accept) async {
@@ -188,11 +231,23 @@ class _RemoteHomeState extends State<RemoteHome> {
               onMessage: _threadFor(p['patient_id'] as String) == null
                   ? null
                   : () => _openChat(_threadFor(p['patient_id'] as String)!),
+              onMessageDoctor: _doctor || _teamThreadFor(p['patient_id'] as String) == null
+                  ? null
+                  : () => _openChat(_teamThreadFor(p['patient_id'] as String)!),
               onSignedOut: widget.onSignedOut)));
 
+  /// The care-team chat (caregiver and doctor) about this patient, if there is one.
+  Map<String, dynamic>? _teamThreadFor(String patientId) {
+    for (final th in _threads) {
+      if (th['kind'] == 'pro' && th['patient_id'] == patientId) return th;
+    }
+    return null;
+  }
+
+  /// The care chat with this patient (never the caregiver-doctor chat about them).
   Map<String, dynamic>? _threadFor(String patientId) {
     for (final th in _threads) {
-      if (th['patient_id'] == patientId) return th;
+      if (th['patient_id'] == patientId && (th['kind'] ?? 'care') == 'care') return th;
     }
     return null;
   }
@@ -221,24 +276,16 @@ class _RemoteHomeState extends State<RemoteHome> {
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
-    // A doctor's bar is Home, Patients, Consult, Requests, Profile; the alerts
-    // page is reached from the bell (tab 5). A caregiver keeps the original five.
-    final pages = _doctor
-        ? [
-            _dashboard(),
-            _patientsTab(),
-            _consultTab(),
-            _requestsTab(),
-            _settings(),
-            _alertsTab(),
-          ]
-        : [
-            _dashboard(),
-            _patientsTab(),
-            _requestsTab(),
-            _alertsTab(),
-            _settings()
-          ];
+    // Both roles: Home, Patients, Consult, Requests, Profile. The alerts page is
+    // reached from the bell (tab 5), so five tabs fit on a small phone.
+    final pages = [
+      _dashboard(),
+      _patientsTab(),
+      _consultTab(),
+      _requestsTab(),
+      _settings(),
+      _alertsTab(),
+    ];
     return Theme(
       // Buttons and tabs take the role's colour.
       data: base.copyWith(
@@ -280,40 +327,9 @@ class _RemoteHomeState extends State<RemoteHome> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(26),
               child: NavigationBar(
-                selectedIndex: _doctor && _tab == 5 ? 0 : _tab,
+                selectedIndex: _tab == 5 ? 0 : _tab,
                 onDestinationSelected: (i) => setState(() => _tab = i),
-                destinations: _doctor ? _doctorDestinations() : [
-                  NavigationDestination(
-                      icon: Badge(
-                          isLabelVisible: _unreadTotal > 0,
-                          label: Text('$_unreadTotal'),
-                          child: const Icon(Icons.home_outlined)),
-                      selectedIcon: Icon(Icons.home_rounded, color: _accent),
-                      label: t('tabHome')),
-                  NavigationDestination(
-                      icon: const Icon(Icons.groups_outlined),
-                      selectedIcon: Icon(Icons.groups_rounded, color: _accent),
-                      label: t('rmStatPeople')),
-                  NavigationDestination(
-                      icon: Badge(
-                          isLabelVisible: _invites.isNotEmpty,
-                          label: Text('${_invites.length}'),
-                          child: const Icon(Icons.mail_outline_rounded)),
-                      selectedIcon: Icon(Icons.mail_rounded, color: _accent),
-                      label: t('rmRequests')),
-                  NavigationDestination(
-                      icon: Badge(
-                          isLabelVisible: _alertTotal > 0,
-                          label: Text('$_alertTotal'),
-                          child: const Icon(Icons.notifications_none_rounded)),
-                      selectedIcon:
-                          Icon(Icons.notifications_rounded, color: _accent),
-                      label: t('rmStatAlerts')),
-                  NavigationDestination(
-                      icon: const Icon(Icons.person_outline_rounded),
-                      selectedIcon: Icon(Icons.person_rounded, color: _accent),
-                      label: t('tabProfile')),
-                ],
+                destinations: _destinations(),
               ),
             ),
           ),
@@ -570,10 +586,11 @@ class _RemoteHomeState extends State<RemoteHome> {
         if (y == null) return -1;
         return y.compareTo(x);
       });
+    final active = _patients.where(_activeToday).length;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        _hero(),
+        if (_doctor) _hero() else _gardenHome(active),
         const SizedBox(height: 16),
         _errorLine(),
         if (_loading)
@@ -581,17 +598,29 @@ class _RemoteHomeState extends State<RemoteHome> {
               padding: EdgeInsets.all(24),
               child: Center(child: CircularProgressIndicator()))
         else ...[
-          Row(children: [
-            _stat(Icons.groups_rounded, Palette.green, Palette.tileGreen,
-                '${_patients.length}', t('rmStatPeople')),
-            const SizedBox(width: 10),
-            _stat(Icons.bolt_rounded, Palette.orange, Palette.tileOrange,
-                '${_patients.where(_activeToday).length}', t('rmActiveToday')),
-            const SizedBox(width: 10),
-            _stat(Icons.notifications_active_rounded, Palette.red,
-                Palette.tileRed, '$_alertTotal', t('rmStatAlerts')),
-          ]),
-          const SizedBox(height: 18),
+          if (_doctor) ...[
+            Row(children: [
+              _stat(Icons.groups_rounded, Palette.green, Palette.tileGreen,
+                  '${_patients.length}', t('rmStatPeople')),
+              const SizedBox(width: 10),
+              _stat(Icons.bolt_rounded, Palette.orange, Palette.tileOrange,
+                  '$active', t('rmActiveToday')),
+              const SizedBox(width: 10),
+              _stat(Icons.notifications_active_rounded, Palette.red,
+                  Palette.tileRed, '$_alertTotal', t('rmStatAlerts')),
+            ]),
+            const SizedBox(height: 18),
+          ] else ...[
+            // Today as a line through the day, like the patient's own home.
+            CareTimeline(
+              title: t('routinesToday'),
+              empty: t('noRoutinesToday'),
+              items: _today,
+              lang: widget.lang,
+              now: DateTime.now(),
+            ),
+            const SizedBox(height: 18),
+          ],
           if (_threads.isNotEmpty) ...[
             _heading(t('chatMessages')),
             const SizedBox(height: 8),
@@ -623,6 +652,36 @@ class _RemoteHomeState extends State<RemoteHome> {
               style: const TextStyle(fontSize: 12, color: Palette.muted)),
         ],
       ],
+    );
+  }
+
+  /// The caregiver's home: a garden whose plant grows with how many of their loved
+  /// ones have played today (no score, an empty day is just a young plant).
+  Widget _gardenHome(int active) {
+    final total = _patients.length;
+    return GardenHeader(
+      key: const ValueKey('caregiverGarden'),
+      greeting: _greeting(),
+      name: widget.user.name,
+      photo: null,
+      now: DateTime.now(),
+      progress: total == 0 ? 0 : active / total,
+      progressText: t('careActiveToday')
+          .replaceAll('{a}', '$active')
+          .replaceAll('{b}', '$total'),
+      trailing: Material(
+        color: Colors.white.withValues(alpha: .85),
+        shape: const CircleBorder(),
+        child: IconButton(
+          key: const ValueKey('gardenBell'),
+          tooltip: t('rmStatAlerts'),
+          onPressed: () => setState(() => _tab = _alertsIndex),
+          icon: Badge(
+              isLabelVisible: _alertTotal > 0,
+              label: Text('$_alertTotal'),
+              child: const Icon(Icons.notifications_none_rounded)),
+        ),
+      ),
     );
   }
 
@@ -720,7 +779,7 @@ class _RemoteHomeState extends State<RemoteHome> {
 
   // ---- tab 2: requests (invitations from patients) -------------------------
 
-  List<NavigationDestination> _doctorDestinations() => [
+  List<NavigationDestination> _destinations() => [
         NavigationDestination(
             icon: const Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home_rounded, color: _accent),
@@ -801,12 +860,14 @@ class _RemoteHomeState extends State<RemoteHome> {
     );
   }
 
-  /// A doctor's conversations in one place. Patients: their own patients, then
-  /// questions from other patients who asked for an opinion. Caregivers: only the
-  /// caregivers of the doctor's own patients (the server never creates anything else).
+  /// Conversations in one place. A doctor: their own patients, then questions from
+  /// other patients who asked for an opinion, and the caregivers of their own
+  /// patients. A caregiver: their patients, and the doctors of those patients. The
+  /// server never creates a chat outside these (see `test_conversations.py`).
   Widget _consultTab() {
     final mine = _byRecent(_threads.where((x) => x['kind'] == 'care'));
-    final others = _byRecent(_threads.where((x) => x['kind'] == 'opinion'));
+    // Opinion requests are a doctor's; a caregiver never has any (the server sends none).
+    final others = _doctor ? _byRecent(_threads.where((x) => x['kind'] == 'opinion')) : <Map<String, dynamic>>[];
     final team = _byRecent(_threads.where((x) => x['kind'] == 'pro'));
     final patientsUnread = _unreadOf(mine) + _unreadOf(others);
     Widget empty(String key) => Padding(
@@ -829,8 +890,8 @@ class _RemoteHomeState extends State<RemoteHome> {
           child: Row(children: [
             _segment(const ValueKey('consultSegPatients'), t('consultPatients'), 0,
                 patientsUnread),
-            _segment(const ValueKey('consultSegCaregivers'), t('consultCaregivers'), 1,
-                _unreadOf(team)),
+            _segment(const ValueKey('consultSegCaregivers'),
+                t(_doctor ? 'consultCaregivers' : 'consultDoctors'), 1, _unreadOf(team)),
           ]),
         ),
         const SizedBox(height: 16),
@@ -848,7 +909,7 @@ class _RemoteHomeState extends State<RemoteHome> {
             for (final th in others) _threadRow(th),
           ],
         ] else ...[
-          if (team.isEmpty) empty('noCaregiverChats'),
+          if (team.isEmpty) empty(_doctor ? 'noCaregiverChats' : 'noDoctorChats'),
           for (final th in team) _threadRow(th),
         ],
       ],
@@ -983,8 +1044,7 @@ class _RemoteHomeState extends State<RemoteHome> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
         Row(children: [
-          if (_doctor)
-            Padding(
+          Padding(
               padding: const EdgeInsets.only(right: 10),
               child: InkWell(
                 key: const ValueKey('alertsBack'),
@@ -1175,11 +1235,16 @@ class RemotePatientScreen extends StatefulWidget {
     this.accent = Palette.action,
     this.onSignedOut,
     this.onMessage,
+    this.onMessageDoctor,
     this.byName = '',
   });
 
   /// The signed-in caregiver's or doctor's name, recorded on what they add.
   final String byName;
+
+  /// For a caregiver: opens the care-team chat with this patient's doctor; null
+  /// when there is no doctor yet (or for a doctor).
+  final VoidCallback? onMessageDoctor;
 
   /// Opens the conversation with this patient; null when there is none.
   final VoidCallback? onMessage;
@@ -1196,8 +1261,16 @@ class RemotePatientScreen extends StatefulWidget {
   State<RemotePatientScreen> createState() => _RemotePatientScreenState();
 }
 
+enum _Sec { overview, games, reminders, notes }
+
 class _RemotePatientScreenState extends State<RemotePatientScreen> {
-  int _tab = 0; // 0 overview, 1 games, 2 reminders
+  /// A doctor reads results first; a caregiver works with the routine first.
+  List<_Sec> get _secs => widget.canPrescribe
+      ? const [_Sec.overview, _Sec.games, _Sec.reminders, _Sec.notes]
+      : const [_Sec.overview, _Sec.reminders, _Sec.notes, _Sec.games];
+  _Sec _sec = _Sec.overview;
+  List<Map<String, dynamic>>? _notes;
+  final _noteCtl = TextEditingController();
   Map<String, dynamic>? _report;
   List<Map<String, dynamic>>? _reminders;
   List<Map<String, dynamic>> _careItems = const [];
@@ -1210,6 +1283,137 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
   void initState() {
     super.initState();
     _load();
+    if (!widget.canPrescribe) _reloadCare(); // the caregiver's overview shows today's routine
+  }
+
+  @override
+  void dispose() {
+    _noteCtl.dispose();
+    super.dispose();
+  }
+
+  void _go(_Sec s) {
+    setState(() => _sec = s);
+    if (s == _Sec.reminders) _loadReminders();
+    if (s == _Sec.notes) _loadNotes();
+  }
+
+  Future<void> _loadNotes() async {
+    try {
+      final n = await widget.api.careNotes(widget.patientId);
+      if (mounted) setState(() => _notes = n);
+    } on ApiException catch (e) {
+      if (mounted) _fail(e);
+    }
+  }
+
+  Future<void> _addNote() async {
+    final text = _noteCtl.text.trim();
+    if (text.isEmpty) return;
+    try {
+      await widget.api.addCareNote(widget.patientId, text);
+      _noteCtl.clear();
+    } on ApiException catch (e) {
+      if (mounted) _fail(e);
+      return;
+    }
+    await _loadNotes();
+  }
+
+  Future<void> _deleteNote(String id) async {
+    try {
+      await widget.api.deleteCareNote(widget.patientId, id);
+    } on ApiException catch (e) {
+      if (mounted) _fail(e);
+      return;
+    }
+    await _loadNotes();
+  }
+
+  String _secLabel(_Sec s) => switch (s) {
+        _Sec.overview => t('overviewTitle'),
+        _Sec.games => t('tabGames'),
+        _Sec.reminders => t(widget.canPrescribe ? 'reminders' : 'tabRoutine'),
+        _Sec.notes => t('notesTab'),
+      };
+
+  /// Shared by the caregiver and the doctor: short notes only they can read.
+  List<Widget> _notesTab() {
+    final notes = _notes;
+    return [
+      AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          TextField(
+            key: const ValueKey('noteField'),
+            controller: _noteCtl,
+            minLines: 2,
+            maxLines: 4,
+            maxLength: 500,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(hintText: t('notesHint'), counterText: ''),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              key: const ValueKey('addNote'),
+              style: FilledButton.styleFrom(backgroundColor: widget.accent),
+              onPressed: _addNote,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(t('notesAdd')),
+            ),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      if (notes == null)
+        (_errorKey != null
+            ? const SizedBox.shrink()
+            : const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator())))
+      else if (notes.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Text(t('notesEmpty'),
+              key: const ValueKey('noNotes'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: Palette.muted, height: 1.4)),
+        )
+      else
+        for (final n in notes)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              key: ValueKey('note_${n['id']}'),
+              color: n['mine'] == true ? Colors.white : Palette.tilePurple,
+              padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${n['body']}', style: const TextStyle(fontSize: 15.5, height: 1.4)),
+                    const SizedBox(height: 6),
+                    Text(
+                        [
+                          '${n['author_name']}',
+                          t(n['author_role'] == 'doctor' ? 'roleDoctor' : 'roleCaretaker'),
+                          if (DateTime.tryParse('${n['created_at']}') case final d?)
+                            agoText(widget.lang, d.toLocal(), DateTime.now()),
+                        ].join(' · '),
+                        style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
+                  ]),
+                ),
+                if (n['mine'] == true)
+                  IconButton(
+                    key: ValueKey('deleteNote_${n['id']}'),
+                    tooltip: t('delete'),
+                    icon: const Icon(Icons.delete_outline_rounded, color: Palette.muted),
+                    onPressed: () => _deleteNote('${n['id']}'),
+                  ),
+              ]),
+            ),
+          ),
+    ];
   }
 
   void _fail(ApiException e) {
@@ -1388,11 +1592,13 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(icon, size: 22),
               const SizedBox(height: 4),
-              Text(label,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(label,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              ),
             ]),
           ),
         );
@@ -1451,15 +1657,18 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
         Row(children: [
           action(const ValueKey('heroMessage'), Icons.chat_rounded, t('chatMessages'),
               widget.onMessage),
+          if (!widget.canPrescribe) ...[
+            const SizedBox(width: 8),
+            action(const ValueKey('heroDoctor'), Icons.medical_services_rounded,
+                t('roleDoctor'), widget.onMessageDoctor),
+          ],
           const SizedBox(width: 8),
           action(const ValueKey('heroReport'), Icons.insights_rounded, t('rmReportTitle'),
               r == null ? null : _openReport),
           const SizedBox(width: 8),
-          action(const ValueKey('heroRoutine'), Icons.add_alarm_rounded, t('addReminder'),
-              () {
-            setState(() => _tab = 2);
-            _loadReminders();
-          }),
+          action(const ValueKey('heroRoutine'), Icons.add_alarm_rounded,
+              t(widget.canPrescribe ? 'addReminder' : 'tabRoutine'),
+              () => _go(_Sec.reminders)),
         ]),
       ]),
     );
@@ -1487,12 +1696,9 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
           const SizedBox(height: 14),
           _UnderlineTabs(
             color: widget.accent,
-            labels: [t('overviewTitle'), t('tabGames'), t('reminders')],
-            selected: _tab,
-            onSelected: (i) {
-              setState(() => _tab = i);
-              if (i == 2) _loadReminders();
-            },
+            labels: [for (final x in _secs) _secLabel(x)],
+            selected: _secs.indexOf(_sec),
+            onSelected: (i) => _go(_secs[i]),
           ),
           const SizedBox(height: 14),
           if (_errorKey != null)
@@ -1504,14 +1710,30 @@ class _RemotePatientScreenState extends State<RemotePatientScreen> {
                       fontSize: 15,
                       fontWeight: FontWeight.w600)),
             ),
-          if (_tab == 2)
+          if (_sec == _Sec.reminders)
             ..._remindersTab()
+          else if (_sec == _Sec.notes)
+            ..._notesTab()
           else if (_loading)
             const Padding(
                 padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator()))
           else if (r != null)
-            ...(_tab == 0 ? _overview(r) : _gamesTab(r)),
+            ...(_sec == _Sec.overview
+                ? [
+                    if (!widget.canPrescribe) ...[
+                      CareTimeline(
+                        title: t('routinesToday'),
+                        empty: t('noRoutinesToday'),
+                        items: todayItems(_careItems, DateTime.now()),
+                        lang: widget.lang,
+                        now: DateTime.now(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    ..._overview(r),
+                  ]
+                : _gamesTab(r)),
         ],
       ),
     );

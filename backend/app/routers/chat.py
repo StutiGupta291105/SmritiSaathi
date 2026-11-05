@@ -232,7 +232,10 @@ def threads(user: User = Depends(current_user), db: Session = Depends(get_db)):
             peer_name = peer.name if peer else ""
             peer_role = "doctor" if user.role == "caretaker" else "caretaker"
         out.append({
-            "link_id": c.id, "kind": c.kind, "patient_id": None, "patient_name": p.display_name,
+            # A care-team chat is about a patient both people are linked to, so its id
+            # is shown; an opinion chat never reveals one (the doctor has no access).
+            "link_id": c.id, "kind": c.kind,
+            "patient_id": p.id if c.kind == "pro" else None, "patient_name": p.display_name,
             "member_role": "doctor" if user.role == "patient" else peer_role,
             "member_name": peer_name, "peer_name": peer_name, "peer_role": peer_role,
             "member_phone": None,
@@ -347,7 +350,7 @@ def send(link_id: str, body: MessageIn, request: Request,
     db.add(m)
     db.flush()
     audit.record(db, user.id, "message_sent", f"thread={t.id} kind={body.kind}")
-    notify_user(request, db, t.other(user))
+    notify_user(request, db, t.other(user), data={"type": "chat", "link_id": t.id})
     return _out(m, user)
 
 
@@ -356,16 +359,18 @@ def _looks_like_image(b: bytes) -> bool:
             or (b[:4] == b"RIFF" and b[8:12] == b"WEBP"))
 
 
-def notify_user(request: Request, db: Session, user_id: str | None, body: str = PUSH_BODY) -> None:
+def notify_user(request: Request, db: Session, user_id: str | None, body: str = PUSH_BODY,
+                data: dict[str, str] | None = None, silent: bool = False) -> None:
     """Best effort: a failed push never fails the action that caused it. The text is
     generic on purpose: lock screens are visible to other people."""
     if not user_id:
         return
     provider = request.app.state.push
     tokens = db.execute(select(DeviceToken).where(DeviceToken.user_id == user_id)).scalars().all()
+    extra = {"data": data, "silent": silent} if data else {}
     for t in tokens:
         try:
-            result = provider.send(t.token, PUSH_TITLE, body)
+            result = provider.send(t.token, PUSH_TITLE, body, **extra)
         except Exception:
             continue
         if result == INVALID:

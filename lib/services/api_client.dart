@@ -630,6 +630,19 @@ class ApiClient {
         if (onDate != null) 'on_date': onDate else 'clear_date': true,
       });
 
+  // ---- care notes: shared by the caregiver and the doctor of one patient ----
+
+  Future<List<Map<String, dynamic>>> careNotes(String patientId) async {
+    final j = await _raw('GET', '/v1/patients/$patientId/care-notes', cached: true);
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> addCareNote(String patientId, String body) =>
+      _raw('POST', '/v1/patients/$patientId/care-notes', body: {'body': body});
+
+  Future<void> deleteCareNote(String patientId, String noteId) =>
+      _raw('DELETE', '/v1/patients/$patientId/care-notes/$noteId');
+
   Future<void> deleteCareReminder(String patientId, String reminderId) =>
       _raw('DELETE', '/v1/patients/$patientId/care-reminders/$reminderId');
 

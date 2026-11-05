@@ -95,7 +95,7 @@ def test_caregiver_and_doctor_are_put_in_touch_once_both_have_accepted(env):
     dr_pro = [t for t in _threads(env, dr) if t["kind"] == "pro"]
     assert len(cg_pro) == len(dr_pro) == 1 and cg_pro[0]["link_id"] == dr_pro[0]["link_id"]
     assert cg_pro[0]["peer_role"] == "doctor" and dr_pro[0]["peer_role"] == "caretaker"
-    assert cg_pro[0]["patient_name"] == "Asha"
+    assert cg_pro[0]["patient_name"] == "Asha" and cg_pro[0]["patient_id"] == pid
     tid = cg_pro[0]["link_id"]
     assert _send(env, cg, tid, "She skipped lunch today").status_code == 201
     assert _send(env, dr, tid, "Thanks, I will adjust the evening dose").status_code == 201
