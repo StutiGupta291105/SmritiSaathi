@@ -6,7 +6,6 @@ import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/api_client.dart';
 import '../../services/live_share.dart';
-import '../../services/sms_sender.dart';
 
 String _clockText(DateTime d) {
   final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
@@ -101,7 +100,6 @@ Future<void> showLiveShareSheet(
   required String lang,
   required LiveShareController controller,
   ApiClient? api,
-  SmsSender? sms,
   Future<bool> Function(Uri)? launch,
 }) {
   return showModalBottomSheet<void>(
@@ -117,7 +115,6 @@ Future<void> showLiveShareSheet(
         lang: lang,
         controller: controller,
         api: api,
-        sms: sms,
         launch: launch),
   );
 }
@@ -130,14 +127,12 @@ class _ShareSheet extends StatefulWidget {
     required this.lang,
     required this.controller,
     this.api,
-    this.sms,
     this.launch,
   });
   final AppDatabase db;
   final String patientId, name, lang;
   final LiveShareController controller;
   final ApiClient? api;
-  final SmsSender? sms;
   final Future<bool> Function(Uri)? launch;
 
   @override
@@ -214,12 +209,10 @@ class _ShareSheetState extends State<_ShareSheet> {
         )
     ];
     final report = await sendLiveMessage(
-        text: text, targets: targets, api: widget.api, sms: widget.sms, launch: widget.launch);
+        text: text, targets: targets, api: widget.api, launch: widget.launch);
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
-    final note = report.smsSent > 0
-        ? t('liveSent')
-        : report.smsOpened
+    final note = report.smsOpened
         ? t('liveSmsNote')
         : report.chatQueued > 0 && report.chatSent == 0
             ? t('liveQueued')
@@ -351,10 +344,10 @@ String _problemFor(String lang, ShareOutcome o) => switch (o) {
     };
 
 /// The one-tap share: starts at once and sends to the caregivers and to the
-/// family members ticked "Include in live location", with nothing to confirm.
-/// SMS goes straight from the phone when it may; the caregiver gets the chat
-/// message (and an SMS too when their number is known). The snackbar lists who
-/// it went to and has a Stop button.
+/// family members ticked "Include in live location", with no questions. The
+/// caregiver gets the chat message (and is in the SMS too when their number is
+/// known); the family SMS opens ready in the messaging app, one press to send.
+/// The snackbar lists who it went to and has a Stop button.
 Future<void> quickShareLiveLocation(
   BuildContext context, {
   required AppDatabase db,
@@ -363,7 +356,6 @@ Future<void> quickShareLiveLocation(
   required String lang,
   required LiveShareController controller,
   ApiClient? api,
-  SmsSender? sms,
   Future<bool> Function(Uri)? launch,
 }) async {
   final messenger = ScaffoldMessenger.of(context);
@@ -404,12 +396,9 @@ Future<void> quickShareLiveLocation(
   final text = liveMessage(lang,
       name: name.split(' ').first, link: r.link!, until: r.live ? r.until : null);
   final report = await sendLiveMessage(
-      text: text, targets: targets, api: api, sms: sms, launch: launch);
+      text: text, targets: targets, api: api, launch: launch);
   final names = targets.map((t) => t.name).join(', ');
-  if (report.smsOpened && report.smsSent == 0 && report.chatSent == 0) {
-    // This phone could not send SMS by itself: the messaging app opened instead.
-    say(tr(lang, 'liveSmsNote'));
-  } else if (report.chatQueued > 0 && report.chatSent == 0 && report.smsSent == 0) {
+  if (report.chatQueued > 0 && report.chatSent == 0 && !report.smsOpened) {
     say(tr(lang, 'liveQueued'));
   } else {
     say(tr(lang, 'liveAutoSent').replaceAll('{names}', names), stop: r.live);

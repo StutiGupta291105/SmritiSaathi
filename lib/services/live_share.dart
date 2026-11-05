@@ -7,7 +7,6 @@ import '../core/strings.dart';
 import '../data/app_database.dart';
 import 'api_client.dart';
 import 'location_service.dart';
-import 'sms_sender.dart';
 
 /// How a share went.
 enum ShareOutcome { ok, denied, deniedForever, serviceOff, noPosition }
@@ -190,23 +189,18 @@ Uri smsUri(List<String> numbers, String body) =>
     Uri.parse('sms:${numbers.join(',')}?body=${Uri.encodeComponent(body)}');
 
 class ShareReport {
-  const ShareReport(
-      {this.chatSent = 0, this.chatQueued = 0, this.smsOpened = false, this.smsSent = 0});
+  const ShareReport({this.chatSent = 0, this.chatQueued = 0, this.smsOpened = false});
   final int chatSent, chatQueued;
 
-  /// The messaging app was opened because the SMS could not be sent directly.
+  /// The messaging app was opened with the text ready (the person presses send).
   final bool smsOpened;
-
-  /// SMS sent straight from the phone.
-  final int smsSent;
 }
 
-/// Sends [text] by the app chat (queued if offline) and by SMS as chosen.
+/// Sends [text] by the app chat (queued if offline) and opens one SMS for the rest.
 Future<ShareReport> sendLiveMessage({
   required String text,
   required List<ShareTarget> targets,
   ApiClient? api,
-  SmsSender? sms,
   Future<bool> Function(Uri)? launch,
 }) async {
   var sent = 0, queued = 0;
@@ -227,17 +221,13 @@ Future<ShareReport> sendLiveMessage({
       if (t.sms && (t.phone ?? '').isNotEmpty) t.phone!
   }.toList();
   var opened = false;
-  var smsSent = 0;
   if (numbers.isNotEmpty) {
-    // Straight from the phone when it can; otherwise open the messaging app.
-    smsSent = await sms?.sendAll(numbers, text) ?? 0;
-    if (smsSent == 0) {
-      opened = await (launch ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(
-          smsUri(numbers, text));
-    }
+    // One message to everyone, ready in the person's own messaging app. Android
+    // does not let a sideloaded app send SMS silently (Play Protect blocks it).
+    opened = await (launch ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(
+        smsUri(numbers, text));
   }
-  return ShareReport(
-      chatSent: sent, chatQueued: queued, smsOpened: opened, smsSent: smsSent);
+  return ShareReport(chatSent: sent, chatQueued: queued, smsOpened: opened);
 }
 
 /// The people a patient can share with, from what is saved on the phone.

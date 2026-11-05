@@ -11,7 +11,6 @@ import 'package:smriti_assist/features/location/live_share_ui.dart';
 import 'package:smriti_assist/services/api_client.dart';
 import 'package:smriti_assist/services/live_share.dart';
 import 'package:smriti_assist/services/location_service.dart';
-import 'package:smriti_assist/services/sms_sender.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class FakeLocation implements LocationProvider {
@@ -30,18 +29,6 @@ class FakeLocation implements LocationProvider {
 
   @override
   Stream<GeoPoint> updates({required String title, required String text}) => updates0.stream;
-}
-
-class FakeSms implements SmsSender {
-  FakeSms({this.works = true});
-  final bool works;
-  final sent = <(List<String>, String)>[];
-  @override
-  Future<int> sendAll(List<String> numbers, String text) async {
-    if (!works) return 0;
-    sent.add((numbers, text));
-    return numbers.length;
-  }
 }
 
 class Server {
@@ -167,41 +154,6 @@ void main() {
       expect(opened.toString(), startsWith('sms:+919822222222,+919833333333?body='));
     });
 
-    test('SMS goes straight from the phone when it can (the messaging app is not opened)',
-        () async {
-      final sms = FakeSms();
-      var launched = false;
-      final r = await sendLiveMessage(
-        text: 'hello',
-        sms: sms,
-        launch: (u) async => launched = true,
-        targets: const [
-          ShareTarget(name: 'Meena', phone: '+919822222222', sms: true),
-          ShareTarget(name: 'Gopal', phone: '+919833333333', sms: true),
-        ],
-      );
-      expect(r.smsSent, 2);
-      expect(r.smsOpened, isFalse);
-      expect(launched, isFalse);
-      expect(sms.sent.single.$1, ['+919822222222', '+919833333333']);
-    });
-
-    test('when the phone cannot send SMS by itself the messaging app opens instead', () async {
-      Uri? opened;
-      final r = await sendLiveMessage(
-        text: 'hello',
-        sms: FakeSms(works: false),
-        launch: (u) async {
-          opened = u;
-          return true;
-        },
-        targets: const [ShareTarget(name: 'Meena', phone: '+919822222222', sms: true)],
-      );
-      expect(r.smsSent, 0);
-      expect(r.smsOpened, isTrue);
-      expect(opened.toString(), startsWith('sms:+919822222222'));
-    });
-
     test('an SMS to the caregiver too when asked', () async {
       Uri? opened;
       await sendLiveMessage(
@@ -277,7 +229,7 @@ void main() {
     });
 
     Widget host(LiveShareController ctl, Server srv,
-            {List<Uri>? opened, SmsSender? sms}) =>
+            {List<Uri>? opened}) =>
         MaterialApp(
           theme: buildTheme(),
           home: Scaffold(
@@ -293,7 +245,6 @@ void main() {
                         lang: 'en',
                         controller: ctl,
                         api: apiFor(srv),
-                        sms: sms,
                         launch: (u) async {
                           opened?.add(u);
                           return true;
@@ -305,7 +256,6 @@ void main() {
                         lang: 'en',
                         controller: ctl,
                         api: apiFor(srv),
-                        sms: sms,
                         launch: (u) async {
                           opened?.add(u);
                           return true;
@@ -315,46 +265,29 @@ void main() {
           ),
         );
 
-    testWidgets('ONE TAP: shares at once, sends the SMS by itself, nothing to confirm', (t) async {
+    testWidgets('ONE TAP: shares at once, no sheet, one ready-to-send SMS for the family', (t) async {
       await t.binding.setSurfaceSize(const Size(390, 844));
       addTearDown(() => t.binding.setSurfaceSize(null));
       final srv = Server();
-      final sms = FakeSms();
       final ctl = LiveShareController(provider: FakeLocation(), api: apiFor(srv));
       final opened = <Uri>[];
-      await t.pumpWidget(host(ctl, srv, opened: opened, sms: sms));
+      await t.pumpWidget(host(ctl, srv, opened: opened));
       await t.tap(find.byKey(const ValueKey('liveCardOff')));
-      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-      await t.pump(const Duration(milliseconds: 300));
-      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-      await t.pump(const Duration(milliseconds: 300));
+      for (var i = 0; i < 2; i++) {
+        await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+        await t.pump(const Duration(milliseconds: 300));
+      }
       expect(find.byType(BottomSheet), findsNothing); // no sheet, no questions
       expect(ctl.active, isTrue);
-      expect(sms.sent.single.$1, ['+919822222222']); // only the ticked family member
-      expect(sms.sent.single.$2, contains('https://api.example.com/live/TOKEN123'));
-      expect(opened, isEmpty);
-      expect(find.text('Sharing your location with Meena'), findsOneWidget);
+      // only the ticked family member is in the message that opens
+      expect(opened.single.toString(), startsWith('sms:+919822222222?body='));
+      expect(opened.single.toString(),
+          contains(Uri.encodeComponent('https://api.example.com/live/TOKEN123')));
       // the snackbar's Stop ends it
       await t.tap(find.text('Stop sharing').last);
       await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
       await t.pump();
       expect(ctl.active, isFalse);
-      ctl.dispose();
-    });
-
-    testWidgets('one tap with a phone that cannot send SMS itself opens the messaging app', (t) async {
-      await t.binding.setSurfaceSize(const Size(390, 844));
-      addTearDown(() => t.binding.setSurfaceSize(null));
-      final srv = Server();
-      final ctl = LiveShareController(provider: FakeLocation(), api: apiFor(srv));
-      final opened = <Uri>[];
-      await t.pumpWidget(host(ctl, srv, opened: opened, sms: FakeSms(works: false)));
-      await t.tap(find.byKey(const ValueKey('liveCardOff')));
-      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-      await t.pump(const Duration(milliseconds: 300));
-      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-      await t.pump(const Duration(milliseconds: 300));
-      expect(opened.single.toString(), startsWith('sms:+919822222222'));
       ctl.dispose();
     });
 

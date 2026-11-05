@@ -71,12 +71,12 @@ end).
   people the patient picked. The page is `no-store`, `noindex` and sends no referrer.
 - A linked caregiver (with the caregiver sharing consent) sees the same point inside the app;
   the doctor does not. Starting a share sends the caregiver a push with generic text.
-- One tap shares for 2 hours with the caregivers and the ticked family members. On Android the
-  SMS is sent by the phone itself (permission `SEND_SMS` only: the app never reads messages, and
-  asks for it the first time); one SMS per person, so numbers are not shown to each other. If that
-  permission is refused, or on iPhone, the patient's messaging app opens with the text ready.
-  Google Play restricts `SEND_SMS`; this is fine for the APK, but a Play Store release would need
-  Google's declaration form or the messaging-app fallback only.
+- One tap shares for 2 hours with the caregivers (app chat plus push; also in the SMS when their
+  number is saved) and the ticked family members. The family SMS opens ready in the patient's own
+  messaging app and the patient presses send, once, to everyone. The app deliberately does **not**
+  ask for the `SEND_SMS` permission: Google Play Protect blocks sideloaded apps that do ("App
+  blocked to protect your device"). Fully automatic SMS to family needs a server-side SMS
+  provider (e.g. MSG91 or Twilio with an India DLT template); `app/sms.py` is where it plugs in.
 - Which family members are ticked is stored on the phone only.
 
 ## Talk to Smriti (AI companion): what to know before turning it on
