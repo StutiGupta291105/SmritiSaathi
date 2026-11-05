@@ -194,6 +194,9 @@ def test_fcm_silent_message_has_no_notification_block_on_android():
     assert msg["apns"]["payload"]["aps"]["content-available"] == 1
     plain = FcmPush._message("tok", "T", "B", {"type": "chat", "link_id": "x"}, False)
     assert plain["notification"]["body"] == "B" and plain["data"]["link_id"] == "x"
+    # the visible push rings: it names the app's own loud channel and the default sound
+    assert plain["android"]["notification"] == {"channel_id": "messages", "sound": "default"}
+    assert plain["android"]["priority"] == "HIGH"
 
 
 def test_healthz_says_whether_real_push_is_on(env):

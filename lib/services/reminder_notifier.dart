@@ -43,16 +43,32 @@ class ReminderNotifier {
   final _plugin = FlutterLocalNotificationsPlugin();
   static const _maxPending = 60; // iOS keeps at most 64 pending local notifications
 
+  /// Android keeps a notification's sound on its *channel* and a channel cannot be
+  /// changed once the phone has created it, so reminders use a channel made on
+  /// purpose with sound and vibration (the first version of the app made one that
+  /// could end up silent). Chat push uses its own.
+  static const kReminderChannel = 'reminder_alerts';
+  static const kMessageChannel = 'messages';
+
   static const _details = NotificationDetails(
     android: AndroidNotificationDetails(
-      'reminders',
-      'Reminders',
-      importance: Importance.high,
+      kReminderChannel,
+      'Reminder alerts',
+      channelDescription: 'Sounds and pops up when it is time for a medicine, a routine or an appointment',
+      importance: Importance.max,
       priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      category: AndroidNotificationCategory.reminder,
+      // Rings like an alarm so a reminder is heard even when the ringer is low.
+      audioAttributesUsage: AudioAttributesUsage.alarm,
       visibility: NotificationVisibility.private,
     ),
-    iOS: DarwinNotificationDetails(),
+    iOS: DarwinNotificationDetails(presentSound: true, presentAlert: true),
   );
+
+  @visibleForTesting
+  static NotificationDetails get reminderDetails => _details;
 
   static bool _tzReady = false;
 
@@ -89,7 +105,58 @@ class ReminderNotifier {
       ),
       onDidReceiveNotificationResponse: _tapped,
     );
+    await _createChannels();
     await _initTimeZone();
+  }
+
+  /// Makes the Android notification channels (safe to repeat). Chat push names the
+  /// `messages` channel, so it must exist before the first push arrives.
+  Future<void> _createChannels() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return;
+    try {
+      await android.deleteNotificationChannel('reminders'); // the old, possibly silent one
+    } catch (_) {}
+    await android.createNotificationChannel(const AndroidNotificationChannel(
+      kReminderChannel,
+      'Reminder alerts',
+      description: 'Sounds and pops up when it is time for a medicine, a routine or an appointment',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+    ));
+    await android.createNotificationChannel(const AndroidNotificationChannel(
+      kMessageChannel,
+      'Messages',
+      description: 'New chat messages and routine updates',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    ));
+  }
+
+  /// Whether Android will make a sound for reminder alerts: the importance and
+  /// sound setting of the reminder channel as the phone has it now (the person can
+  /// switch a channel to silent in the phone's settings). Null if unknown.
+  Future<({bool playsSound, bool loudEnough})?> soundStatus() async {
+    try {
+      final android = _android;
+      if (android == null) return null;
+      final channels = await android.getNotificationChannels() ?? const [];
+      for (final c in channels) {
+        if (c.id == kReminderChannel) {
+          return (
+            playsSound: c.playSound,
+            loudEnough: c.importance.value >= Importance.high.value,
+          );
+        }
+      }
+    } catch (e) {
+      lastProblem = 'sound: $e';
+    }
+    return null;
   }
 
   /// Why the last notification step failed (null when all went well). A failed

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 
 import '../../core/theme.dart';
 import '../../core/ui.dart';
@@ -63,6 +64,7 @@ class _NotificationCheckScreenState extends State<NotificationCheckScreen>
     final consent = await widget.db.hasConsent(widget.patientId, 'reminders');
     final reminders = (await widget.db.listReminders(widget.patientId)).length;
     final pending = await widget.notifier.pendingCount();
+    final sound = await widget.notifier.soundStatus();
     final token = await widget.pushSource.token();
     if (!mounted) return;
     setState(() => _rows = [
@@ -78,6 +80,14 @@ class _NotificationCheckScreenState extends State<NotificationCheckScreen>
               access == NotifyAccess.inexactOnly
                   ? 'No: reminders may arrive a few minutes late. Tap "Fix permissions" and allow "Alarms & reminders".'
                   : 'Yes.'),
+          _Row(
+              sound == null ? null : (sound.playsSound && sound.loudEnough),
+              'Alert sound',
+              sound == null
+                  ? 'Could not read the phone\'s sound setting.'
+                  : (sound.playsSound && sound.loudEnough
+                      ? 'On: reminders ring and pop up.'
+                      : 'Off: the phone has this app\'s alerts on silent. Tap "Open phone settings", then Notifications > Reminder alerts, and set Importance to Urgent or High with Sound on. Also check the phone is not on Do Not Disturb.')),
           _Row(consent, 'Reminders are switched on in Privacy and permissions',
               consent ? 'Yes.' : 'No: nothing is scheduled until you allow reminders there.'),
           _Row(reminders > 0, 'Reminders saved on this phone', '$reminders'),
@@ -161,6 +171,13 @@ class _NotificationCheckScreenState extends State<NotificationCheckScreen>
                       }, 'Permissions checked.'),
               icon: const Icon(Icons.verified_user_outlined),
               label: const Text('Fix permissions'),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              key: const ValueKey('notifySettings'),
+              onPressed: _busy ? null : () => ph.openAppSettings(),
+              icon: const Icon(Icons.settings_outlined),
+              label: const Text('Open phone settings'),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(

@@ -57,3 +57,7 @@ phone (about 5 inch) and, if you can, with the system font size set to Large.
    says false, set `SMRITI_PUSH_PROVIDER=fcm` and the two FCM variables (docs/DEPLOYMENT.md).
 5. The release APK needs the keep-rules in `.github/scripts/proguard-rules.pro` (applied by the
    build); without them scheduling fails in the installed app even though it works in debug.
+6. No sound? Notification check shows "Alert sound". Reminders use their own channel
+   (`reminder_alerts`, urgent, vibrating, alarm-style) and chat push uses `messages`; both are
+   created at start-up. If the phone has set that channel to silent, or Do Not Disturb is on, tap
+   **Open phone settings** > Notifications > Reminder alerts and set Sound on / Importance Urgent.

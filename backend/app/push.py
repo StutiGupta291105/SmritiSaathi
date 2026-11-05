@@ -93,7 +93,11 @@ class FcmPush:
                            "payload": {"aps": {"alert": {"title": title, "body": body},
                                                "content-available": 1}}}
         else:
+            # The channel the app made on purpose with sound and vibration; without it
+            # Android drops the push into a default channel that can be silent.
             msg["notification"] = {"title": title, "body": body}
+            msg["android"] = {"priority": "HIGH",
+                              "notification": {"channel_id": "messages", "sound": "default"}}
         return msg
 
 

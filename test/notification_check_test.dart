@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti_assist/core/reminder_schedule.dart';
 import 'package:smriti_assist/data/app_database.dart';
@@ -21,6 +22,9 @@ class _FakeNotifier extends ReminderNotifier {
     return accessIs;
   }
 
+  ({bool playsSound, bool loudEnough})? sound = (playsSound: true, loudEnough: true);
+  @override
+  Future<({bool playsSound, bool loudEnough})?> soundStatus() async => sound;
   @override
   Future<int?> pendingCount() async => pending;
   @override
@@ -65,7 +69,7 @@ void main() {
   });
 
   Future<void> open(WidgetTester t, _FakeNotifier n, {String? token}) async {
-    t.view.physicalSize = const Size(800, 2400);
+    t.view.physicalSize = const Size(800, 4200);
     t.view.devicePixelRatio = 2;
     addTearDown(t.view.reset);
     await t.pumpWidget(MaterialApp(
@@ -125,5 +129,30 @@ void main() {
     await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
     await t.pump();
     expect(n.log, contains('resync'));
+  });
+
+  testWidgets('a silenced alert channel is called out, a normal one is fine', (t) async {
+    final n = _FakeNotifier(db)..sound = (playsSound: false, loudEnough: true);
+    await open(t, n);
+    expect(find.textContaining('has this app\'s alerts on silent'), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const ValueKey('notifySettings')), 200,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.byKey(const ValueKey('notifySettings')), findsOneWidget);
+  });
+
+  testWidgets('sound on shows as on', (t) async {
+    await open(t, _FakeNotifier(db));
+    expect(find.textContaining('On: reminders ring and pop up.'), findsOneWidget);
+  });
+
+  test('reminders use a loud, vibrating alarm-style channel (not the old silent-able one)', () {
+    final a = ReminderNotifier.reminderDetails.android!;
+    expect(a.channelId, ReminderNotifier.kReminderChannel);
+    expect(a.channelId, isNot('reminders'));
+    expect(a.playSound, isTrue);
+    expect(a.enableVibration, isTrue);
+    expect(a.importance, Importance.max);
+    expect(a.audioAttributesUsage, AudioAttributesUsage.alarm);
+    expect(ReminderNotifier.reminderDetails.iOS!.presentSound, isTrue);
   });
 }
