@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'offline_bar.dart';
+import '../chat/doctor_directory_screen.dart';
 import '../chat/messages_screen.dart';
 
 import '../../services/api_client.dart';
@@ -183,6 +184,19 @@ class _PatientShellState extends State<PatientShell> {
     _loadThreads();
   }
 
+  /// Talk to Doctor: the patient's own doctor pinned on top, then every other
+  /// doctor on the app.
+  Future<void> _openDoctors() async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => DoctorDirectoryScreen(
+        api: widget.api!,
+        lang: _lang,
+        onActivity: _loadThreads,
+      ),
+    ));
+    _loadThreads();
+  }
+
   Future<void> _say(String message) => showDialog<void>(
         context: context,
         builder: (_) => AlertDialog(
@@ -345,7 +359,7 @@ class _PatientShellState extends State<PatientShell> {
         onTalk: _openTalk,
         onChatCaregiver:
             widget.api == null ? null : () => _openChat('caretaker'),
-        onChatDoctor: widget.api == null ? null : () => _openChat('doctor'),
+        onChatDoctor: widget.api == null ? null : _openDoctors,
         unreadCaregiver: _unreadFor('caretaker'),
         unreadDoctor: _unreadFor('doctor'),
       ),

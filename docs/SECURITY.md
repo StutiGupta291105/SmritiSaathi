@@ -117,6 +117,19 @@ end).
   only while the link is accepted and the patient's matching sharing consent is on;
   withdrawing consent ends the link, and then nobody can open the chat. Anything else
   answers 404 like an unknown id (`chat.py`, `test_chat.py`).
+- **Talk to Doctor (opinion chats).** A patient can message *any* doctor on the app, not only
+  their own. The own doctor is pinned first and uses the normal care chat. Any other doctor
+  gets a `Conversation(kind="opinion")` that only the patient and that doctor can open; the
+  doctor sees the patient's display name and the messages, and nothing else: every report,
+  reminder and care endpoint still needs an accepted link plus consent, so they answer 404
+  (`test_any_doctor_can_give_an_opinion_but_never_sees_the_patients_data`). The directory
+  (`GET /v1/chat/doctors`) exposes only a doctor's name and verified flag, never a number.
+  The patient app states this on screen.
+- **Caregiver-doctor chat.** When a caregiver and a doctor have both accepted the same
+  patient's invitation, a `Conversation(kind="pro")` is created for them. It stays open only
+  while both links are accepted and the patient's sharing is on for both; the patient is not
+  a participant, so Help & Support ("Who can I talk to in the app?") tells the patient that
+  their doctor and caregiver can message each other about their care and how to end it.
 - Text, photos (JPEG/PNG/WebP, 600 KB at most) and voice notes (AAC, 600 KB, 2 minutes)
   are stored in the database table `messages`, not as files. The audit log records that a
   message was sent and its kind, never the content.

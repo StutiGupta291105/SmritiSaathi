@@ -29,6 +29,8 @@ import 'package:smriti_assist/features/games/puzzle_fix_game.dart';
 import 'package:smriti_assist/features/games/routine_game.dart';
 import 'package:smriti_assist/features/games/word_recall_game.dart';
 import 'package:smriti_assist/features/onboarding/restore_screen.dart';
+import 'package:smriti_assist/features/chat/doctor_directory_screen.dart';
+import 'package:smriti_assist/features/shell/settings_pages.dart';
 import 'package:smriti_assist/features/shell/games_tab.dart';
 import 'package:smriti_assist/features/shell/home_tab.dart';
 import 'package:smriti_assist/features/shell/profile_tab.dart';
@@ -177,6 +179,19 @@ void main() {
                 db: db, patientId: pid, name: 'Dada Ramchandra Prasad', photo: null, lang: l,
                 onPlay: () {}, onGames: () {}, onReminders: () {}, onProgress: () {}, onTalk: () {},
                 onChatCaregiver: () {}, onChatDoctor: () {}, unreadCaregiver: 3, unreadDoctor: 12))),
+    'help and support': (l) => HelpSupportScreen(lang: l),
+    'about app': (l) => AboutAppScreen(lang: l),
+    'talk to doctor': (l) => DoctorDirectoryScreen(
+        lang: l,
+        api: ApiClient(
+            baseUrl: 'https://api.example.com',
+            tokens: MemoryTokenStore(),
+            client: MockClient((r) async => json(r.url.path == '/v1/chat/doctors'
+                ? [
+                    {'doctor_id': 'd1', 'name': 'Dr Ananthanarayanan Venkataraghavan', 'verified': true, 'pinned': true, 'thread_id': 'L1'},
+                    {'doctor_id': 'd2', 'name': 'Dr Asha Rao', 'verified': false, 'pinned': false, 'thread_id': null},
+                  ]
+                : <Object>[])))),
     'games': (l) => Scaffold(
         body: SafeArea(
             child: GamesTab(lang: l, onPlay: (_) {}))),

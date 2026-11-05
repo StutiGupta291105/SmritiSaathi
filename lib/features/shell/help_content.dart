@@ -42,6 +42,10 @@ const Map<String, Map<String, Object>> _c = {
         a: 'No. Smriti Sathi is not a medical device. Game results only show how a day went. Please speak to a doctor about any health concern.'
       ),
       (
+        q: 'Who can I talk to in the app?',
+        a: 'Talk to Doctor lists your own doctor first, then every doctor on the app. Any of them can give an opinion on the messages you send; only your own doctor can see your reports. Once your caregiver and your doctor have both accepted your invite, they can also message each other about your care. You can end this any time by removing either of them.'
+      ),
+      (
         q: 'I forgot to mark a medicine. What now?',
         a: 'Open Reminders, go to Medicines and tap the tick. If you are unsure whether you took a dose, do not take extra; ask your doctor or pharmacist.'
       ),
@@ -113,6 +117,10 @@ const Map<String, Map<String, Object>> _c = {
       (
         q: 'क्या ऐप याददाश्त की बीमारी पहचानता है?',
         a: 'नहीं। स्मृति साथी कोई चिकित्सा उपकरण नहीं है। खेल के नतीजे सिर्फ़ दिन का हाल दिखाते हैं। स्वास्थ्य की चिंता हो तो डॉक्टर से मिलें।'
+      ),
+      (
+        q: 'ऐप में मैं किससे बात कर सकता हूँ?',
+        a: 'डॉक्टर से बात में पहले आपके अपने डॉक्टर, फिर ऐप के सभी डॉक्टर दिखते हैं। कोई भी डॉक्टर आपके भेजे संदेशों पर राय दे सकता है; आपकी रिपोर्ट सिर्फ़ आपके अपने डॉक्टर देखते हैं। जब आपके देखभालकर्ता और डॉक्टर दोनों आपका आमंत्रण स्वीकार कर लेते हैं, तो वे आपकी देखभाल के बारे में आपस में भी संदेश भेज सकते हैं। किसी को हटाकर आप इसे कभी भी रोक सकते हैं।'
       ),
       (
         q: 'दवा का टिक लगाना भूल गया, अब क्या करूँ?',

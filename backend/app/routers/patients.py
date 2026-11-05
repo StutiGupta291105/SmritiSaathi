@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from .. import audit
@@ -9,7 +9,7 @@ from ..db import utcnow
 from ..deps import (consent_granted, current_user, get_db, patient_for_owner,
                     patient_for_viewer, require_role, settings_of)
 from ..models import (CONSENT_PURPOSES, ROLE_PURPOSE, Consent, GameSession,
-                      CareReminder, Link, Message, OtpChallenge, Patient, RefreshToken,
+                      CareReminder, Conversation, Link, Message, OtpChallenge, Patient, RefreshToken,
                       ReminderMark, ReminderSchedule, User)
 from ..schemas import (BaselineIn, ConsentsIn, InviteIn, LinkOut, PatientIn,
                        PatientOut, SyncIn, SyncOut)
@@ -247,8 +247,10 @@ def export(patient_id: str, user: User = Depends(current_user),
         # text and timing; photos and voice notes are listed without their bytes
         "messages": [{c.name: (v.isoformat() if isinstance(v := getattr(m, c.name), datetime) else v)
                       for c in Message.__table__.columns if c.name != "media"}
-                     for m in db.execute(select(Message).where(Message.link_id.in_(
-                         select(Link.id).where(Link.patient_id == p.id)))).scalars()],
+                     for m in db.execute(select(Message).where(or_(
+                         Message.link_id.in_(select(Link.id).where(Link.patient_id == p.id)),
+                         Message.conv_id.in_(select(Conversation.id).where(
+                             Conversation.patient_id == p.id))))).scalars()],
     }
 
 
@@ -312,7 +314,10 @@ def erase(patient_id: str, user: User = Depends(current_user),
     p = patient_for_owner(db, user, patient_id)
     link_ids = select(Link.id).where(Link.patient_id == p.id)
     db.execute(delete(Message).where(Message.link_id.in_(link_ids)))
-    for model in (ReminderMark, ReminderSchedule, CareReminder, GameSession, Consent, Link):
+    db.execute(delete(Message).where(Message.conv_id.in_(
+        select(Conversation.id).where(Conversation.patient_id == p.id))))
+    for model in (ReminderMark, ReminderSchedule, CareReminder, GameSession, Consent, Link,
+                  Conversation):
         db.execute(delete(model).where(model.patient_id == p.id))
     db.execute(delete(Patient).where(Patient.id == p.id))
     db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))

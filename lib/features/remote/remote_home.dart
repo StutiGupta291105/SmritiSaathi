@@ -94,12 +94,28 @@ class _RemoteHomeState extends State<RemoteHome> {
     }
   }
 
+  /// Who the conversation is with: the patient for a care or opinion chat, the
+  /// other professional for a care-team chat.
+  String _threadTitle(Map<String, dynamic> th) =>
+      th['kind'] == 'pro' ? '${th['peer_name']}' : '${th['patient_name']}';
+
+  String _threadSubtitle(Map<String, dynamic> th, String lastText) {
+    switch (th['kind']) {
+      case 'pro':
+        return '${t('chatKindTeam')} · ${th['patient_name']}';
+      case 'opinion':
+        return t('chatKindOpinion');
+      default:
+        return lastText;
+    }
+  }
+
   Future<void> _openChat(Map<String, dynamic> th) async {
     await Navigator.of(context).push(MaterialPageRoute<void>(
         builder: (_) => MessagesScreen(
               api: widget.api,
               linkId: th['link_id'] as String,
-              title: '${th['patient_name']}',
+              title: _threadTitle(th),
               lang: widget.lang,
               accent: _accent,
               onActivity: _loadThreads,
@@ -400,25 +416,27 @@ class _RemoteHomeState extends State<RemoteHome> {
         padding: const EdgeInsets.all(12),
         onTap: () => _openChat(th),
         child: Row(children: [
-          _avatar('${th['patient_name']}'),
+          _avatar(_threadTitle(th)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${th['patient_name']}',
+                Text(_threadTitle(th),
                     style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: Palette.brandDeep)),
                 Text(
-                    kind == null
-                        ? t('noMessagesYet')
-                        : kind == 'image'
-                            ? t('photoMsg')
-                            : kind == 'voice'
-                                ? t('voiceNote')
-                                : t('chatMessages'),
+                    _threadSubtitle(
+                        th,
+                        kind == null
+                            ? t('noMessagesYet')
+                            : kind == 'image'
+                                ? t('photoMsg')
+                                : kind == 'voice'
+                                    ? t('voiceNote')
+                                    : t('chatMessages')),
                     style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
               ],
             ),

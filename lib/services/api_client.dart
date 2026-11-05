@@ -545,6 +545,19 @@ class ApiClient {
     return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
+  /// For "Talk to Doctor": the patient's own doctor(s) first (`pinned`), then
+  /// every other doctor on the app. Needs only a name and a verified flag.
+  Future<List<Map<String, dynamic>>> doctorDirectory() async {
+    final j = await _raw('GET', '/v1/chat/doctors', cached: true);
+    return ((j['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  /// Starts (or reopens) a conversation with any doctor; returns its thread id.
+  Future<String> openOpinionChat(String doctorId) async {
+    final j = await _raw('POST', '/v1/chat/opinion', body: {'doctor_id': doctorId});
+    return j['thread_id'] as String;
+  }
+
   /// The latest page, or only what is newer than [after], or an older page.
   Future<List<Map<String, dynamic>>> chatMessages(String linkId,
       {int after = 0, int before = 0}) async {

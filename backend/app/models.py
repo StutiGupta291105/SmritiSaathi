@@ -199,13 +199,34 @@ class PushSent(Base):
     day: Mapped[str] = mapped_column(String(10), primary_key=True)
 
 
+class Conversation(Base):
+    """A chat that is not a care link.
+
+    * kind "opinion": a patient asks any doctor on the app for an opinion. The
+      doctor sees the patient's name and the messages only: no report, no
+      games, no reminders (those need an accepted link).
+    * kind "pro": the caregiver and the doctor linked to the same patient talk
+      to each other about that patient's care. It exists only while both links
+      are accepted and the patient's sharing is on for both.
+    """
+    __tablename__ = "conversations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    kind: Mapped[str] = mapped_column(String(8))
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), index=True)
+    doctor_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    caregiver_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
 class Message(Base):
     """One chat message between a patient and a linked caretaker or doctor. A
     conversation is the link. Text, a photo or a voice note; the media bytes are
     kept here, never in the audit log, and go when the patient is erased."""
     __tablename__ = "messages"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    link_id: Mapped[str] = mapped_column(ForeignKey("links.id"), index=True)
+    # Exactly one of these is set: the care link, or a conversation (see Conversation).
+    link_id: Mapped[str | None] = mapped_column(ForeignKey("links.id"), nullable=True, index=True)
+    conv_id: Mapped[str | None] = mapped_column(ForeignKey("conversations.id"), nullable=True, index=True)
     sender_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     kind: Mapped[str] = mapped_column(String(8))  # text | image | voice
     body: Mapped[str] = mapped_column(Text, default="")

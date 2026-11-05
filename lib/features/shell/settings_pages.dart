@@ -82,9 +82,11 @@ class HelpSupportScreen extends StatelessWidget {
           Row(children: [
             const Icon(Icons.emergency_rounded, color: Palette.red),
             const SizedBox(width: 8),
-            Text(tr(lang, 'emergencySos'),
-                style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w800)),
+            Expanded(
+              child: Text(tr(lang, 'emergencySos'),
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w800)),
+            ),
           ]),
           const SizedBox(height: 8),
           Text(h('emergencyNote'),

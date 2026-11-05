@@ -68,7 +68,8 @@ def test_full_family_journey(env):
     # --- chat in both directions, with a photo and a voice note
     threads = env.client.get("/v1/chat/threads", headers=a.headers).json()
     assert len(threads) == 2  # separate conversations with each
-    link = {t["link_id"] for t in env.client.get("/v1/chat/threads", headers=cg.headers).json()}.pop()
+    link = {t["link_id"] for t in env.client.get("/v1/chat/threads", headers=cg.headers).json()
+                if t["kind"] == "care"}.pop()
     send = lambda who, **kw: env.client.post(f"/v1/chat/{link}/messages", headers=who.headers,
                                              json={"kind": "text", **kw})
     assert send(a, text="Where are my tablets?").status_code == 201
