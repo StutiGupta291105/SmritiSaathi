@@ -299,7 +299,7 @@ def test_openai_compatible_failures_become_unavailable_and_need_a_key(monkeypatc
         raise urllib.error.URLError("down")
     monkeypatch.setattr(urllib.request, "urlopen", boom)
     with pytest.raises(CompanionUnavailable):
-        OpenAICompatCompanion("https://x.test", "K", "m").reply("s", [{"role": "user", "content": "hi"}])
+        OpenAICompatCompanion("https://x.test", "K", "m", retry_delay=0).reply("s", [{"role": "user", "content": "hi"}])
     monkeypatch.delenv("SMRITI_COMPANION_API_KEY", raising=False)
     assert isinstance(get_provider("openai_compat", "m"), UnavailableCompanion)
     monkeypatch.setenv("SMRITI_COMPANION_API_KEY", "K")
@@ -369,7 +369,9 @@ def test_answers_in_parts_are_joined(monkeypatch):
 
 
 def test_failures_say_why_without_the_persons_words(monkeypatch):
-    p, _ = _provider(monkeypatch, [_http(429, b'{"error":{"message":"quota exceeded"}}')])
+    # a rate limit is retried once, so it takes two answers to give up
+    p, _ = _provider(monkeypatch, [_http(429, b'{"error":{"message":"quota exceeded"}}'),
+                                    _http(429, b'{"error":{"message":"quota exceeded"}}')], retry_delay=0)
     with pytest.raises(CompanionUnavailable, match="http_429"):
         p.reply("s", [{"role": "user", "content": "my secret question"}])
     assert "quota exceeded" in p.last_error and "secret" not in p.last_error
@@ -405,3 +407,76 @@ def test_not_set_up_and_failing_are_told_apart(cenv):
         "messages": [{"role": "user", "content": "tell me about the moon"}], "lang": "en", "first_name": "A",
         "now_text": "x", "today": []})
     assert r.status_code == 503 and r.json()["detail"] == "companion_unavailable: http_429"
+
+
+# ---- a busy provider ("high demand") is retried, then a fallback model is used ----------
+
+def _provider_script(monkeypatch, steps):
+    """urlopen that follows a script: each step is an HTTP status to fail with, or text to answer."""
+    import io, json, urllib.error, urllib.request
+    seen = []
+
+    class Resp(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    def fake(req, timeout):
+        model = json.loads(req.data)["model"]
+        step = steps.pop(0)
+        seen.append((model, step))
+        if isinstance(step, int):
+            raise urllib.error.HTTPError(req.full_url, step, "x", {}, io.BytesIO(b'{"error": {"status": "UNAVAILABLE"}}'))
+        if step == "timeout":
+            raise TimeoutError()
+        return Resp(json.dumps({"choices": [{"message": {"content": step}}]}).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake)
+    return seen
+
+
+def test_a_busy_provider_is_retried_once_and_then_answers(monkeypatch):
+    from app.companion import OpenAICompatCompanion
+    seen = _provider_script(monkeypatch, [503, "Hello there"])
+    c = OpenAICompatCompanion("https://x.test", "K", "big", fallback_models=["small"], retry_delay=0)
+    assert c.reply("s", [{"role": "user", "content": "hi"}]) == "Hello there"
+    assert [m for m, _ in seen] == ["big", "big"]  # same model, second try
+    assert c.last_error == ""
+
+
+def test_when_the_main_model_stays_busy_the_fallback_model_answers(monkeypatch):
+    from app.companion import OpenAICompatCompanion
+    seen = _provider_script(monkeypatch, [503, 503, "From the small model"])
+    c = OpenAICompatCompanion("https://x.test", "K", "big", fallback_models=["small", "tiny"], retry_delay=0)
+    assert c.reply("s", [{"role": "user", "content": "hi"}]) == "From the small model"
+    assert [m for m, _ in seen] == ["big", "big", "small"]
+
+
+def test_a_timeout_also_falls_back_and_all_failing_raises_the_last_reason(monkeypatch):
+    from app.companion import OpenAICompatCompanion
+    seen = _provider_script(monkeypatch, ["timeout", "timeout", 503, 503])
+    c = OpenAICompatCompanion("https://x.test", "K", "big", fallback_models=["small"], retry_delay=0)
+    with pytest.raises(CompanionUnavailable) as e:
+        c.reply("s", [{"role": "user", "content": "hi"}])
+    assert str(e.value) == "http_503" and c.last_error.startswith("http_503")
+    assert [m for m, _ in seen] == ["big", "big", "small", "small"]
+
+
+def test_a_rejected_key_is_not_retried_and_a_missing_model_tries_the_next(monkeypatch):
+    from app.companion import OpenAICompatCompanion
+    seen = _provider_script(monkeypatch, [401])
+    c = OpenAICompatCompanion("https://x.test", "K", "big", fallback_models=["small"], retry_delay=0)
+    with pytest.raises(CompanionUnavailable) as e:
+        c.reply("s", [{"role": "user", "content": "hi"}])
+    assert str(e.value) == "http_401" and len(seen) == 1  # every model would fail the same way
+    seen2 = _provider_script(monkeypatch, [404, "ok from small"])
+    assert c.reply("s", [{"role": "user", "content": "hi"}]) == "ok from small"
+    assert [m for m, _ in seen2] == ["big", "small"]  # a wrong model name is not retried
+
+
+def test_fallback_models_come_from_the_environment(monkeypatch):
+    from app.companion import OpenAICompatCompanion, get_provider
+    monkeypatch.setenv("SMRITI_COMPANION_API_KEY", "K")
+    monkeypatch.setenv("SMRITI_COMPANION_BASE_URL", "https://ok.test/v1")
+    monkeypatch.setenv("SMRITI_COMPANION_FALLBACK_MODELS", " small , tiny ,, ")
+    c = get_provider("openai_compat", "big")
+    assert isinstance(c, OpenAICompatCompanion) and c._models == ["big", "small", "tiny"]

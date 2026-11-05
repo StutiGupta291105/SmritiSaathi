@@ -54,6 +54,11 @@ phone: Talk to Smriti > allow the online helper once, then ask away.
   asks again once if an answer is empty, and retries without `reasoning_effort` if the
   provider rejects it. Tune with `SMRITI_COMPANION_MAX_TOKENS` and
   `SMRITI_COMPANION_REASONING_EFFORT` (`low`, or empty to leave it out).
+* **"Model is overloaded" (HTTP 503 / 429).** Free models are sometimes "experiencing high
+  demand". The server asks again once, then tries each model in `SMRITI_COMPANION_FALLBACK_MODELS`
+  (comma separated, for example `gemini-flash-lite-latest,gemini-2.0-flash`), within about a
+  minute. A rejected key (401/403) is not retried. The reason for the last failure is in
+  `/healthz` (`ai_error`) and the Render logs.
 * Free tiers have per-minute and per-day limits, and the patient has a daily limit of 40
   questions (`SMRITI_COMPANION_DAILY_LIMIT`).
 

@@ -234,11 +234,22 @@ class OpenAICompatCompanion:
     so a server whose health says 'ai: true' but that does not answer can be
     diagnosed (admin portal, or `python -m app.cli ai-check`)."""
 
+    # Errors that usually pass by themselves: the provider is busy ("high demand",
+    # a rate limit) or briefly unreachable. These are retried once, and then the
+    # next model in the fallback list is tried, instead of failing the question.
+    _TRANSIENT = {"http_429", "http_500", "http_502", "http_503", "http_504",
+                  "TimeoutError", "URLError", "timeout", "ConnectionResetError"}
+
     def __init__(self, base_url: str, api_key: str, model: str,
-                 max_tokens: int = COMPAT_REPLY_TOKENS, reasoning_effort: str = "") -> None:
+                 max_tokens: int = COMPAT_REPLY_TOKENS, reasoning_effort: str = "",
+                 fallback_models: tuple[str, ...] | list[str] = (),
+                 retry_delay: float = 1.5, call_timeout: float = 25.0,
+                 budget: float = 55.0) -> None:
         self._url = base_url.rstrip("/") + "/chat/completions"
         self._key, self._model = api_key, model
+        self._models = [model] + [m for m in fallback_models if m and m != model]
         self._max_tokens, self._effort = max_tokens, reasoning_effort.strip()
+        self._retry_delay, self._timeout, self._budget = retry_delay, call_timeout, budget
         self.last_error = ""
 
     @staticmethod
@@ -249,15 +260,15 @@ class OpenAICompatCompanion:
         return (c or "").strip() if isinstance(c, str) else ""
 
     def _call(self, system: str, messages: list[dict], max_tokens: int,
-              effort: str) -> tuple[str, str]:
-        payload = {"model": self._model, "max_tokens": max_tokens, "temperature": 0.6,
+              effort: str, model: str | None = None) -> tuple[str, str]:
+        payload = {"model": model or self._model, "max_tokens": max_tokens, "temperature": 0.6,
                    "messages": [{"role": "system", "content": system}, *messages]}
         if effort:
             payload["reasoning_effort"] = effort
         req = urllib.request.Request(self._url, data=json.dumps(payload).encode(), headers={
             "Authorization": f"Bearer {self._key}", "Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=40) as r:
+            with urllib.request.urlopen(req, timeout=self._timeout) as r:
                 data = json.load(r)
         except urllib.error.HTTPError as e:
             try:
@@ -278,24 +289,52 @@ class OpenAICompatCompanion:
             self.last_error = "unexpected_response_shape"
             return "", ""
 
-    def reply(self, system: str, messages: list[dict]) -> str:
+    def _reply_one(self, model: str, system: str, messages: list[dict]) -> str:
+        """One model, with the two clean-ups described above (no reasoning setting for a
+        provider that rejects it; a bigger budget for an empty answer)."""
         effort = self._effort
         try:
-            text, finish = self._call(system, messages, self._max_tokens, effort)
+            text, finish = self._call(system, messages, self._max_tokens, effort, model)
         except CompanionUnavailable as e:
             if effort and str(e) == "http_400":
                 effort = ""  # this provider does not take the reasoning setting
-                text, finish = self._call(system, messages, self._max_tokens, "")
+                text, finish = self._call(system, messages, self._max_tokens, "", model)
             else:
                 raise
         if not text:
             log.warning("companion answered with nothing (finish_reason=%s); asking again", finish)
-            text, finish = self._call(system, messages, self._max_tokens * 2, "")
+            text, finish = self._call(system, messages, self._max_tokens * 2, "", model)
             if not text:
                 self.last_error = f"empty_answer (finish_reason={finish})"
         else:
             self.last_error = ""
         return text
+
+    def reply(self, system: str, messages: list[dict]) -> str:
+        """Asks the model; if the provider is busy or briefly unreachable, asks once
+        more, then the next model in the fallback list, within a time budget. A bad
+        or rejected key is not retried (every model would fail the same way)."""
+        started = time.monotonic()
+        last: CompanionUnavailable | None = None
+        for model in self._models:
+            for attempt in range(2):
+                if last is not None and time.monotonic() - started > self._budget:
+                    raise last
+                try:
+                    text = self._reply_one(model, system, messages)
+                    if model != self._models[0]:
+                        log.warning("companion answered with the fallback model %s", model)
+                    return text
+                except CompanionUnavailable as e:
+                    last = e
+                    if str(e) in ("http_401", "http_403"):
+                        raise
+                    if str(e) in self._TRANSIENT and attempt == 0:
+                        time.sleep(self._retry_delay)
+                        continue
+                    break  # not transient, or the retry failed too: try the next model
+        assert last is not None
+        raise last
 
 
 class AnthropicCompanion:
@@ -339,7 +378,9 @@ def get_provider(provider: str, model: str) -> CompanionProvider:
         return OpenAICompatCompanion(
             base, key, model,
             int(os.environ.get("SMRITI_COMPANION_MAX_TOKENS", COMPAT_REPLY_TOKENS)),
-            os.environ.get("SMRITI_COMPANION_REASONING_EFFORT", ""))
+            os.environ.get("SMRITI_COMPANION_REASONING_EFFORT", ""),
+            fallback_models=[m.strip() for m in
+                             os.environ.get("SMRITI_COMPANION_FALLBACK_MODELS", "").split(",") if m.strip()])
     raise RuntimeError(f"Unknown companion provider: {provider}")
 
 
