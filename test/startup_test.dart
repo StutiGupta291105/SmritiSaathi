@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti_assist/data/app_database.dart';
@@ -14,6 +16,20 @@ class _BrokenNotifier extends ReminderNotifier {
   @override
   Future<void> resync({required String patientId, required String lang}) async =>
       throw StateError('exact_alarms_not_permitted');
+}
+
+/// A notification plugin that never answers.
+class _HangingNotifier extends ReminderNotifier {
+  _HangingNotifier(super.db);
+  @override
+  Future<void> resync({required String patientId, required String lang}) =>
+      Completer<void>().future;
+}
+
+class _StuckSession extends SessionStore {
+  const _StuckSession();
+  @override
+  Future<String?> read() => Completer<String?>().future; // secure storage that never answers
 }
 
 class _MemorySession extends SessionStore {
@@ -55,18 +71,38 @@ void main() {
     await t.pump(const Duration(milliseconds: 500));
   }
 
-  testWidgets('if setting up reminders fails at start, the person sees why and can retry (no endless spinner)', (t) async {
+  testWidgets('if setting up reminders fails at start, the app still opens (it is not waited for)', (t) async {
     await boot(t, _BrokenNotifier(db));
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('Something went wrong while opening the app.'), findsOneWidget);
-    expect(find.textContaining('exact_alarms_not_permitted'), findsOneWidget);
-    expect(find.text('Try again'), findsOneWidget);
+    expect(find.text('Something went wrong while opening the app.'), findsNothing);
+    expect(find.byType(NavigationBar), findsOneWidget); // the patient home is showing
   });
 
   testWidgets('a working start opens the patient home', (t) async {
     await boot(t, _NoopNotifier(db));
     expect(find.text('Something went wrong while opening the app.'), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(NavigationBar), findsOneWidget);
+  });
+
+  testWidgets('reminders that never finish setting up do not hold the app on a spinner', (t) async {
+    await boot(t, _HangingNotifier(db));
+    expect(find.text('Something went wrong while opening the app.'), findsNothing);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 31)); // lets the background safety timer run out
+  });
+
+  testWidgets('a stalled step is named on screen instead of spinning for ever', (t) async {
+    final old = RootStateTimeouts.get();
+    RootStateTimeouts.set(const Duration(milliseconds: 200));
+    addTearDown(() => RootStateTimeouts.set(old));
+    await t.pumpWidget(MaterialApp(
+        home: Root(
+            db: db, notifier: _NoopNotifier(db), voice: Voice(), otp: defaultOtpService(null),
+            session: const _StuckSession())));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 600)));
+    await t.pump(const Duration(milliseconds: 500));
+    expect(find.textContaining('stuck while: reading the saved sign-in'), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
   });
 }
 
