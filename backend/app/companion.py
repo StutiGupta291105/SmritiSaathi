@@ -369,7 +369,8 @@ class OpenAICompatCompanion:
         return (c or "").strip() if isinstance(c, str) else ""
 
     def _call(self, system: str, messages: list[dict], max_tokens: int,
-              effort: str, model: str | None = None) -> tuple[str, str]:
+              effort: str, model: str | None = None,
+              timeout: float | None = None) -> tuple[str, str]:
         payload = {"model": model or self._model, "max_tokens": max_tokens, "temperature": 0.6,
                    "messages": [{"role": "system", "content": system}, *messages]}
         if effort:
@@ -377,7 +378,7 @@ class OpenAICompatCompanion:
         req = urllib.request.Request(self._url, data=json.dumps(payload).encode(), headers={
             "Authorization": f"Bearer {self._key}", "Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=self._timeout) as r:
+            with urllib.request.urlopen(req, timeout=timeout or self._timeout) as r:
                 data = json.load(r)
         except urllib.error.HTTPError as e:
             try:
@@ -506,6 +507,39 @@ def get_provider(provider: str, model: str) -> CompanionProvider:
             fallback_models=[m.strip() for m in
                              os.environ.get("SMRITI_COMPANION_FALLBACK_MODELS", "").split(",") if m.strip()])
     raise RuntimeError(f"Unknown companion provider: {provider}")
+
+
+def probe_models(provider, models: list[str], timeout: float = 45.0) -> list[dict]:
+    """Asks every model one short made-up question at the same time and reports how long
+    each took (or why it failed), so the fast one can be picked. Reads nothing private."""
+    import threading
+    rows: dict[str, dict] = {}
+
+    def run(model: str) -> None:
+        t0 = time.monotonic()
+        row = {"model": model, "ok": False, "ms": 0, "error": "", "reply": ""}
+        try:
+            text, finish = provider._call(
+                "You are a test. Answer in one short sentence.",
+                [{"role": "user", "content": "Say hello and tell me one interesting fact about the sun."}],
+                300, "", model, timeout)
+            row["ok"], row["reply"] = bool(text), text[:80]
+            if not text:
+                row["error"] = f"empty_answer (finish_reason={finish})"
+        except CompanionUnavailable as e:
+            row["error"] = str(e)
+        except Exception as e:  # never let one model's failure hide the others
+            row["error"] = type(e).__name__
+        row["ms"] = int((time.monotonic() - t0) * 1000)
+        rows[model] = row
+
+    threads = [threading.Thread(target=run, args=(m,), daemon=True) for m in models]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout + 5)
+    return [rows.get(m) or {"model": m, "ok": False, "ms": int(timeout * 1000),
+                            "error": "no answer in time", "reply": ""} for m in models]
 
 
 def ai_check(provider) -> dict:

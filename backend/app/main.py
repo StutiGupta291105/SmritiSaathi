@@ -95,8 +95,23 @@ def create_app(settings: Settings | None = None, sms: SmsProvider | None = None,
         now = _t.monotonic()
         if ai_check_cache["out"] is None or now - ai_check_cache["at"] > 60:
             prov = app.state.companion
-            out = companion_mod.ai_check(prov)
-            out["models_tried"] = getattr(prov, "_models", [])
+            if hasattr(prov, "_call"):
+                # An OpenAI-compatible provider: ask every configured model, and up to
+                # three more the provider lists for this key, all at once.
+                configured = list(getattr(prov, "_models", []))
+                models = configured + [m for m in prov._discover() if m not in configured][:3]
+                rows = companion_mod.probe_models(prov, models)
+                good = sorted((r for r in rows if r["ok"]), key=lambda r: r["ms"])
+                out = {"provider": type(prov).__name__, "ok": bool(good),
+                       "reply": good[0]["reply"] if good else "",
+                       "error": "" if good else "no model answered: " + "; ".join(
+                           f"{r['model']}: {r['error']}" for r in rows)[:400],
+                       "ms": good[0]["ms"] if good else 0,
+                       "fastest": good[0]["model"] if good else "",
+                       "models": rows, "models_tried": configured}
+            else:
+                out = companion_mod.ai_check(prov)
+                out["models_tried"] = getattr(prov, "_models", [])
             base = getattr(prov, "base_url", "")
             out["network"] = companion_mod.network_probe(base) if base else []
             ai_check_cache.update(at=now, out=out)

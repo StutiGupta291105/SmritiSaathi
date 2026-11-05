@@ -601,3 +601,49 @@ def test_network_probe_reports_dns_failures_without_raising():
     from app.companion import network_probe
     out = network_probe("https://this-host-does-not-exist.invalid/v1")
     assert out and out[0]["ok"] is False and out[0]["error"].startswith("dns")
+
+
+def test_healthz_ai_times_every_model_at_once_and_names_the_fastest(env, monkeypatch):
+    import time
+    from app.companion import OpenAICompatCompanion
+
+    class P(OpenAICompatCompanion):
+        def __init__(self):
+            super().__init__("", "K", "slow", fallback_models=["fast", "broken"])
+
+        def _call(self, system, messages, max_tokens, effort, model=None, timeout=None):
+            if model == "slow":
+                time.sleep(0.3)
+                return "slow answer", "stop"
+            if model == "fast":
+                return "fast answer", "stop"
+            raise CompanionUnavailable("http_404")
+
+        def _discover(self):
+            return ["extra-flash"]
+
+    env.app.state.companion = P()
+    out = env.client.get("/healthz/ai").json()
+    by = {r["model"]: r for r in out["models"]}
+    assert set(by) == {"slow", "fast", "broken", "extra-flash"}  # configured plus a discovered one
+    assert by["fast"]["ok"] and by["slow"]["ok"] and not by["broken"]["ok"]
+    assert by["broken"]["error"] == "http_404"
+    assert out["ok"] is True and out["fastest"] in ("fast", "extra-flash") and out["models_tried"] == ["slow", "fast", "broken"]
+
+
+def test_healthz_ai_reports_when_no_model_answers(env):
+    from app.companion import OpenAICompatCompanion
+
+    class P(OpenAICompatCompanion):
+        def __init__(self):
+            super().__init__("", "K", "a", fallback_models=["b"])
+
+        def _call(self, *a, **k):
+            raise CompanionUnavailable("TimeoutError")
+
+        def _discover(self):
+            return []
+
+    env.app.state.companion = P()
+    out = env.client.get("/healthz/ai").json()
+    assert out["ok"] is False and "a: TimeoutError" in out["error"] and "b: TimeoutError" in out["error"]
