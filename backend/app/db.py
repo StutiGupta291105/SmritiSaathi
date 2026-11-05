@@ -37,9 +37,17 @@ def add_missing_columns(engine, metadata) -> None:
         for table in metadata.sorted_tables:
             if not insp.has_table(table.name):
                 continue
-            have = {c["name"] for c in insp.get_columns(table.name)}
+            cols = {c["name"]: c for c in insp.get_columns(table.name)}
+            have = set(cols)
             for col in table.columns:
                 if col.name in have:
+                    # A column that became optional (messages.link_id when chats
+                    # that are not care links were added). SQLite cannot relax a
+                    # column in place: delete a development SQLite file instead.
+                    if (col.nullable and not cols[col.name]["nullable"]
+                            and engine.dialect.name == "postgresql" and not col.primary_key):
+                        conn.execute(text(
+                            f'ALTER TABLE "{table.name}" ALTER COLUMN "{col.name}" DROP NOT NULL'))
                     continue
                 ddl = col.type.compile(dialect=engine.dialect)
                 default = ""
