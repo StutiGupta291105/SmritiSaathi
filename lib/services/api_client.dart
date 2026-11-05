@@ -96,6 +96,8 @@ class ApiClient {
     // A free test server sleeps when idle and takes up to a minute to wake.
     this.timeout = const Duration(seconds: 45),
     this.store,
+    this.maxCacheAge = const Duration(days: 7),
+    this.slowAfter = const Duration(seconds: 8),
   })  : baseUri = _validated(baseUrl),
         _http = client ?? http.Client(),
         _tokens = tokens ?? const SecureTokenStore();
@@ -105,6 +107,17 @@ class ApiClient {
   final TokenStore _tokens;
   final Duration timeout;
   final OfflineStore? store;
+
+  /// Saved copies older than this are not shown any more. Someone whose access
+  /// ended while this phone was offline must not keep seeing their data for ever.
+  final Duration maxCacheAge;
+
+  /// A request still waiting after this long is probably a sleeping test server.
+  final Duration slowAfter;
+
+  /// True while a request is taking suspiciously long (the server is waking up).
+  final ValueNotifier<bool> waking = ValueNotifier<bool>(false);
+  int _slow = 0;
 
   /// null until the first call; then whether the last call reached the server.
   final ValueNotifier<bool?> online = ValueNotifier<bool?>(null);
@@ -180,12 +193,18 @@ class ApiClient {
       if (token != null) headers['authorization'] = 'Bearer $token';
     }
     http.Response res;
+    final slowTimer = Timer(slowAfter, () {
+      _slow++;
+      waking.value = true;
+    });
+    var counted = false;
     try {
       final req = http.Request(method, uri)..headers.addAll(headers);
       if (body != null) req.body = jsonEncode(body);
       res = await http.Response.fromStream(
           await _http.send(req).timeout(wait ?? timeout));
     } on Exception catch (e) {
+      counted = _endSlow(slowTimer);
       online.value = false;
       if (cached && method == 'GET') {
         final saved = await _saved(path);
@@ -193,6 +212,7 @@ class ApiClient {
       }
       throw ApiException(0, e is TimeoutException ? 'timeout' : 'network');
     }
+    if (!counted) _endSlow(slowTimer);
 
     if (res.statusCode == 401 && auth && !retried && path != '/v1/auth/refresh') {
       if (await _refresh()) {
@@ -230,11 +250,23 @@ class ApiClient {
     throw ApiException(res.statusCode, detail);
   }
 
+  bool _endSlow(Timer t) {
+    final fired = !t.isActive;
+    t.cancel();
+    if (fired && _slow > 0) _slow--;
+    if (_slow == 0) waking.value = false;
+    return true;
+  }
+
   /// The last answer saved for [path], when the server cannot be reached.
   Future<Map<String, dynamic>?> _saved(String path) async {
     try {
       final hit = await store?.cacheGet(path);
       if (hit == null) return null;
+      if (DateTime.now().difference(hit.at) > maxCacheAge) {
+        await store?.cacheRemove(path); // too old to be trusted
+        return null;
+      }
       final decoded = jsonDecode(hit.json);
       staleSince.value = hit.at;
       return decoded is Map<String, dynamic> ? decoded : {'data': decoded};

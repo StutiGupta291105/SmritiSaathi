@@ -122,3 +122,18 @@ def test_a_caretaker_cannot_edit_a_routine_into_a_prescription_and_dates_can_be_
     assert ok.status_code == 200 and ok.json()["on_date"] is None and ok.json()["kind"] == "activity"
     env.consent(a, pid, "caregiver_share", False)
     assert env.client.patch(url, headers=cg.headers, json={"hour": 3}).status_code == 404
+
+
+def test_edit_and_delete_racing_each_other_end_cleanly(env):
+    """The patient's phone deletes a routine while its creator edits it (or deletes
+    it too). Only the creator may edit, so there is never a merge: whichever comes
+    second gets 404, and the app drops a queued delete that gets 404."""
+    a, pid = env.make_patient(PATIENT)
+    cg = env.link_member(a, pid, "caretaker", CARER)
+    rid = _add(env, cg, pid, kind="activity", label="Walk").json()["id"]
+    url = f"/v1/patients/{pid}/care-reminders/{rid}"
+    assert env.client.delete(url, headers=a.headers).status_code == 204   # patient, offline, now synced
+    assert env.client.patch(url, headers=cg.headers, json={"hour": 7}).status_code == 404
+    assert env.client.delete(url, headers=cg.headers).status_code == 404
+    assert env.client.delete(url, headers=a.headers).status_code == 404   # a repeated queued delete
+    assert env.client.get(f"/v1/patients/{pid}/care-reminders", headers=a.headers).json() == []

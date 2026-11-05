@@ -11,6 +11,8 @@ const Map<String, Map<String, String>> _kCoreStrings = {
   'as': kStringsAs,
   'en': {
     'appName': 'Smriti Sathi',
+    'photoTooBig': 'This photo is too large to send. Please choose a smaller one.',
+    'wakingBar': 'Connecting… the server was resting and can take up to a minute to wake. Nothing is lost.',
     'doneOfTotal': '{a} of {b} done today',
     'connectRetry': 'Please get a new code and enter it to finish.',
     'offlineBar': 'You are offline. Everything is saved on this phone and will be sent when you are back online.',
@@ -468,6 +470,8 @@ const Map<String, Map<String, String>> _kCoreStrings = {
   },
   'hi': {
     'appName': 'स्मृति साथी',
+    'photoTooBig': 'यह फ़ोटो भेजने के लिए बहुत बड़ी है। कृपया छोटी फ़ोटो चुनें।',
+    'wakingBar': 'जुड़ रहे हैं… सर्वर आराम में था और जागने में एक मिनट तक लग सकता है। कुछ भी खोया नहीं है।',
     'doneOfTotal': 'आज {b} में से {a} पूरे',
     'connectRetry': 'कृपया नया कोड मँगाएँ और पूरा करने के लिए उसे डालें।',
     'offlineBar': 'आप ऑफ़लाइन हैं। सब कुछ इस फ़ोन में सुरक्षित है और इंटरनेट आने पर भेज दिया जाएगा।',

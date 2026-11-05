@@ -42,6 +42,7 @@ class _OfflineBarState extends State<OfflineBar> {
   void initState() {
     super.initState();
     widget.api.online.addListener(_changed);
+    widget.api.waking.addListener(_changed);
     widget.api.staleSince.addListener(_changed);
     widget.api.outboxCount.addListener(_changed);
     _count();
@@ -52,6 +53,7 @@ class _OfflineBarState extends State<OfflineBar> {
   void dispose() {
     _timer?.cancel();
     widget.api.online.removeListener(_changed);
+    widget.api.waking.removeListener(_changed);
     widget.api.staleSince.removeListener(_changed);
     widget.api.outboxCount.removeListener(_changed);
     super.dispose();
@@ -78,8 +80,11 @@ class _OfflineBarState extends State<OfflineBar> {
   Widget build(BuildContext context) {
     final stale = widget.api.staleSince.value;
     final offline = widget.api.online.value == false;
-    if (stale == null && !offline) return const SizedBox.shrink();
-    final text = stale != null
+    final waking = widget.api.waking.value;
+    if (stale == null && !offline && !waking) return const SizedBox.shrink();
+    final text = waking && stale == null
+        ? t('wakingBar')
+        : stale != null
         ? t('staleBar').replaceAll('{t}', TimeOfDay.fromDateTime(stale).format(context))
         : t('offlineBar');
     return Container(
@@ -88,11 +93,11 @@ class _OfflineBarState extends State<OfflineBar> {
       color: const Color(0xFFFFF4D6),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(children: [
-        const Icon(Icons.cloud_off_rounded, size: 18, color: Palette.ink),
+        Icon(waking && stale == null ? Icons.cloud_sync_rounded : Icons.cloud_off_rounded, size: 18, color: Palette.ink),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            _waiting > 0 && stale == null
+            _waiting > 0 && stale == null && !waking
                 ? '$text  ·  ${t('offlinePending').replaceAll('{a}', '$_waiting')}'
                 : text,
             style: const TextStyle(fontSize: 13, color: Palette.ink, height: 1.25),

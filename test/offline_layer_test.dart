@@ -167,4 +167,59 @@ void main() {
     net.up = false;
     await expectLater(api.report('p1', 7), throwsA(isA<ApiException>().having((e) => e.isNetwork, 'offline', isTrue)));
   });
+
+  test('a saved copy older than the limit is not shown any more', () async {
+    final old = ApiClient(
+        baseUrl: 'https://api.example.com',
+        tokens: MemoryTokenStore(),
+        client: MockClient(net.handle),
+        store: db,
+        maxCacheAge: const Duration(milliseconds: 50));
+    await old.myPatients();
+    net.up = false;
+    expect((await old.myPatients()).single['display_name'], 'Asha'); // still fresh enough
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    await expectLater(old.myPatients(),
+        throwsA(isA<ApiException>().having((e) => e.isNetwork, 'offline', isTrue)));
+    expect(await db.cacheGet('/v1/my-patients'), isNull, reason: 'expired copy is deleted');
+  });
+
+  test('a slow request raises the waking flag and clears it when the server answers', () async {
+    final slow = ApiClient(
+        baseUrl: 'https://api.example.com',
+        tokens: MemoryTokenStore(),
+        client: MockClient((r) async {
+          await Future<void>.delayed(const Duration(milliseconds: 150));
+          return net.handle(r);
+        }),
+        store: db,
+        slowAfter: const Duration(milliseconds: 40));
+    final f = slow.myPatients();
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(slow.waking.value, isTrue);
+    await f;
+    expect(slow.waking.value, isFalse);
+    // A quick call never raises it.
+    final quick = ApiClient(
+        baseUrl: 'https://api.example.com',
+        tokens: MemoryTokenStore(),
+        client: MockClient(net.handle),
+        store: db,
+        slowAfter: const Duration(milliseconds: 500));
+    await quick.myPatients();
+    expect(quick.waking.value, isFalse);
+  });
+
+  test('a failing slow request also clears the waking flag', () async {
+    final slow = ApiClient(
+        baseUrl: 'https://api.example.com',
+        tokens: MemoryTokenStore(),
+        client: MockClient((r) async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          throw http.ClientException('gone');
+        }),
+        slowAfter: const Duration(milliseconds: 30));
+    await expectLater(slow.myPatients(), throwsA(isA<ApiException>()));
+    expect(slow.waking.value, isFalse);
+  });
 }

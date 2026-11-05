@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../services/api_client.dart';
+import '../../services/image_shrink.dart';
 import '../../services/voice_notes.dart';
 import '../profile/photo_picker.dart' show pickPhoto;
 
@@ -243,8 +244,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Future<void> _sendPhoto() async {
-    final bytes = await widget.pickPhoto(context, widget.lang);
-    if (bytes == null) return;
+    final picked = await widget.pickPhoto(context, widget.lang);
+    if (picked == null) return;
+    final bytes = await shrinkPhoto(picked);
+    if (bytes == null) {
+      if (mounted) _snack('photoTooBig');
+      return;
+    }
     await _send(kind: 'image', media: bytes, mime: _imageMime(bytes));
   }
 
