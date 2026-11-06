@@ -12,8 +12,8 @@ class AdminApiException implements Exception {
   String toString() => 'AdminApiException($status, $code)';
 }
 
-/// Talks to the server's /v1/admin endpoints. Everything except [login] is a GET:
-/// this class has no way to change anything on the server. The token lives in memory
+/// Talks to the server's /v1/admin endpoints. Everything except [login] and
+/// [clearAllData] (a guarded test-server action) is a GET. The token lives in memory
 /// only and expires after 30 minutes.
 class AdminApi {
   AdminApi(this.baseUrl, {http.Client? client})
@@ -66,6 +66,16 @@ class AdminApi {
   Future<Map<String, dynamic>> _get(String path, [Map<String, String>? q]) =>
       _send(() => _client
           .get(_uri(path, q), headers: {'authorization': 'Bearer $_token'}));
+
+  /// Test servers only: empties every table, the access log too. The server
+  /// insists on the exact phrase and refuses on a production server.
+  Future<Map<String, dynamic>> clearAllData(String phrase) =>
+      _send(() => _client.post(_uri('/v1/admin/clear-all-data'),
+          headers: {
+            'content-type': 'application/json',
+            'authorization': 'Bearer $_token'
+          },
+          body: jsonEncode({'confirm': phrase})));
 
   Future<Map<String, dynamic>> overview() => _get('/v1/admin/overview');
   Future<Map<String, dynamic>> users(

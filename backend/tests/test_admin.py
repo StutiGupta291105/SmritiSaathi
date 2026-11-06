@@ -108,7 +108,7 @@ def test_every_admin_route_is_read_only(env):
     admin = {p: set(m) for p, m in paths.items() if p.startswith("/v1/admin")}
     assert len(admin) >= 8
     writing = [(p, m - {"get"}) for p, m in admin.items() if m - {"get"}]
-    assert writing == [("/v1/admin/login", {"post"})]
+    assert sorted(writing, key=lambda x: x[0]) == [("/v1/admin/clear-all-data", {"post"}), ("/v1/admin/login", {"post"})]
     h = _headers(env)
     for method in ("post", "put", "patch", "delete"):
         r = getattr(env.client, method)("/v1/admin/users", headers=h)
@@ -244,3 +244,30 @@ def test_dashboard_patient_count_matches_the_patients_list(env):
     ov = env.client.get("/v1/admin/overview", headers=h).json()
     listed = env.client.get("/v1/admin/patients", headers=h).json()["total"]
     assert ov["users"]["patient"] == listed == 1
+
+
+def test_clear_all_data_needs_the_phrase_and_empties_every_table_including_the_log(env):
+    from sqlalchemy import func, select
+    from app.db import Base
+    _family(env)
+    h = _headers(env)
+    assert env.client.post("/v1/admin/clear-all-data", json={"confirm": "clear"}, headers=h).status_code == 400
+    assert env.client.post("/v1/admin/clear-all-data", json={"confirm": "CLEAR ALL DATA"}).status_code == 401  # not signed in
+    assert env.client.get("/v1/admin/overview", headers=h).json()["audit_entries"] > 0
+    r = env.client.post("/v1/admin/clear-all-data", json={"confirm": "CLEAR ALL DATA"}, headers=h)
+    assert r.status_code == 200 and r.json()["ok"] is True
+    with env.app.state.sessionmaker() as db:
+        left = {t.name: db.execute(select(func.count()).select_from(t)).scalar_one()
+                for t in Base.metadata.sorted_tables}
+    assert {n: c for n, c in left.items() if c} == {}
+    ov = env.client.get("/v1/admin/overview", headers=h).json()  # the admin stays signed in
+    assert ov["users"]["patient"] == 0 and ov["audit_entries"] == 0
+
+
+def test_clear_all_data_is_refused_on_a_production_server(monkeypatch):
+    monkeypatch.delenv("SMRITI_ALLOW_WIPE", raising=False)
+    from app import reset
+    class S: is_prod = True
+    assert reset.allowed(S()) is False
+    monkeypatch.setenv("SMRITI_ALLOW_WIPE", "1")
+    assert reset.allowed(S()) is True

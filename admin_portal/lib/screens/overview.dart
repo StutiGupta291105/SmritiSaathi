@@ -24,6 +24,7 @@ class _OverviewPageState extends State<OverviewPage> {
   Object? _error;
   Map<String, dynamic>? _ai;
   bool _aiBusy = false;
+  bool _clearing = false;
 
   Future<void> _testAi() async {
     setState(() {
@@ -38,6 +39,62 @@ class _OverviewPageState extends State<OverviewPage> {
       if (mounted) setState(() => _ai = {'ok': false, 'error': errorText(e), 'reply': '', 'ms': 0, 'provider': ''});
     } finally {
       if (mounted) setState(() => _aiBusy = false);
+    }
+  }
+
+  Future<void> _clearAll() async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => StatefulBuilder(
+        builder: (c, setD) => AlertDialog(
+          title: const Text('Clear all data?'),
+          content: SizedBox(
+            width: 420,
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text(
+                  'This empties every table of the database: all accounts, patients, links, chats, reminders, game results and the access log. The tables stay, and numbering starts again from 1. It cannot be undone.'),
+              const SizedBox(height: 12),
+              const Text('Type CLEAR ALL DATA to confirm:'),
+              const SizedBox(height: 6),
+              TextField(
+                  key: const ValueKey('clearPhrase'),
+                  controller: ctrl,
+                  autofocus: true,
+                  onChanged: (_) => setD(() {}),
+                  decoration: const InputDecoration(border: OutlineInputBorder())),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+            FilledButton(
+              key: const ValueKey('clearConfirm'),
+              style: FilledButton.styleFrom(backgroundColor: Pal.bad),
+              onPressed: ctrl.text.trim() == 'CLEAR ALL DATA' ? () => Navigator.pop(c, true) : null,
+              child: const Text('Clear everything'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _clearing = true);
+    try {
+      await widget.api.clearAllData('CLEAR ALL DATA');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All data cleared. Every table is empty.')));
+      _fetch();
+    } catch (e) {
+      widget.onError(e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(e is AdminApiException && e.status == 403
+                ? 'Not allowed: this server is in production mode.'
+                : errorText(e))));
+      }
+    } finally {
+      if (mounted) setState(() => _clearing = false);
     }
   }
 
@@ -160,6 +217,21 @@ class _OverviewPageState extends State<OverviewPage> {
         StatCard('Admin sign-ins', '${d['admin_logins_24h']}'),
         StatCard('Audit entries in total', '${d['audit_entries']}'),
       ]),
+      const SizedBox(height: 22),
+      Panel(
+        title: 'Clear all data (test servers)',
+        actions: [
+          FilledButton(
+            key: const ValueKey('clearAll'),
+            style: FilledButton.styleFrom(backgroundColor: Pal.bad),
+            onPressed: _clearing ? null : _clearAll,
+            child: Text(_clearing ? 'Clearing…' : 'Clear all data'),
+          ),
+        ],
+        child: const Text(
+            'Empties every table, the access log included, and restarts the numbering. You must type a phrase to confirm. A production server refuses.',
+            style: TextStyle(color: Pal.muted)),
+      ),
     ]);
   }
 }

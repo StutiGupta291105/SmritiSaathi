@@ -81,29 +81,15 @@ def _reset_database(db, settings, word: str) -> int:
     ids started again from 1, and NO audit entry written, so the log starts empty. The tables
     and the schema version stay. For a TEST server only; it cannot be undone, and in production
     it also needs SMRITI_ALLOW_WIPE=1."""
-    import os
-    from sqlalchemy import text
-    from .db import Base
+    from . import reset
     if word != "I-UNDERSTAND":
         print("Add the word I-UNDERSTAND to confirm: python -m app.cli reset-database I-UNDERSTAND")
         return 2
-    if settings.is_prod and os.environ.get("SMRITI_ALLOW_WIPE") != "1":
+    if not reset.allowed(settings):
         print("This server is in production. Set SMRITI_ALLOW_WIPE=1 for this one command if you really mean it.")
         return 2
-    tables = [t.name for t in Base.metadata.sorted_tables]
-    dialect = db.get_bind().dialect.name
-    if dialect == "postgresql":
-        names = ", ".join(f'"{n}"' for n in tables)
-        db.execute(text(f"TRUNCATE TABLE {names} RESTART IDENTITY CASCADE"))
-    else:
-        for table in reversed(Base.metadata.sorted_tables):
-            db.execute(table.delete())
-        try:
-            db.execute(text("DELETE FROM sqlite_sequence"))
-        except Exception:
-            pass  # no autoincrement table in this database
-    db.commit()
-    print(f"reset {len(tables)} tables: every row deleted, ids restart at 1, audit log empty")
+    n = reset.reset_all(db)
+    print(f"reset {n} tables: every row deleted, ids restart at 1, audit log empty")
     return 0
 
 

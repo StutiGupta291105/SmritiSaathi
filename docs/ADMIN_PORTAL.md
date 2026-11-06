@@ -1,4 +1,4 @@
-# Admin portal (read only)
+# Admin portal (read only, plus one guarded button)
 
 A desktop application (Windows, macOS, Linux) for the people who run Smriti Sathi. It is
 a database shown as a dashboard: who is in the system, who supervises whom, and what
@@ -67,3 +67,7 @@ linked to). Chat reads are not logged (they happen every few seconds); chat send
 * There is a single admin and a single permission level: whoever has the password sees everything the portal shows. Keep it in a password manager, and change it if anyone who knew it leaves.
 * The desktop builds are produced by the workflow above; they have not been run on real
   Windows or macOS machines by us.
+
+## Clear all data (test servers only)
+
+The Overview page has a **Clear all data** panel. It empties every table (all accounts, links, chats, reminders, game results and the access log too) and restarts id numbering from 1; the tables and schema stay. The admin must type `CLEAR ALL DATA`. A production server refuses (HTTP 403) unless `SMRITI_ALLOW_WIPE=1` is set on it on purpose. It cannot be undone, and it writes no audit entry (the log is meant to end up empty); the server's own log records that it happened. Phones keep their own local data; the app erases an old local account when the same number signs up again.

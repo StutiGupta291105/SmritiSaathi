@@ -1,11 +1,12 @@
-"""Admin portal API. READ ONLY.
+"""Admin portal API. READ ONLY, apart from one guarded button: "Clear all data" (test servers).
 
 There is exactly one admin, with a fixed username and password set in the server's
 settings (SMRITI_ADMIN_USERNAME / SMRITI_ADMIN_PASSWORD or _HASH). It is not a user
 account: it is not in the users table, the mobile app knows nothing of it, and no API
 can create, change or list admins. With no password configured these routes do not exist.
 
-Every endpoint here is a GET, apart from the sign-in itself. Nothing in this file
+Every endpoint here is a GET, apart from the sign-in and the one "clear all data" action
+(POST /clear-all-data: needs the typed phrase, refuses on a production server). Nothing in this file
 changes patients, caretakers, doctors, links, consents, reminders or messages, and
 a test fails if a writing route is ever added. The portal is for monitoring: who is
 in the system, who supervises whom, and what happened (the access log).
@@ -65,6 +66,29 @@ def login(body: AdminLogin, request: Request, db: Session = Depends(get_db)):
     audit.record(db, ADMIN_ACTOR, "admin_login", f"ip={ip}")
     return {"access_token": make_admin_token(s.admin_username, s),
             "username": s.admin_username, "expires_in": 1800}
+
+
+class ClearAll(BaseModel):
+    confirm: str = ""
+
+
+@router.post("/clear-all-data")
+def clear_all_data(body: ClearAll, request: Request, admin: str = Depends(current_admin),
+                   db: Session = Depends(get_db)):
+    """Test servers only: empties every table, the audit and access log included, and
+    starts the id numbering again. The admin must type the phrase. No audit entry is
+    written (the log is meant to end up empty), so the action is noted in the server's
+    own log instead. A production server refuses unless SMRITI_ALLOW_WIPE=1 is set."""
+    import logging
+    from .. import reset
+    if not reset.allowed(settings_of(request)):
+        raise HTTPException(403, "not_allowed_in_production")
+    if body.confirm.strip() != reset.CONFIRM_PHRASE:
+        raise HTTPException(400, "confirmation_phrase_wrong")
+    n = reset.reset_all(db)
+    logging.getLogger("smriti.admin").warning(
+        "ALL DATA CLEARED by admin %s from %s (%d tables)", admin, ip_hash(request)[:12], n)
+    return {"ok": True, "tables": n}
 
 
 @router.get("/ai-check")

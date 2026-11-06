@@ -205,7 +205,7 @@ patient's data export and are erased with the patient. Tests: `test_care_notes.p
 
 
 ## Admin portal
-A read-only desktop portal for monitoring users, supervision links and the access log; see `docs/ADMIN_PORTAL.md`. There is one fixed admin set in the server settings (not a user account, not in any table), who signs in with a password and, if configured, an authenticator code, with tokens that the app endpoints reject, and the whole `/v1/admin` API is GET only (tested). Blocked attempts to reach a patient are logged as `access_denied`.
+A read-only desktop portal for monitoring users, supervision links and the access log; see `docs/ADMIN_PORTAL.md`. There is one fixed admin set in the server settings (not a user account, not in any table), who signs in with a password and, if configured, an authenticator code, with tokens that the app endpoints reject, and the `/v1/admin` API is GET only (tested) apart from sign-in and one guarded test-server action, "Clear all data" (typed phrase, refused on production unless `SMRITI_ALLOW_WIPE=1`, writes no audit entry so the log ends up empty). Blocked attempts to reach a patient are logged as `access_denied`.
 
 ## Deleting a reminder
 When a patient deletes a reminder, `DELETE /v1/patients/{id}/reminders/{rid}` removes its

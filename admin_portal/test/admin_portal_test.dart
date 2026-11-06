@@ -39,6 +39,11 @@ Future<http.Response> _server(http.Request r) async {
     return _j(200, {'access_token': 'tok', 'username': 'root', 'expires_in': 1800});
   }
   if (r.headers['authorization'] != 'Bearer tok') return _j(401, {'detail': 'invalid_token'});
+  if (p == '/v1/admin/clear-all-data') {
+    final b = jsonDecode(r.body) as Map<String, dynamic>;
+    if (b['confirm'] != 'CLEAR ALL DATA') return _j(400, {'detail': 'confirmation_phrase_wrong'});
+    return _j(200, {'ok': true, 'tables': 20});
+  }
   if (p == '/v1/admin/overview') {
     return _j(200, {
       'users': {'patient': 12, 'doctor': 3, 'caretaker': 7}, 'doctors_unverified': 2,
@@ -217,6 +222,27 @@ void main() {
     expect(find.text('Save'), findsNothing);
   });
 
+  testWidgets('Clear all data needs the exact phrase, then asks the server once', (t) async {
+    await _signIn(t);
+    await t.scrollUntilVisible(find.byKey(const ValueKey('clearAll')), 200);
+    calls.clear();
+    await t.tap(find.byKey(const ValueKey('clearAll')));
+    await t.pumpAndSettle();
+    // nothing is sent until the phrase is typed exactly
+    expect(tester(t, 'clearConfirm').onPressed, isNull);
+    await t.enterText(find.byKey(const ValueKey('clearPhrase')), 'clear all data');
+    await t.pump();
+    expect(tester(t, 'clearConfirm').onPressed, isNull);
+    await t.enterText(find.byKey(const ValueKey('clearPhrase')), 'CLEAR ALL DATA');
+    await t.pump();
+    expect(tester(t, 'clearConfirm').onPressed, isNotNull);
+    expect(calls.where((c) => c.startsWith('POST')), isEmpty);
+    await t.tap(find.byKey(const ValueKey('clearConfirm')));
+    await t.pumpAndSettle();
+    expect(calls.where((c) => c == 'POST /v1/admin/clear-all-data').length, 1);
+    expect(find.textContaining('All data cleared'), findsOneWidget);
+  });
+
   testWidgets('an expired session returns to sign-in with a message', (t) async {
     await _signIn(t);
     // a server that forgets the token
@@ -224,9 +250,9 @@ void main() {
     expect(() async => await api.overview(), throwsA(isA<AdminApiException>().having((e) => e.isUnauthorized, 'unauthorized', isTrue)));
   });
 
-  test('the client has no way to write: one POST (sign-in) and nothing else', () {
+  test('the client has no way to write: two POSTs (sign-in, clear all data) and nothing else', () {
     final src = File('lib/api.dart').readAsStringSync();
-    expect(RegExp(r'\.post\(').allMatches(src).length, 1);
+    expect(RegExp(r'\.post\(').allMatches(src).length, 2);
     for (final bad in ['.put(', '.patch(', '.delete(', '.send(', 'MultipartRequest']) {
       expect(src.contains(bad), isFalse, reason: bad);
     }
@@ -303,3 +329,6 @@ void main() {
     await t.pumpWidget(const SizedBox());
   });
 }
+
+FilledButton tester(WidgetTester t, String key) =>
+    t.widget<FilledButton>(find.byKey(ValueKey(key)));
