@@ -53,3 +53,23 @@ def test_wipe_needs_the_confirmation_word_and_extra_care_in_production(env, monk
     with env.app.state.sessionmaker() as db:
         assert cli._wipe_all(db, prod, "I-UNDERSTAND") == 0
     assert _rows(env)["patients"] == 0
+
+
+def test_reset_database_leaves_every_table_empty_including_the_audit_log_and_the_server_still_works(env):
+    a, pid = env.make_patient(PHONE_P)
+    env.link_member(a, pid, "caretaker", PHONE_C)
+    assert _rows(env)["audit_log"] > 0
+    with env.app.state.sessionmaker() as db:
+        assert cli._reset_database(db, env.settings, "wrong") == 2  # needs the word
+    assert _rows(env)["users"] >= 2  # nothing happened
+    with env.app.state.sessionmaker() as db:
+        assert cli._reset_database(db, env.settings, "I-UNDERSTAND") == 0
+    assert {n: c for n, c in _rows(env).items() if c} == {}  # every table, audit log too
+    with env.app.state.sessionmaker() as db:
+        from app import audit
+        assert audit.verify_chain(db)  # an empty log is a valid log
+    again = env.signup("+919855555555", "patient", "Real Person")
+    assert again.user["name"] == "Real Person"
+    with env.app.state.sessionmaker() as db:
+        first = db.execute(select(User)).scalars().all()
+        assert [u.name for u in first] == ["Real Person"]

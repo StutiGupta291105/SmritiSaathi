@@ -75,10 +75,42 @@ def _wipe_all(db, settings, word: str) -> int:
     return 0
 
 
+def _reset_database(db, settings, word: str) -> int:
+    """Makes every table brand new: all rows gone (accounts, patients, chats, reminders, game
+    results, consents, tokens, reports, the audit and access log, everything), the numbering of
+    ids started again from 1, and NO audit entry written, so the log starts empty. The tables
+    and the schema version stay. For a TEST server only; it cannot be undone, and in production
+    it also needs SMRITI_ALLOW_WIPE=1."""
+    import os
+    from sqlalchemy import text
+    from .db import Base
+    if word != "I-UNDERSTAND":
+        print("Add the word I-UNDERSTAND to confirm: python -m app.cli reset-database I-UNDERSTAND")
+        return 2
+    if settings.is_prod and os.environ.get("SMRITI_ALLOW_WIPE") != "1":
+        print("This server is in production. Set SMRITI_ALLOW_WIPE=1 for this one command if you really mean it.")
+        return 2
+    tables = [t.name for t in Base.metadata.sorted_tables]
+    dialect = db.get_bind().dialect.name
+    if dialect == "postgresql":
+        names = ", ".join(f'"{n}"' for n in tables)
+        db.execute(text(f"TRUNCATE TABLE {names} RESTART IDENTITY CASCADE"))
+    else:
+        for table in reversed(Base.metadata.sorted_tables):
+            db.execute(table.delete())
+        try:
+            db.execute(text("DELETE FROM sqlite_sequence"))
+        except Exception:
+            pass  # no autoincrement table in this database
+    db.commit()
+    print(f"reset {len(tables)} tables: every row deleted, ids restart at 1, audit log empty")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     cmds = {"verify-audit": 1, "audit-head": 1, "list-unverified": 1,
             "verify-professional": 2, "unverify-professional": 2, "send-alerts": 1,
-            "admin-hash": 1, "ai-check": 1, "reports": 1, "wipe-all-data": 2}
+            "admin-hash": 1, "ai-check": 1, "reports": 1, "wipe-all-data": 2, "reset-database": 2}
     if not argv or cmds.get(argv[0]) != len(argv):
         print(__doc__)
         return 2
@@ -116,6 +148,8 @@ def main(argv: list[str]) -> int:
             return 0 if r["ok"] else 1
         if cmd == "wipe-all-data":
             return _wipe_all(db, s, argv[1])
+        if cmd == "reset-database":
+            return _reset_database(db, s, argv[1])
         if cmd == "reports":
             from .models import Report
             for r in db.execute(select(Report).order_by(Report.id.desc()).limit(200)).scalars():

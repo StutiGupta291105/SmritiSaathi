@@ -217,3 +217,5 @@ Before real use, remove every test account, chat, reminder and game result from 
    them locally until the app is uninstalled (uninstall once, then sign up again).
 
 It cannot be undone. Without the command you can also delete and re-create the database in Render.
+
+To make every table brand new (rows gone, the audit and access log empty, ids restarting at 1), use `python -m app.cli reset-database I-UNDERSTAND` instead of `wipe-all-data`. Test servers only.
