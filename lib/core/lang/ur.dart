@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangUr = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "chatListening": "سن رہا ہوں… اب بولیں",
+    "chatMicUnavailable": "اس فون پر آواز سے ٹائپنگ دستیاب نہیں۔ اپنے کی بورڈ کا مائیکروفون استعمال کریں۔",
     "osPermTitle": "ایپ کو جو چاہیے اس کی اجازت دیں",
     "osPermIntro": "ہم صرف ایک بار، ابھی پوچھتے ہیں، دوبارہ کبھی نہیں۔ آپ انہیں بعد میں فون کی سیٹنگز میں بدل سکتے ہیں۔",
     "osPermNotif": "الرٹس اور اطلاعات",

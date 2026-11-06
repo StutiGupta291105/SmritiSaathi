@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangSat = LangData(
   strings: {
     "appName": "ᱥᱚᱢᱨᱤᱛᱤ ᱥᱟᱛᱷᱤ",
+    "chatListening": "सुनुक् आ… अभी बात आ",
+    "chatMicUnavailable": "नेल फोन रे आवाज ते टाइपिंग नाहिं। आपनाक् कीबोर्ड आक् माइक्रोफोन बेबहार आ।",
     "osPermTitle": "एप लगिद जे लोड़ तेनाक् इजाजत दे",
     "osPermIntro": "आबोन केवल एक बार, अभी पुछाव, फिन कभी नाहिं। आपे नेहेर के पाछे फोन सेटिंग रे बदल आ।",
     "osPermNotif": "अलर्ट आर सूचना",

@@ -11,6 +11,8 @@ const Map<String, Map<String, String>> _kCoreStrings = {
   'as': kStringsAs,
   'en': {
     'appName': 'Smriti Sathi',
+    'chatListening': 'Listening… speak now',
+    'chatMicUnavailable': 'Voice typing is not available on this phone. Use the microphone on your keyboard.',
     'osPermTitle': 'Allow what the app needs',
     'osPermIntro': 'We ask just once, now, and never again. You can change any of these later in your phone\'s Settings.',
     'osPermNotif': 'Alerts and notifications',
@@ -637,6 +639,8 @@ const Map<String, Map<String, String>> _kCoreStrings = {
   },
   'hi': {
     'appName': 'स्मृति साथी',
+    'chatListening': 'सुन रहा हूँ… अब बोलिए',
+    'chatMicUnavailable': 'इस फ़ोन पर आवाज़ से टाइपिंग उपलब्ध नहीं है। अपने कीबोर्ड का माइक्रोफ़ोन इस्तेमाल करें।',
     'osPermTitle': 'ऐप को जो चाहिए, उसकी अनुमति दें',
     'osPermIntro': 'हम सिर्फ़ एक बार, अभी पूछते हैं, दोबारा नहीं। आप इन्हें बाद में फ़ोन की सेटिंग्स में बदल सकते हैं।',
     'osPermNotif': 'अलर्ट और सूचनाएँ',

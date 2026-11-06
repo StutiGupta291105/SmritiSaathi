@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangPa = LangData(
   strings: {
     "appName": "ਸਮ੍ਰਿਤੀ ਸਾਥੀ",
+    "chatListening": "ਸੁਣ ਰਿਹਾ ਹਾਂ… ਹੁਣ ਬੋਲੋ",
+    "chatMicUnavailable": "ਇਸ ਫ਼ੋਨ ਤੇ ਆਵਾਜ਼ ਨਾਲ ਟਾਈਪਿੰਗ ਉਪਲਬਧ ਨਹੀਂ। ਆਪਣੇ ਕੀਬੋਰਡ ਦਾ ਮਾਈਕ੍ਰੋਫ਼ੋਨ ਵਰਤੋ।",
     "osPermTitle": "ਐਪ ਨੂੰ ਜੋ ਚਾਹੀਦਾ ਹੈ ਉਸਦੀ ਇਜਾਜ਼ਤ ਦਿਓ",
     "osPermIntro": "ਅਸੀਂ ਸਿਰਫ਼ ਇੱਕ ਵਾਰ, ਹੁਣੇ ਪੁੱਛਦੇ ਹਾਂ, ਮੁੜ ਕਦੇ ਨਹੀਂ। ਤੁਸੀਂ ਇਹ ਬਾਅਦ ਵਿੱਚ ਫ਼ੋਨ ਦੀਆਂ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਬਦਲ ਸਕਦੇ ਹੋ।",
     "osPermNotif": "ਅਲਰਟ ਅਤੇ ਸੂਚਨਾਵਾਂ",

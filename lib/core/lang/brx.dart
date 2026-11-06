@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangBrx = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "chatListening": "खोनाबाय… दिदिनै खुथा",
+    "chatMicUnavailable": "बे फोनाव आवाजजों टाइपिं मोनखै। नोंनि कीबोर्डनि माइक्रोफोन बाहाय।",
     "osPermTitle": "एपनि थाखाय गोनां मोनखौ इजाजत हो",
     "osPermIntro": "आं खालि अनजिमा, दिदिनै खोनो, फिनजिनो मावो। नोंथाङै बेखौ उनाव फोननि सेटिंआव सोलायनो हागोन।",
     "osPermNotif": "अलार्म आरो सुबुङ",

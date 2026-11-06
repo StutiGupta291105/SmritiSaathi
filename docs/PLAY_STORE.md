@@ -69,6 +69,7 @@ All data is encrypted in transit. Users can request deletion (in app and on the 
 | App interactions (game results) | Yes | With care team the user allows | App functionality | Yes |
 | User IDs / device token (push) | Yes | Push service (Firebase) | App functionality | No |
 | AI helper questions | Sent, not stored | Processed by the AI provider | App functionality | Yes (consent) |
+| Voice for the microphone button in Talk to Smriti | Not collected by us: the phone's speech recognition (Google on Android) turns it into text on the device or Google's service; only the text reaches the app | Not by us | App functionality | Yes |
 
 "Shared" in Google's sense excludes sending to a service provider acting for you (hosting, push, AI);
 declare the AI provider as a service provider, and say that no data is sold or used for ads.

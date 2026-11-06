@@ -53,7 +53,8 @@ intents = """
         <intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="smsto"/></intent>
         <intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="sms"/></intent>
         <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent>
-        <intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="mailto"/></intent>"""
+        <intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="mailto"/></intent>
+        <intent><action android:name="android.speech.RecognitionService"/></intent>"""
 # Added to the <queries> block the Flutter template already has (a second block is not allowed).
 patch(manifest, "<queries>", "<queries>" + intents)
 patch(manifest, "<application", perms + "    <application", )

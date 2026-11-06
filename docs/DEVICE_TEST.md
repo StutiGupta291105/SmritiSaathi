@@ -70,6 +70,15 @@ phone (about 5 inch) and, if you can, with the system font size set to Large.
 26. Switch the patient phone to Airplane mode and share: it falls back to a one-time map link and
     the chat message is queued; it goes out when the phone is online again.
 
+## Talk to Smriti: the microphone
+27. Open Talk to Smriti and tap the big microphone (or the small one in the text box, which also
+    works with the keyboard open). It turns red and says "Listening… speak now"; the words appear
+    in the box as you speak and are sent by themselves when you stop. Tap again to stop early.
+28. It listens in the app's language (Hindi app: speak Hindi). If the microphone was refused after
+    sign-up it says so with a Settings button; on a phone with no speech service it says to use the
+    keyboard's own microphone. Android needs the Google app / speech services installed; for offline
+    use download the language in Settings > Google > Speech.
+
 ## When reminders or alerts do not arrive
 1. Settings > **Notification check** lists what is wrong in plain words (blocked notifications,
    exact alarms off, reminders not allowed, nothing scheduled, no push in this build).

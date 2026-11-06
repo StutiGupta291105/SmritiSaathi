@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangSd = LangData(
   strings: {
     "appName": "سمرتي ساٿي",
+    "chatListening": "ٻڌي رهيو آهيان… هاڻي ڳالهايو",
+    "chatMicUnavailable": "هن فون تي آواز سان ٽائيپنگ دستياب ناهي. پنهنجي ڪي بورڊ جو مائڪروفون استعمال ڪريو.",
     "osPermTitle": "ايپ کي جيڪو گھرجي ان جي اجازت ڏيو",
     "osPermIntro": "اسان رڳو هڪ ڀيرو، هاڻي پڇون ٿا، ٻيهر ڪڏهن به نه. توهان هي بعد ۾ فون جي سيٽنگن ۾ بدلائي سگهو ٿا.",
     "osPermNotif": "الرٽ ۽ اطلاعون",

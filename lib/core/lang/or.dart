@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangOr = LangData(
   strings: {
     "appName": "ସ୍ମୃତି ସାଥୀ",
+    "chatListening": "ଶୁଣୁଛି… ଏବେ କୁହନ୍ତୁ",
+    "chatMicUnavailable": "ଏହି ଫୋନରେ ଭଏସ ଟାଇପିଂ ଉପଲବ୍ଧ ନାହିଁ। ଆପଣଙ୍କ କୀବୋର୍ଡର ମାଇକ୍ରୋଫୋନ ବ୍ୟବହାର କରନ୍ତୁ।",
     "osPermTitle": "ଆପ୍‌କୁ ଯାହା ଦରକାର ତାହା ଅନୁମତି ଦିଅନ୍ତୁ",
     "osPermIntro": "ଆମେ କେବଳ ଥରେ, ଏବେ ପଚାରୁ, ଆଉ କେବେ ନୁହେଁ। ଏଗୁଡ଼ିକୁ ପରେ ଫୋନ ସେଟିଂସରେ ବଦଳାଇପାରିବେ।",
     "osPermNotif": "ଆଲର୍ଟ ଓ ବିଜ୍ଞପ୍ତି",

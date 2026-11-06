@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangMr = LangData(
   strings: {
     "appName": "स्मृती साथी",
+    "chatListening": "ऐकत आहे… आता बोला",
+    "chatMicUnavailable": "या फोनवर आवाजाने टायपिंग उपलब्ध नाही. तुमच्या कीबोर्डचा मायक्रोफोन वापरा.",
     "osPermTitle": "अ‍ॅपला जे हवे ते परवानगी द्या",
     "osPermIntro": "आम्ही फक्त एकदाच, आत्ता विचारतो, पुन्हा कधीच नाही. तुम्ही हे नंतर फोनच्या सेटिंग्जमध्ये बदलू शकता.",
     "osPermNotif": "अलर्ट आणि सूचना",

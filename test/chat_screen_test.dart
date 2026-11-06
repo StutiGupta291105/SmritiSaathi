@@ -7,10 +7,41 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:smriti_assist/services/api_client.dart';
 import 'package:smriti_assist/services/companion_service.dart';
+import 'package:smriti_assist/services/speech_input.dart';
 import 'package:smriti_assist/services/voice.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// A service whose online AI fails, the way a bad key or a busy provider does.
+/// A pretend microphone: [say] delivers words as if the person had spoken.
+class _FakeSpeech implements SpeechInput {
+  _FakeSpeech([this.result = SpeechStart.listening]);
+  SpeechStart result;
+  String? lang;
+  bool _on = false;
+  void Function(String, bool)? _onText;
+  void Function()? _onEnd;
+  @override
+  bool get listening => _on;
+  @override
+  Future<SpeechStart> start(String l,
+      {required void Function(String, bool) onText, required void Function() onEnd}) async {
+    lang = l;
+    _onText = onText;
+    _onEnd = onEnd;
+    _on = result == SpeechStart.listening;
+    return result;
+  }
+
+  void say(String words, {bool done = false}) {
+    _onText?.call(words, done);
+    if (done) _on = false;
+  }
+
+  void silence() => _onEnd?.call();
+  @override
+  Future<void> stop() async => _on = false;
+}
+
 class _FailingAi extends CompanionService {
   _FailingAi(AppDatabase db) : super(db: db);
   @override
@@ -152,5 +183,86 @@ void main() {
     expect(sent.single['kind'], 'ai');
     expect(sent.single['excerpt'], contains('Today is Tuesday'));
     expect(find.text('Thank you. We will review it.'), findsOneWidget);
+  });
+
+  Future<void> phone(WidgetTester t) async {
+    // tall enough for the big microphone (the screen hides it on short screens)
+    t.view.physicalSize = const Size(390, 844);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+  }
+
+  Widget withSpeech(_FakeSpeech sp, {String lang = 'en'}) => MaterialApp(
+          home: ChatScreen(
+        service: CompanionService(db: db, clock: () => DateTime(2026, 3, 10, 10, 30)),
+        voice: Voice(), db: db, patientId: 'p', name: 'Asha Devi', lang: lang, voiceEnabled: false,
+        speech: sp,
+      ));
+
+  testWidgets('the microphone listens, shows the words, and sends them when speaking ends', (t) async {
+    await phone(t);
+    final sp = _FakeSpeech();
+    await t.pumpWidget(withSpeech(sp));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump();
+    expect(find.text('Tap to speak'), findsWidgets);
+    await t.tap(find.byKey(const ValueKey('micButton')));
+    await t.pump();
+    expect(sp.lang, 'en');
+    expect(find.text('Listening… speak now'), findsOneWidget);
+    sp.say('what day is it'); // partial words appear in the box
+    await t.pump();
+    expect(find.widgetWithText(TextField, 'what day is it'), findsOneWidget);
+    sp.say('what day is it', done: true); // the last words: it is sent by itself
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await t.pump(const Duration(milliseconds: 400));
+    expect(find.text('what day is it'), findsWidgets);
+    expect(find.text('Listening… speak now'), findsNothing);
+  });
+
+  testWidgets('the small microphone in the text box works too, and tapping again stops', (t) async {
+    await phone(t);
+    final sp = _FakeSpeech();
+    await t.pumpWidget(withSpeech(sp));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('micSmall')));
+    await t.pump();
+    expect(sp.listening, isTrue);
+    await t.tap(find.byKey(const ValueKey('micSmall')));
+    await t.pump();
+    expect(sp.listening, isFalse);
+    expect(find.text('Listening… speak now'), findsNothing);
+  });
+
+  testWidgets('a refused microphone says so and offers Settings; no recogniser says to use the keyboard', (t) async {
+    await phone(t);
+    final denied = _FakeSpeech(SpeechStart.denied);
+    await t.pumpWidget(withSpeech(denied));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('micButton')));
+    await t.pump();
+    expect(find.text('Allow the microphone to send voice messages.'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    final none = _FakeSpeech(SpeechStart.unavailable);
+    await t.pumpWidget(withSpeech(none));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('micButton')));
+    await t.pump();
+    expect(find.textContaining('Voice typing is not available'), findsOneWidget);
+  });
+
+  testWidgets('it listens in the person\'s language', (t) async {
+    await phone(t);
+    final sp = _FakeSpeech();
+    await t.pumpWidget(withSpeech(sp, lang: 'hi'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('micButton')));
+    await t.pump();
+    expect(sp.lang, 'hi');
   });
 }

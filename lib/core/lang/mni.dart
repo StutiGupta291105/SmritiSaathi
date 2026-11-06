@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangMni = LangData(
   strings: {
     "appName": "ꯁ꯭ꯃꯔꯤꯇꯤ ꯁꯥꯊꯤ",
+    "chatListening": "ৱাখল্লি… ঙসি ৱাহৌ",
+    "chatMicUnavailable": "ফোন অসিদা ভয়েস টাইপিং ফংদে। নহাক্কী কীবোর্দগী মাইক্রোফোন ফাওই।",
     "osPermTitle": "এপগী মতিক ওইবা হায়বা ফংনবা পীজ",
     "osPermIntro": "ঐখোয়না এমুক সেৎ, ঙসি অমত্তা ঝৌ, মতুংদা কদাইদগী নত্তে। নহাক্না মদু মতুংদা ফোনগী সেটিংসদা শীংনবা ঙমগনি।",
     "osPermNotif": "এলর্ট অমসুং ৱারেপ",

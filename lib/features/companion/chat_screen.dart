@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/strings.dart';
@@ -6,6 +7,7 @@ import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/companion_service.dart';
+import '../../services/speech_input.dart';
 import '../../services/voice.dart';
 import '../onboarding/onboarding_screen.dart' show kNoticeVersion;
 
@@ -22,7 +24,11 @@ class ChatScreen extends StatefulWidget {
     required this.lang,
     required this.voiceEnabled,
     this.syncNow,
+    this.speech,
   });
+
+  /// Speech to text; tests pass a fake. Defaults to the phone's own recognition.
+  final SpeechInput? speech;
 
   /// Sends the new consent to the server right away; without it the first
   /// question after "allow" would be refused until the next background sync.
@@ -47,6 +53,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _offlineNote = false;
   String? _why; // why the online helper could not answer, shown in small print
   bool _canAskOnline = false; // server possible but the person has not agreed
+  late final SpeechInput _speech = widget.speech ?? DeviceSpeechInput();
+  bool _listening = false;
   bool _loaded = false;
   bool _hasMore = false;
   static const _page = 40;
@@ -148,11 +156,54 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _speech.stop();
     widget.voice.stop();
     _input.dispose();
     _focus.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// The microphone button: speak, and the words go into the box and are sent when
+  /// the person stops. Tap again to stop early.
+  Future<void> _toggleMic() async {
+    if (_listening) {
+      await _speech.stop();
+      if (mounted) setState(() => _listening = false);
+      return;
+    }
+    if (_busy) return;
+    widget.voice.stop(); // do not listen to Smriti's own voice
+    final r = await _speech.start(
+      widget.lang,
+      onText: (text, done) {
+        if (!mounted) return;
+        setState(() => _input.text = text);
+        _input.selection = TextSelection.collapsed(offset: _input.text.length);
+        if (done && text.trim().isNotEmpty) {
+          setState(() => _listening = false);
+          _send();
+        }
+      },
+      onEnd: () {
+        if (mounted && _listening) setState(() => _listening = false);
+      },
+    );
+    if (!mounted) return;
+    switch (r) {
+      case SpeechStart.listening:
+        setState(() => _listening = true);
+      case SpeechStart.denied:
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(t('micDenied')),
+          action: SnackBarAction(
+              label: t('osPermSettings'), onPressed: () => ph.openAppSettings()),
+        ));
+      case SpeechStart.unavailable:
+        _focus.requestFocus();
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(t('chatMicUnavailable'))));
+    }
   }
 
   Future<void> _checkOnline() async {
@@ -394,25 +445,26 @@ class _ChatScreenState extends State<ChatScreen> {
           Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Material(
-                color: Palette.action,
+                color: _listening ? Palette.red : Palette.action,
                 shape: const CircleBorder(),
                 child: InkWell(
+                  key: const ValueKey('micButton'),
                   customBorder: const CircleBorder(),
-                  onTap: () {
-                    _focus.requestFocus();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(t('chatMicHint'))));
-                  },
-                  child: const SizedBox(
+                  onTap: _toggleMic,
+                  child: SizedBox(
                       width: 64,
                       height: 64,
-                      child: Icon(Icons.mic_rounded,
+                      child: Icon(_listening ? Icons.stop_rounded : Icons.mic_rounded,
                           size: 32, color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 4),
-              Text(t('chatTapSpeak'),
-                  style: const TextStyle(fontSize: 13, color: Palette.muted)),
+              Text(_listening ? t('chatListening') : t('chatTapSpeak'),
+                  key: const ValueKey('micLabel'),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: _listening ? FontWeight.w700 : FontWeight.w400,
+                      color: _listening ? Palette.red : Palette.muted)),
             ]),
           ),
           const SizedBox(height: 8),
@@ -457,6 +509,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: const BorderSide(color: Palette.line)),
+                    prefixIcon: IconButton(
+                        key: const ValueKey('micSmall'),
+                        tooltip: t('chatTapSpeak'),
+                        onPressed: _toggleMic,
+                        icon: Icon(_listening ? Icons.stop_circle_rounded : Icons.mic_rounded,
+                            color: _listening ? Palette.red : Palette.action)),
                     suffixIcon: IconButton(
                         tooltip: t('chatSend'),
                         onPressed: _busy ? null : _send,

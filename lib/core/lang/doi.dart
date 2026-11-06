@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangDoi = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "chatListening": "सुनै दा हां… हुन बोलो",
+    "chatMicUnavailable": "इस फोन उप्पर आवाज कन्नै टाइपिंग उपलब्ध नेईं। अपने कीबोर्ड दा माइक्रोफोन वरतो।",
     "osPermTitle": "ऐप जो चाहिदा ऐ उसदी इजाज़त देओ",
     "osPermIntro": "अस सिर्फ इक बारी, हुन पुच्छने आं, फिरी कदें नेईं। तुस इनें गी बाद च फोन दी सैटिंग च बदली सकदे ओ।",
     "osPermNotif": "अलर्ट ते सूचनां",

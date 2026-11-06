@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangNe = LangData(
   strings: {
     "appName": "स्मृति साथी",
+    "chatListening": "सुन्दैछु… अब बोल्नुहोस्",
+    "chatMicUnavailable": "यो फोनमा आवाजबाट टाइपिङ उपलब्ध छैन। आफ्नो किबोर्डको माइक्रोफोन प्रयोग गर्नुहोस्।",
     "osPermTitle": "एपलाई चाहिने कुरा अनुमति दिनुहोस्",
     "osPermIntro": "हामी एक पटक मात्र, अहिले सोध्छौं, फेरि कहिल्यै होइन। तपाईं यी पछि फोनको सेटिङमा बदल्न सक्नुहुन्छ।",
     "osPermNotif": "अलर्ट र सूचना",

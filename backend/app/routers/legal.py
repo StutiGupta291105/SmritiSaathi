@@ -59,7 +59,8 @@ time ends (2 hours by default, 4 at most) or when you delete your account. Nothi
 when you are not sharing.</li>
 <li><b>AI helper (&ldquo;Talk to Smriti&rdquo;):</b> only if you allow it. The questions you type
 (and the last few lines of the conversation) are sent through our server to an AI provider to get an
-answer. We do not store them. The conversation history is kept on your phone only.</li>
+answer. We do not store them. The conversation history is kept on your phone only.
+If you use the microphone button, your phone's own speech recognition (Google's on Android) turns your voice into text; Smriti Sathi receives only that text, never the recording.</li>
 <li><b>Device and push:</b> a push token so notifications can reach your phone, and technical logs
 without personal content. A security log records who accessed or changed what (ids only).</li>
 </ul>
