@@ -12,9 +12,8 @@ import 'data/app_database.dart';
 import 'data/session_store.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/auth/welcome_screen.dart';
-import 'features/onboarding/onboarding_screen.dart';
+import 'features/onboarding/personal_details_screen.dart';
 import 'features/onboarding/restore_screen.dart';
-import 'features/profile/profile_flow.dart';
 import 'features/remote/remote_home.dart';
 import 'features/shell/patient_shell.dart';
 import 'features/splash/splash_screen.dart';
@@ -183,6 +182,18 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
       widget.api == null ? null : PushRegistrar(widget.api!, const FirebasePushSource());
   Map<String, dynamic>? _restoreOffer; // server already has this person's data
   bool _skipRestore = false;
+  bool _finishing = false;
+
+  /// A profile started on an older version that already has a date of birth is complete
+  /// enough: the remaining sections are done later in Settings.
+  void _finishSetup(String patientId) {
+    if (_finishing) return;
+    _finishing = true;
+    widget.db.setSetupStage(patientId, 5).then((_) {
+      _finishing = false;
+      if (mounted) _load();
+    });
+  }
   bool _syncing = false;
   Map<String, Object?>? _account;
   Map<String, Object?>? _patient;
@@ -422,6 +433,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     if (account == null && !_started) {
       return WelcomeScreen(
         lang: _lang,
+        onLangChanged: (l) => setState(() => _lang = l),
         onGetStarted: () => setState(() {
           _started = true;
           _signUp = true;
@@ -474,15 +486,28 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
       );
     }
     if (patient == null) {
-      return OnboardingScreen(
-          db: widget.db, account: account, lang: _lang, onDone: _load);
+      // A new patient: after the code, one page of personal details, then the dashboard.
+      return PersonalDetailsScreen(
+        key: const ValueKey('personalDetails'),
+        db: widget.db,
+        account: account,
+        lang: _lang,
+        onDone: _load,
+      );
     }
     if ((patient['setup_stage'] as int) < 5) {
-      return ProfileFlow(
+      // Started on an older version. With a date of birth they are done (the rest of the
+      // profile is completed in Settings); without one, the same details page asks for it.
+      if (patient['dob'] != null) {
+        _finishSetup(patient['id'] as String);
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      return PersonalDetailsScreen(
         key: ValueKey(patient['id']),
         db: widget.db,
-        notifier: widget.notifier,
-        patient: patient,
+        account: account,
+        lang: patient['language'] as String,
+        existing: patient,
         onDone: _load,
       );
     }

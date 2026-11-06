@@ -506,6 +506,57 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
               ]),
             ),
             const SizedBox(height: 16),
+            // What is still empty. Creating the account no longer asks for these.
+            Builder(builder: (_) {
+              final done = [
+                _family.isNotEmpty,
+                _links.any((x) => x['kind'] == 'doctor'),
+                _links.any((x) => x['kind'] == 'caregiver'),
+                _reminders > 0,
+              ].where((x) => x).length;
+              if (done == 4) return const SizedBox();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: AppCard(
+                  key: const ValueKey('completeProfileCard'),
+                  color: Palette.tileOrange,
+                  padding: const EdgeInsets.all(14),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      const IconBadge(
+                          icon: Icons.eco_rounded,
+                          fg: Palette.green,
+                          bg: Colors.white,
+                          size: 40,
+                          circle: true),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(t('profileTitle'),
+                              style: const TextStyle(
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Palette.brandDeep)),
+                          Text(t('profileSteps')
+                                  .replaceAll('{a}', '$done')
+                                  .replaceAll('{b}', '4'),
+                              style: const TextStyle(fontSize: 13, color: Palette.muted)),
+                        ]),
+                      ),
+                    ]),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                          value: done / 4,
+                          minHeight: 8,
+                          color: Palette.action,
+                          backgroundColor: Colors.white),
+                    ),
+                  ]),
+                ),
+              );
+            }),
             Text(t('manageProfile'),
                 style: const TextStyle(
                     fontSize: 16,

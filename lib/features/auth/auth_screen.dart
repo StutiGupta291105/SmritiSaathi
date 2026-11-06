@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../core/profile.dart';
-import '../../core/language_picker.dart';
-import '../../core/languages.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
-import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../data/session_store.dart';
 import '../../services/otp_service.dart';
+import 'garden_frame.dart';
 
 /// Login and account creation: role, mobile number, OTP. Account existence is
 /// only revealed after the OTP is verified, so the screen cannot be used to
@@ -172,150 +170,146 @@ class _AuthScreenState extends State<AuthScreen> {
         _code.clear();
       });
 
+  IconData _roleIcon(String r) => switch (r) {
+        'patient' => Icons.person_rounded,
+        'caretaker' => Icons.volunteer_activism_rounded,
+        _ => Icons.medical_services_rounded,
+      };
+
+  Widget _roleChips(bool locked) => Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final r in const ['patient', 'caretaker', 'doctor'])
+          ChoiceChip(
+            key: ValueKey('role_$r'),
+            avatar: Icon(_roleIcon(r),
+                size: 18, color: _role == r ? Colors.white : Palette.brandDeep),
+            label: Text(t('role${r[0].toUpperCase()}${r.substring(1)}')),
+            labelStyle: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _role == r ? Colors.white : Palette.brandDeep),
+            selected: _role == r,
+            selectedColor: Palette.brand,
+            backgroundColor: Colors.white,
+            showCheckmark: false,
+            side: BorderSide(color: _role == r ? Palette.brand : Palette.line),
+            onSelected: locked ? null : (_) => setState(() => _role = r),
+          ),
+      ]);
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final waitingForOtp = _e164 != null;
-    return Scaffold(
-      appBar: AppBar(
-        leading: widget.onBack == null
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: widget.onBack),
-        actions: [
-          TextButton.icon(
-            onPressed: () async {
-              final picked =
-                  await showLanguagePicker(context, current: widget.lang);
-              if (picked != null) widget.onLangChanged(picked);
-            },
-            icon: const Icon(Icons.language_rounded, size: 20),
-            label: Text(kLanguages[widget.lang] ?? widget.lang,
-                style: const TextStyle(fontSize: 15)),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            BrandLogo(subtitle: t('brandSub')),
-            const SizedBox(height: 16),
-            if (widget.otp.isTestMode)
-              Card(
-                color: Colors.amber.shade100,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(t('otpTestMode'),
-                      style: const TextStyle(fontSize: 15)),
-                ),
+    // The steps are the same ones the person will go through; "About you" comes after
+    // the code, on its own screen, for a new patient.
+    final steps = [
+      t('stepNumber'),
+      t('stepCode'),
+      if (_signUp && _role == 'patient') t('stepAbout'),
+    ];
+    return AuthFrame(
+      lang: widget.lang,
+      title: _signUp ? t('createAccount') : t('login'),
+      subtitle: _signUp ? t('signUpSub') : t('loginSub'),
+      steps: steps,
+      heroHeight: 160,
+      step: waitingForOtp ? 1 : 0,
+      onBack: widget.onBack,
+      onLangChanged: widget.onLangChanged,
+      banner: widget.otp.isTestMode
+          ? Card(
+              color: Colors.amber.shade100,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(t('otpTestMode'), style: const TextStyle(fontSize: 15)),
               ),
-            const SizedBox(height: 8),
-            Text(_signUp ? t('createAccount') : t('login'),
-                textAlign: TextAlign.center,
-                style: kHeadlineSmall
-                    .copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              key: const ValueKey('roleDropdown'),
-              initialValue: _role,
-              isExpanded: true,
-              borderRadius: BorderRadius.circular(16),
-              decoration: InputDecoration(labelText: t('iAm')),
-              items: [
-                for (final r in const ['patient', 'caretaker', 'doctor'])
-                  DropdownMenuItem(
-                    value: r,
-                    child: Text(t('role${r[0].toUpperCase()}${r.substring(1)}')),
-                  ),
-              ],
-              onChanged: waitingForOtp
-                  ? null
-                  : (v) => setState(() => _role = v ?? _role),
-            ),
-            const SizedBox(height: 16),
-            if (_signUp)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: TextField(
-                  controller: _name,
-                  enabled: !waitingForOtp,
-                  textCapitalization: TextCapitalization.words,
-                  style: const TextStyle(fontSize: 17),
-                  decoration: InputDecoration(
-                      labelText: t('yourName'),
-                      ),
-                ),
-              ),
-            TextField(
-              controller: _phone,
+            )
+          : null,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('iAm'),
+            style: const TextStyle(fontSize: 13.5, color: Palette.muted)),
+        const SizedBox(height: 8),
+        _roleChips(waitingForOtp),
+        const SizedBox(height: 16),
+        if (_signUp)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: TextField(
+              controller: _name,
               enabled: !waitingForOtp,
-              keyboardType: TextInputType.phone,
+              textCapitalization: TextCapitalization.words,
               style: const TextStyle(fontSize: 17),
               decoration: InputDecoration(
-                  labelText: t('phoneNumber'),
-                  prefixText: '+91 ',
-                  ),
+                  labelText: t('yourName'),
+                  prefixIcon: const Icon(Icons.badge_outlined)),
             ),
-            const SizedBox(height: 12),
-            if (waitingForOtp) ...[
-              Text('${t('otpSentTo')} ${maskPhone(_e164!)}',
-                  style: kTitleMedium),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _code,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                style: const TextStyle(fontSize: 24, letterSpacing: 6),
-                decoration: InputDecoration(
-                    labelText: t('enterOtp'), ),
-              ),
-            ],
-            if (_errorKey != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(t(_errorKey!),
-                    style: TextStyle(
-                        color: theme.colorScheme.error,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600)),
-              ),
-            if (_offerOffline) ...[
-              Text(t('offlineStartNote'),
-                  key: const ValueKey('offlineNote'),
-                  style: const TextStyle(fontSize: 14, color: Palette.muted, height: 1.35)),
-              const SizedBox(height: 10),
-              OutlinedButton(
-                key: const ValueKey('offlineStart'),
-                onPressed: _busy ? null : _startOffline,
-                child: Text(t('offlineStart')),
-              ),
-            ],
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: _busy ? null : (waitingForOtp ? _verify : _sendOtp),
-              child: Text(waitingForOtp ? t('verifyOtp') : t('sendOtp')),
-            ),
-            if (waitingForOtp)
-              TextButton(
-                onPressed: () => setState(() {
-                  _e164 = null;
-                  _code.clear();
-                  _errorKey = null;
-                }),
-                child: Text(t('changeNumber'),
-                    style: const TextStyle(fontSize: 16)),
-              ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: _switchMode,
-              child: Text(_signUp ? t('haveAccount') : t('noAccountYet'),
-                  style: const TextStyle(fontSize: 16)),
-            ),
-          ],
+          ),
+        TextField(
+          controller: _phone,
+          enabled: !waitingForOtp,
+          keyboardType: TextInputType.phone,
+          style: const TextStyle(fontSize: 17),
+          decoration: InputDecoration(
+              labelText: t('phoneNumber'),
+              prefixText: '+91 ',
+              prefixIcon: const Icon(Icons.phone_iphone_rounded)),
         ),
-      ),
+        const SizedBox(height: 12),
+        if (waitingForOtp) ...[
+          Text('${t('otpSentTo')} ${maskPhone(_e164!)}', style: kTitleMedium),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _code,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 26, letterSpacing: 8, fontWeight: FontWeight.w700),
+            decoration: InputDecoration(labelText: t('enterOtp')),
+          ),
+        ],
+        if (_errorKey != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(t(_errorKey!),
+                style: TextStyle(
+                    color: theme.colorScheme.error,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600)),
+          ),
+        if (_offerOffline) ...[
+          Text(t('offlineStartNote'),
+              key: const ValueKey('offlineNote'),
+              style: const TextStyle(fontSize: 14, color: Palette.muted, height: 1.35)),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            key: const ValueKey('offlineStart'),
+            onPressed: _busy ? null : _startOffline,
+            child: Text(t('offlineStart')),
+          ),
+        ],
+        const SizedBox(height: 8),
+        FilledButton(
+          key: const ValueKey('authSubmit'),
+          onPressed: _busy ? null : (waitingForOtp ? _verify : _sendOtp),
+          child: Text(waitingForOtp ? t('verifyOtp') : t('sendOtp')),
+        ),
+        if (waitingForOtp)
+          TextButton(
+            onPressed: () => setState(() {
+              _e164 = null;
+              _code.clear();
+              _errorKey = null;
+            }),
+            child: Text(t('changeNumber'), style: const TextStyle(fontSize: 16)),
+          ),
+        const SizedBox(height: 4),
+        TextButton(
+          key: const ValueKey('switchMode'),
+          onPressed: _switchMode,
+          child: Text(_signUp ? t('haveAccount') : t('noAccountYet'),
+              style: const TextStyle(fontSize: 16)),
+        ),
+      ]),
     );
   }
 }

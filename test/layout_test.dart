@@ -28,6 +28,7 @@ import 'package:smriti_assist/features/shell/settings_pages.dart';
 import 'package:smriti_assist/features/shell/games_tab.dart';
 import 'package:smriti_assist/features/games/change_game.dart';
 import 'package:smriti_assist/features/location/live_share_ui.dart';
+import 'package:smriti_assist/features/onboarding/personal_details_screen.dart';
 import 'package:smriti_assist/services/live_share.dart';
 import 'package:smriti_assist/services/location_service.dart';
 import 'package:smriti_assist/features/games/echo_game.dart';
@@ -192,6 +193,8 @@ void main() {
     'allow permissions': (l) => OnboardingScreen(
         db: db, account: const {'id': 'a1', 'phone': '9999999999', 'name': 'Asha Ramchandra Prasad'},
         lang: l, onDone: () {}),
+    'personal details': (l) => PersonalDetailsScreen(
+        db: db, account: const {'id': 'a', 'phone': '+919876543210', 'name': 'Asha Devi Sharma'}, lang: l, onDone: () {}),
     'welcome': (l) => WelcomeScreen(lang: l, onGetStarted: () {}, onLogin: () {}),
     'auth': (l) => AuthScreen(
         db: db, otp: DevOtpService(), session: const SessionStore(), lang: l,
