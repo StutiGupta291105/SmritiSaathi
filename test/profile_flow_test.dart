@@ -149,6 +149,47 @@ void main() {
     expect((await t.runAsync(() => db.listFamily(pid)))!.single['share_location'], 0);
   });
 
+  testWidgets('adding a family member offers the full list of relations; old ones still show', (t) async {
+    await t.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await t.runAsync(() async {
+      await db.recordConsent(
+          patientId: pid,
+          purposes: {'gameplay': true, 'reminders': true, 'family_contacts': true},
+          givenByName: 'Asha Devi', givenByRelation: 'self', noticeVersion: 'v2');
+      // saved by an older version, which had "Spouse"
+      await db.addFamilyMember(
+          patientId: pid, name: 'Old Entry', phone: '+919811111111', relation: 'spouse', by: 'x');
+    });
+    final w = (await t.runAsync(() => app(stage: 1)))!;
+    await t.pumpWidget(w);
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    for (var i = 0; i < 3; i++) {
+      await t.pump(const Duration(milliseconds: 200));
+      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    }
+    await t.pump();
+    expect(find.textContaining('Spouse'), findsOneWidget);
+    await t.tap(find.text('Add family member'));
+    await t.pumpAndSettle();
+    expect(find.text('Mother'), findsOneWidget); // the first choice
+    await t.tap(find.byType(DropdownButton<String>));
+    await t.pumpAndSettle();
+    for (final r in ['Mother', 'Father', 'Brother', 'Sister', 'Son', 'Daughter', 'Husband', 'Wife',
+        'Friend', 'Relative', 'Other']) {
+      expect(find.text(r), findsWidgets, reason: r);
+    }
+    await t.tap(find.text('Wife').last);
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField).at(0), 'Sita');
+    await t.enterText(find.byType(TextField).at(1), '9822222222');
+    await t.tap(find.text('Save'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await t.pumpAndSettle();
+    final rows = (await t.runAsync(() => db.listFamily(pid)))!;
+    expect([for (final m in rows) m['relation']], ['spouse', 'wife']);
+  });
+
   testWidgets('doctor and caregiver have a page each', (t) async {
     final w2 = (await t.runAsync(() => app(stage: 2)))!;
     await t.pumpWidget(w2);

@@ -1,13 +1,21 @@
 const kRoles = ['patient', 'doctor', 'caretaker'];
+/// The choices when adding a family member.
 const kRelations = [
+  'mother',
+  'father',
+  'brother',
+  'sister',
   'son',
   'daughter',
-  'spouse',
-  'sibling',
-  'grandchild',
+  'husband',
+  'wife',
   'friend',
+  'relative',
   'other',
 ];
+
+/// Relations saved by older versions: still shown by name, no longer offered.
+const kLegacyRelations = ['spouse', 'sibling', 'grandchild'];
 
 /// Whole years between [dob] and [today] (birthday not yet reached this year
 /// means one year less). Never negative.

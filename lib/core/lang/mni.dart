@@ -4,6 +4,13 @@ import '../lang_data.dart';
 const LangData kLangMni = LangData(
   strings: {
     "appName": "ꯁ꯭ꯃꯔꯤꯇꯤ ꯁꯥꯊꯤ",
+    "rel_mother": "ঈমা",
+    "rel_father": "ঈপা",
+    "rel_brother": "নুপা",
+    "rel_sister": "নুপী",
+    "rel_relative": "ইমুং",
+    "rel_husband": "নুপা",
+    "rel_wife": "নুপী",
     "stepNumber": "নহাক্কী নম্বর",
     "stepCode": "কোড",
     "stepAbout": "নহাক্কী মরমদা",

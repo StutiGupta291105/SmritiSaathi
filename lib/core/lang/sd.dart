@@ -4,6 +4,13 @@ import '../lang_data.dart';
 const LangData kLangSd = LangData(
   strings: {
     "appName": "سمرتي ساٿي",
+    "rel_mother": "ماءُ",
+    "rel_father": "پيءُ",
+    "rel_brother": "ڀاءُ",
+    "rel_sister": "ڀيڻ",
+    "rel_relative": "مائٽ",
+    "rel_husband": "مڙس",
+    "rel_wife": "زال",
     "stepNumber": "توهان جو نمبر",
     "stepCode": "ڪوڊ",
     "stepAbout": "توهان بابت",

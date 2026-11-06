@@ -4,6 +4,13 @@ import '../lang_data.dart';
 const LangData kLangTe = LangData(
   strings: {
     "appName": "స్మృతి సాథీ",
+    "rel_mother": "అమ్మ",
+    "rel_father": "నాన్న",
+    "rel_brother": "సోదరుడు",
+    "rel_sister": "సోదరి",
+    "rel_relative": "బంధువు",
+    "rel_husband": "భర్త",
+    "rel_wife": "భార్య",
     "stepNumber": "మీ నంబర్",
     "stepCode": "కోడ్",
     "stepAbout": "మీ గురించి",
