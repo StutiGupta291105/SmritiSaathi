@@ -759,33 +759,53 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                 inputFormatters: [LengthLimitingTextInputFormatter(30)])),
         field(
           t('rxWhen'),
-          Wrap(spacing: 8, runSpacing: 4, children: [
-            for (final f in _kFoods)
-              ChoiceChip(
-                key: ValueKey('food_$f'),
-                label: Text(t('food${f[0].toUpperCase()}${f.substring(1)}')),
-                selected: _food == f,
-                onSelected: (on) => setState(() => _food = on ? f : null),
+          // Two even rows of two: nothing wraps unevenly.
+          Column(children: [
+            for (var r = 0; r < _kFoods.length; r += 2)
+              Padding(
+                padding: EdgeInsets.only(bottom: r + 2 < _kFoods.length ? 10 : 0),
+                child: Row(children: [
+                  for (final f in _kFoods.sublist(r, r + 2)) ...[
+                    if (f != _kFoods[r]) const SizedBox(width: 10),
+                    Expanded(
+                      child: OptionTile(
+                        key: ValueKey('food_$f'),
+                        label: t('food${f[0].toUpperCase()}${f.substring(1)}'),
+                        selected: _food == f,
+                        onTap: () => setState(() => _food = _food == f ? null : f),
+                      ),
+                    ),
+                  ],
+                ]),
               ),
           ]),
         ),
         field(
           t('rxTimes'),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // One row of three equal tiles with the number big: 1, 2, 3.
             if (!_editing)
-              Wrap(spacing: 8, runSpacing: 4, children: [
+              IntrinsicHeight(
+                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 for (final (n, k) in [
                   (1, 'rxOnce'),
                   (2, 'rxTwice'),
                   (3, 'rxThrice')
-                ])
-                  ChoiceChip(
-                    key: ValueKey('rxPreset$n'),
-                    label: Text(t(k)),
-                    selected: _times.length == n,
-                    onSelected: (_) => _preset(n),
+                ]) ...[
+                  if (n > 1) const SizedBox(width: 10),
+                  Expanded(
+                    child: OptionTile(
+                      key: ValueKey('rxPreset$n'),
+                      big: '$n',
+                      minHeight: 76,
+                      label: t(k),
+                      selected: _times.length == n,
+                      onTap: () => _preset(n),
+                    ),
                   ),
+                ],
               ]),
+              ),
             const SizedBox(height: 8),
             for (var i = 0; i < _times.length; i++)
               Padding(

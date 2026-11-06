@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:smriti_assist/core/reminder_schedule.dart';
+import 'package:smriti_assist/core/ui.dart' show OptionTile;
 import 'package:smriti_assist/features/remote/remote_home.dart';
 import 'package:smriti_assist/services/api_client.dart';
 
@@ -523,7 +524,7 @@ void main() {
     await t.pumpAndSettle();
     expect(t.widget<TextField>(find.byKey(const ValueKey('rxName'))).controller!.text, 'Metformin');
     expect(t.widget<TextField>(find.byKey(const ValueKey('rxDose'))).controller!.text, '500 mg');
-    expect(t.widget<ChoiceChip>(find.byKey(const ValueKey('food_after'))).selected, isTrue);
+    expect(t.widget<OptionTile>(find.byKey(const ValueKey('food_after'))).selected, isTrue);
     expect(find.byKey(const ValueKey('rxAddTime')), findsNothing);
     expect(find.byKey(const ValueKey('rxPreset2')), findsNothing);
     await t.enterText(find.byKey(const ValueKey('rxDose')), '1000 mg');

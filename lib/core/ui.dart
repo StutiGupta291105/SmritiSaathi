@@ -364,3 +364,85 @@ class AllowRow extends StatelessWidget {
         ),
       );
 }
+
+
+/// A big, evenly sized choice tile (one of a few options). Selected: soft green with a
+/// green border and a tick; not selected: white. Used where chips looked uneven and small.
+class OptionTile extends StatelessWidget {
+  const OptionTile({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.big,
+    this.minHeight = 56,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  /// A large figure above the label (1, 2, 3 for "times a day").
+  final String? big;
+  final double minHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: big == null ? label : '$big, $label',
+      child: Material(
+        color: selected ? Palette.tileGreen : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            constraints: BoxConstraints(minHeight: minHeight),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: selected ? Palette.action : Palette.line,
+                  width: selected ? 2 : 1.4),
+            ),
+            child: Center(
+              child: big != null
+                  ? Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text(big!,
+                          style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: selected ? Palette.green : Palette.brandDeep)),
+                      const SizedBox(height: 2),
+                      Text(label,
+                          textAlign: TextAlign.center,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                              color: Palette.brandDeep)),
+                    ])
+                  : Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                          size: 20, color: selected ? Palette.action : Palette.muted),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(label,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                                color: Palette.brandDeep)),
+                      ),
+                    ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
