@@ -8,6 +8,7 @@
   python -m app.cli send-alerts                push new alerts to caretakers and doctors
   python -m app.cli ai-check                   ask the AI helper one question and show why it fails, if it does
   python -m app.cli reports                    reports of AI answers and messages (newest first)
+  python -m app.cli wipe-all-data I-UNDERSTAND  delete EVERY row (test data) and keep the tables; asks no further
   python -m app.cli admin-hash                 hash for SMRITI_ADMIN_PASSWORD_HASH (asks for the password)
 """
 import sys
@@ -46,10 +47,38 @@ def _admin_hash() -> int:
     return 0
 
 
+def _wipe_all(db, settings, word: str) -> int:
+    """Deletes every row of every table (accounts, patients, chats, reminders, game results,
+    consents, tokens, reports, the audit log ...) and leaves the empty tables and the schema
+    version. For clearing a TEST server of its mock data before real use. It cannot be undone,
+    and in production it also needs SMRITI_ALLOW_WIPE=1 so it is never run there by accident."""
+    import os
+    from .db import Base
+    if word != "I-UNDERSTAND":
+        print("Add the word I-UNDERSTAND to confirm: python -m app.cli wipe-all-data I-UNDERSTAND")
+        return 2
+    if settings.is_prod and os.environ.get("SMRITI_ALLOW_WIPE") != "1":
+        print("This server is in production. Set SMRITI_ALLOW_WIPE=1 for this one command if you really mean it.")
+        return 2
+    counts = {}
+    for table in reversed(Base.metadata.sorted_tables):
+        result = db.execute(table.delete())
+        counts[table.name] = result.rowcount
+    # A fresh audit chain that says what happened (and nothing else).
+    audit.record(db, "operator", "all_data_wiped", "test data cleared")
+    db.commit()
+    total = sum(c for c in counts.values() if c and c > 0)
+    print(f"deleted {total} rows from {len(counts)} tables; the schema is untouched")
+    for name, n in sorted(counts.items()):
+        if n:
+            print(f"  {name}: {n}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     cmds = {"verify-audit": 1, "audit-head": 1, "list-unverified": 1,
             "verify-professional": 2, "unverify-professional": 2, "send-alerts": 1,
-            "admin-hash": 1, "ai-check": 1, "reports": 1}
+            "admin-hash": 1, "ai-check": 1, "reports": 1, "wipe-all-data": 2}
     if not argv or cmds.get(argv[0]) != len(argv):
         print(__doc__)
         return 2
@@ -85,6 +114,8 @@ def main(argv: list[str]) -> int:
             for k, v in r.items():
                 print(f"{k}: {v}")
             return 0 if r["ok"] else 1
+        if cmd == "wipe-all-data":
+            return _wipe_all(db, s, argv[1])
         if cmd == "reports":
             from .models import Report
             for r in db.execute(select(Report).order_by(Report.id.desc()).limit(200)).scalars():

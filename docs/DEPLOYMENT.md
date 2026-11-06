@@ -198,3 +198,22 @@ Build the app with `--dart-define=API_BASE_URL=https://api.example.com`. Without
 it the app stays in its offline test mode (fixed OTP `123456`, nothing leaves the
 phone). The GitHub APK workflow reads the variable `API_BASE_URL` from the
 repository's Actions variables if you set it.
+
+
+## Clearing a test server of its mock data
+
+Before real use, remove every test account, chat, reminder and game result from the database
+(the tables and the schema stay, so the server keeps working and people can sign up fresh):
+
+1. In the Render dashboard open the PostgreSQL database and copy its **External Database URL**.
+2. On a computer with the backend installed (`pip install -r backend/requirements.txt`):
+
+       cd backend
+       SMRITI_DATABASE_URL="<the external URL>" python -m app.cli wipe-all-data I-UNDERSTAND
+
+   It prints how many rows were deleted from each table. In production (`SMRITI_ENV=prod`) it
+   refuses unless you also set `SMRITI_ALLOW_WIPE=1` for that one command.
+3. Open the admin portal: every list is empty. Phones that still hold the old test accounts keep
+   them locally until the app is uninstalled (uninstall once, then sign up again).
+
+It cannot be undone. Without the command you can also delete and re-create the database in Render.
