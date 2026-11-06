@@ -1,0 +1,47 @@
+name: Count test data
+
+# Read-only: prints how many rows each table of the test database holds.
+# Runs when its request file changes, or by hand from the Actions tab.
+# Needs the repository secret SMRITI_DATABASE_URL.
+on:
+  push:
+    paths: [".github/count-test-data-request.txt"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  count:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install server requirements
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Count rows
+        working-directory: backend
+        env:
+          SMRITI_DATABASE_URL: ${{ secrets.SMRITI_DATABASE_URL }}
+        run: |
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, text
+          from app.models import Base
+          url = os.environ["SMRITI_DATABASE_URL"]
+          if url.startswith("postgres://"):
+              url = "postgresql://" + url[len("postgres://"):]
+          e = create_engine(url)
+          total = 0
+          with e.connect() as c:
+              for t in sorted(Base.metadata.sorted_tables, key=lambda t: t.name):
+                  n = c.execute(text(f'SELECT count(*) FROM "{t.name}"')).scalar()
+                  total += n
+                  print(f"{t.name:28s} {n}")
+          print("-" * 34)
+          print(f"{'TOTAL ROWS':28s} {total}")
+          PY
