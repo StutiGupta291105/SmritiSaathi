@@ -39,7 +39,7 @@ class HomeTab extends StatelessWidget {
     this.topCard,
   });
 
-  /// Shown above everything else (the live location button).
+  /// Shown under the garden greeting and above today's tasks (the live location button).
   final Widget? topCard;
   final AppDatabase db;
   final String patientId, name, lang;
@@ -99,7 +99,6 @@ class HomeTab extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
-            if (topCard != null) ...[topCard!, const SizedBox(height: 14)],
             GardenHeader(
               greeting: _greeting(),
               name: name,
@@ -110,7 +109,10 @@ class HomeTab extends StatelessWidget {
                   .replaceAll('{a}', '${_doneCount(data)}')
                   .replaceAll('{b}', '${_total(data)}'),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
+
+            // "Are you lost?": under the garden greeting, above today's tasks.
+            if (topCard != null) ...[topCard!, const SizedBox(height: 18)],
 
             // Today as a line through the day: "now" glows, a tap ticks it off.
             if (data != null) _Timeline(
