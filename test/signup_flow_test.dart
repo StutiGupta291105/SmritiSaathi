@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti_assist/data/app_database.dart';
 import 'package:smriti_assist/data/session_store.dart';
 import 'package:smriti_assist/features/auth/auth_screen.dart';
-import 'package:smriti_assist/features/auth/garden_frame.dart';
+import 'package:smriti_assist/features/onboarding/permissions_screen.dart';
+import 'package:smriti_assist/services/app_permissions.dart';
 import 'package:smriti_assist/features/auth/welcome_screen.dart';
 import 'package:smriti_assist/features/onboarding/personal_details_screen.dart';
 import 'package:smriti_assist/main.dart';
@@ -23,6 +24,12 @@ class _Session extends SessionStore {
   Future<void> clear() async => id = null;
 }
 
+class _Asker implements PermissionAsker {
+  int calls = 0;
+  @override
+  Future<void> askAll(ReminderNotifier notifier) async => calls++;
+}
+
 class _Noop extends ReminderNotifier {
   _Noop(super.db);
   @override
@@ -32,6 +39,7 @@ class _Noop extends ReminderNotifier {
 void main() {
   late Database raw;
   late AppDatabase db;
+  late _Asker asker;
 
   setUp(() async {
     sqfliteFfiInit();
@@ -41,6 +49,7 @@ void main() {
             version: AppDatabase.schemaVersion,
             onCreate: (d, _) => AppDatabase.createSchema(d)));
     db = AppDatabase.forTesting(raw);
+    asker = _Asker();
   });
   tearDown(() => raw.close());
 
@@ -61,56 +70,33 @@ void main() {
   }
 
   group('welcome and sign-in', () {
-    testWidgets('the welcome screen is the garden with Create account and Log in', (t) async {
+    testWidgets('the welcome screen offers Get Started and Login, as before', (t) async {
       var made = false, login = false;
       await t.binding.setSurfaceSize(const Size(390, 844));
       addTearDown(() => t.binding.setSurfaceSize(null));
       await t.pumpWidget(MaterialApp(
           home: WelcomeScreen(
               lang: 'en', onGetStarted: () => made = true, onLogin: () => login = true)));
-      expect(find.byKey(const ValueKey('authGarden')), findsOneWidget);
-      await t.tap(find.byKey(const ValueKey('getStarted')));
-      await t.tap(find.byKey(const ValueKey('welcomeLogin')));
+      await t.tap(find.text('Get Started'));
+      await t.tap(find.text('Log in'));
       expect([made, login], [true, true]);
     });
 
-    testWidgets('creating a patient account shows three steps; caregiver and login two', (t) async {
-      await t.binding.setSurfaceSize(const Size(390, 900));
-      addTearDown(() => t.binding.setSurfaceSize(null));
-      Widget auth(bool signUp) => MaterialApp(
-          home: AuthScreen(
-              db: db, otp: DevOtpService(), session: _Session(), lang: 'en',
-              onLangChanged: (_) {}, onLoggedIn: () {}, initialSignUp: signUp));
-      await t.pumpWidget(auth(true));
-      expect(find.byType(StepTimeline), findsOneWidget);
-      expect(find.text('Your number'), findsOneWidget);
-      expect(find.text('Code'), findsOneWidget);
-      expect(find.text('About you'), findsOneWidget);
-      await t.tap(find.byKey(const ValueKey('role_caretaker')));
-      await t.pump();
-      expect(find.text('About you'), findsNothing); // a caregiver goes straight to their home
-      await t.pumpWidget(auth(false));
-      expect(find.text('About you'), findsNothing);
-      expect(find.text('Your number'), findsOneWidget);
-    });
-
-    testWidgets('the timeline moves to the code step after the number is sent', (t) async {
+    testWidgets('sign-up asks role, name and mobile number, then a code', (t) async {
       await t.binding.setSurfaceSize(const Size(390, 1300));
       addTearDown(() => t.binding.setSurfaceSize(null));
       await t.pumpWidget(MaterialApp(
           home: AuthScreen(
               db: db, otp: DevOtpService(), session: _Session(), lang: 'en',
               onLangChanged: (_) {}, onLoggedIn: () {}, initialSignUp: true)));
+      expect(find.byKey(const ValueKey('roleDropdown')), findsOneWidget);
       await t.enterText(find.byType(TextField).at(0), 'Asha Devi');
       await t.enterText(find.byType(TextField).at(1), '+919876543210');
-      await t.ensureVisible(find.byKey(const ValueKey('authSubmit')));
-      await t.tap(find.byKey(const ValueKey('authSubmit')));
+      await t.tap(find.widgetWithText(FilledButton, 'Send OTP'));
       for (var i = 0; i < 3; i++) {
         await settle(t);
       }
-      expect(find.byKey(const ValueKey('step1')), findsOneWidget);
-      expect(find.textContaining('+91'), findsWidgets);
-      expect(t.widget<StepTimeline>(find.byType(StepTimeline)).current, 1);
+      expect(find.text('Enter the 6-digit OTP'), findsOneWidget);
     });
   });
 
@@ -138,7 +124,6 @@ void main() {
       expect(find.byKey(const ValueKey('consentCore')), findsOneWidget);
       // the old long "Complete your profile" steps are not here
       expect(find.text('Family members'), findsNothing);
-      expect(t.widget<StepTimeline>(find.byType(StepTimeline)).current, 2);
     });
 
     testWidgets('it cannot continue without a date of birth and the consent, nor with a bad email', (t) async {
@@ -245,20 +230,28 @@ void main() {
   });
 
   group('the whole app', () {
-    Future<void> boot(WidgetTester t, String accountId) async {
+    Future<void> boot(WidgetTester t, String accountId, {bool asked = true}) async {
+      if (asked) await t.runAsync(() => db.setPermissionsAsked(accountId));
       await t.binding.setSurfaceSize(const Size(390, 1500));
       addTearDown(() => t.binding.setSurfaceSize(null));
       await t.pumpWidget(MaterialApp(
           home: Root(
               db: db, notifier: _Noop(db), voice: Voice(), otp: DevOtpService(),
-              session: _Session(accountId))));
+              permissions: asker, session: _Session(accountId))));
       await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
       await t.pump(const Duration(milliseconds: 500));
     }
 
-    testWidgets('a new patient account goes from the code to personal details, then the dashboard', (t) async {
+    testWidgets('a new account: permissions once, then personal details, then the dashboard', (t) async {
       final id = await newAccount(t);
-      await boot(t, id);
+      await boot(t, id, asked: false);
+      expect(find.byKey(const ValueKey('permissionsScreen')), findsOneWidget);
+      expect(asker.calls, 0); // opening the app asked for nothing
+      await t.tap(find.byKey(const ValueKey('allowPermissions')));
+      await settle(t);
+      await settle(t);
+      expect(asker.calls, 1);
+      expect(find.byKey(const ValueKey('permissionsScreen')), findsNothing);
       expect(find.byKey(const ValueKey('personalDetails')), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
       await pickDob(t);
@@ -286,6 +279,57 @@ void main() {
       }
       expect(find.byType(NavigationBar), findsOneWidget);
       expect((await t.runAsync(() => db.patientById(pid)))!['setup_stage'], 5);
+    });
+  });
+
+  group('permissions', () {
+    testWidgets('Not now asks nothing and the screen never comes back', (t) async {
+      final id = await newAccount(t);
+      await t.binding.setSurfaceSize(const Size(390, 1500));
+      addTearDown(() => t.binding.setSurfaceSize(null));
+      await t.pumpWidget(MaterialApp(
+          home: Root(
+              db: db, notifier: _Noop(db), voice: Voice(), otp: DevOtpService(),
+              permissions: asker, session: _Session(id))));
+      await settle(t);
+      await t.tap(find.byKey(const ValueKey('permissionsNotNow')));
+      await settle(t);
+      await settle(t);
+      expect(asker.calls, 0);
+      expect(await t.runAsync(() => db.permissionsAsked(id)), isTrue);
+      expect(find.byKey(const ValueKey('permissionsScreen')), findsNothing);
+      // a restart goes on to the next step, not back to the permissions
+      await t.pumpWidget(const SizedBox());
+      await t.pumpWidget(MaterialApp(
+          home: Root(
+              db: db, notifier: _Noop(db), voice: Voice(), otp: DevOtpService(),
+              permissions: asker, session: _Session(id))));
+      await settle(t);
+      await settle(t);
+      expect(find.byKey(const ValueKey('permissionsScreen')), findsNothing);
+      expect(find.byKey(const ValueKey('personalDetails')), findsOneWidget);
+    });
+
+    testWidgets('it lists exactly what is needed: alerts, exact alarms, microphone, location', (t) async {
+      await t.binding.setSurfaceSize(const Size(390, 1200));
+      addTearDown(() => t.binding.setSurfaceSize(null));
+      await t.pumpWidget(MaterialApp(
+          home: PermissionsScreen(
+              lang: 'en', asker: asker, notifier: _Noop(db), onDone: () {})));
+      for (final x in ['Alerts and notifications', 'Reminders on time', 'Microphone', 'Location']) {
+        expect(find.text(x), findsOneWidget, reason: x);
+      }
+      expect(find.textContaining('no other permission is needed'), findsOneWidget);
+    });
+
+    test('accounts that existed before this version are not asked again', () async {
+      final old = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath,
+          options: OpenDatabaseOptions(singleInstance: false));
+      await old.execute('CREATE TABLE accounts(id TEXT PRIMARY KEY, phone TEXT, role TEXT, name TEXT, server_user_id TEXT, created_at TEXT)');
+      await old.insert('accounts', {'id': 'a', 'phone': '1', 'role': 'patient', 'name': 'Old', 'created_at': 'x'});
+      await AppDatabase.upgradeSchema(old, 13);
+      expect((await old.query('accounts')).single['permissions_asked'], 1);
+      await old.close();
     });
   });
 }

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:record/record.dart';
 
 /// A recorded voice note: AAC in an .m4a container (MIME audio/mp4).
@@ -39,7 +40,9 @@ class DeviceRecorder implements VoiceRecorder {
 
   @override
   Future<bool> start() async {
-    if (!await _rec.hasPermission()) return false;
+    // Never asks here (the Permissions screen did, once). If it was refused the screen explains
+    // how to turn the microphone on in the phone's settings.
+    if (!await ph.Permission.microphone.isGranted) return false;
     final dir = await getTemporaryDirectory();
     _path = '${dir.path}/note_${DateTime.now().microsecondsSinceEpoch}.m4a';
     await _rec.start(

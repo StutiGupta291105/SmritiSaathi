@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/strings.dart';
@@ -237,8 +238,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
     }
   }
 
-  void _snack(String key) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(t(key))));
+  void _snack(String key) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(t(key)),
+        // A refused microphone is never asked for again; this opens the phone's page for it.
+        action: key == 'micDenied'
+            ? SnackBarAction(
+                label: t('osPermSettings'), onPressed: () => ph.openAppSettings())
+            : null,
+      ));
 
   Future<void> _sendText() async {
     final text = _text.text.trim();

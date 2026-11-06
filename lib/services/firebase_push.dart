@@ -23,7 +23,8 @@ class FirebasePushSource implements PushTokenSource {
     try {
       await Firebase.initializeApp();
       final m = FirebaseMessaging.instance;
-      await m.requestPermission();
+      // The notification permission is asked once, on the Permissions screen; asking for a
+      // push token needs no prompt.
       return await m.getToken();
     } catch (_) {
       return null;

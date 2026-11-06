@@ -5,7 +5,6 @@ import '../../core/profile.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../data/app_database.dart';
-import '../auth/garden_frame.dart';
 import '../profile/profile_flow.dart' show kIndianStates, looksLikeEmail;
 import 'onboarding_screen.dart' show kDefaultStartLevel, kNoticeVersion;
 
@@ -126,94 +125,97 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(top: 14, bottom: 6),
-        child: Text(text, style: const TextStyle(fontSize: 13.5, color: Palette.muted)),
+        padding: const EdgeInsets.only(top: 16, bottom: 6),
+        child: Text(text, style: kTitleMedium),
       );
 
   @override
   Widget build(BuildContext context) {
     final age = _dob == null ? null : ageFromDob(_dob!, DateTime.now());
-    return AuthFrame(
-      lang: _lang,
-      title: t('detailsTitle'),
-      subtitle: t('detailsSub'),
-      steps: [t('stepNumber'), t('stepCode'), t('stepAbout')],
-      step: 2,
-      heroHeight: 160,
-      onLangChanged: (l) => setState(() => _lang = l),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _label(t('dob')),
-        OutlinedButton.icon(
-          key: const ValueKey('detailsDob'),
-          icon: const Icon(Icons.cake_outlined),
-          style: OutlinedButton.styleFrom(
-              alignment: AlignmentDirectional.centerStart,
-              minimumSize: const Size.fromHeight(54)),
-          label: Text(_dob == null
-              ? t('pickDob')
-              : '${MaterialLocalizations.of(context).formatMediumDate(_dob!)}  ·  $age ${t('years')}'),
-          onPressed: _pickDob,
-        ),
-        _label('${t('email')} ${t('optional')}'),
-        TextField(
-          key: const ValueKey('detailsEmail'),
-          controller: _email,
-          keyboardType: TextInputType.emailAddress,
-          onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.mail_outline_rounded),
-              errorText: _emailOk ? null : t('invalidEmail')),
-        ),
-        _label('${t('cityTown')} ${t('optional')}'),
-        TextField(
-          key: const ValueKey('detailsCity'),
-          controller: _city,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(prefixIcon: Icon(Icons.location_city_rounded)),
-        ),
-        _label('${t('stateLabel')} ${t('optional')}'),
-        DropdownButtonFormField<String>(
-          key: const ValueKey('detailsState'),
-          initialValue: _state,
-          isExpanded: true,
-          borderRadius: BorderRadius.circular(16),
-          decoration: const InputDecoration(prefixIcon: Icon(Icons.map_outlined)),
-          items: [for (final s in kIndianStates) DropdownMenuItem(value: s, child: Text(s))],
-          onChanged: (v) => setState(() => _state = v),
-        ),
-        _label(t('language')),
-        LanguageRow(lang: _lang, onChanged: (l) => setState(() => _lang = l)),
-        if (!_existing) ...[
-          const SizedBox(height: 14),
-          CheckboxListTile(
-            key: const ValueKey('consentCore'),
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            value: _core,
-            onChanged: (v) => setState(() => _core = v ?? false),
-            title: Text(t('consentCore'), style: const TextStyle(fontSize: 14.5)),
+    return Scaffold(
+      body: SafeArea(
+        child: Column(children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              children: [
+                Text(t('detailsTitle'), style: kHeadlineMedium),
+                const SizedBox(height: 4),
+                Text(t('detailsSub'),
+                    style: const TextStyle(fontSize: 14.5, color: Palette.muted)),
+                _label(t('dob')),
+                OutlinedButton.icon(
+                  key: const ValueKey('detailsDob'),
+                  icon: const Icon(Icons.cake_rounded),
+                  label: Text(_dob == null
+                      ? t('pickDob')
+                      : '${MaterialLocalizations.of(context).formatMediumDate(_dob!)}  ·  $age ${t('years')}'),
+                  onPressed: _pickDob,
+                ),
+                _label('${t('email')} ${t('optional')}'),
+                TextField(
+                  key: const ValueKey('detailsEmail'),
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(errorText: _emailOk ? null : t('invalidEmail')),
+                ),
+                _label('${t('cityTown')} ${t('optional')}'),
+                TextField(
+                  key: const ValueKey('detailsCity'),
+                  controller: _city,
+                  textCapitalization: TextCapitalization.words,
+                ),
+                _label('${t('stateLabel')} ${t('optional')}'),
+                DropdownButtonFormField<String>(
+                  key: const ValueKey('detailsState'),
+                  initialValue: _state,
+                  isExpanded: true,
+                  borderRadius: BorderRadius.circular(16),
+                  items: [
+                    for (final s in kIndianStates) DropdownMenuItem(value: s, child: Text(s))
+                  ],
+                  onChanged: (v) => setState(() => _state = v),
+                ),
+                _label(t('language')),
+                LanguageRow(lang: _lang, onChanged: (l) => setState(() => _lang = l)),
+                if (!_existing) ...[
+                  const SizedBox(height: 14),
+                  CheckboxListTile(
+                    key: const ValueKey('consentCore'),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: _core,
+                    onChanged: (v) => setState(() => _core = v ?? false),
+                    title: Text(t('consentCore'), style: const TextStyle(fontSize: 14.5)),
+                  ),
+                  CheckboxListTile(
+                    key: const ValueKey('consentCare'),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: _care,
+                    onChanged: (v) => setState(() => _care = v ?? false),
+                    title: Text(t('consentCare'), style: const TextStyle(fontSize: 14.5)),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Text(t('completeLater'),
+                    style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
+                Text(t('notAMedicalDevice'),
+                    style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
+              ],
+            ),
           ),
-          CheckboxListTile(
-            key: const ValueKey('consentCare'),
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            value: _care,
-            onChanged: (v) => setState(() => _care = v ?? false),
-            title: Text(t('consentCare'), style: const TextStyle(fontSize: 14.5)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+            child: FilledButton(
+              key: const ValueKey('detailsContinue'),
+              onPressed: _valid && !_saving ? _submit : null,
+              child: Text(t('goDashboard')),
+            ),
           ),
-        ],
-        const SizedBox(height: 6),
-        Text(t('completeLater'),
-            style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
-        Text(t('notAMedicalDevice'),
-            style: const TextStyle(fontSize: 12.5, color: Palette.muted)),
-        const SizedBox(height: 14),
-        FilledButton(
-          key: const ValueKey('detailsContinue'),
-          onPressed: _valid && !_saving ? _submit : null,
-          child: Text(t('goDashboard')),
-        ),
-      ]),
+        ]),
+      ),
     );
   }
 }

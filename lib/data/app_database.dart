@@ -82,7 +82,7 @@ class AppDatabase implements OfflineStore {
     return AppDatabase._(db);
   }
 
-  static const schemaVersion = 13;
+  static const schemaVersion = 14;
 
   /// Fresh install: the full current schema.
   static Future<void> createSchema(Database db) async {
@@ -279,6 +279,15 @@ class AppDatabase implements OfflineStore {
     if (oldVersion < 13) {
       await _addColumn(db, 'family_members', 'share_location INTEGER NOT NULL DEFAULT 0');
     }
+    // Whether the phone's permissions were asked for (once, right after the account is made).
+    // Accounts that already exist were asked by the older version: they are not asked again.
+    if (oldVersion < 14) {
+      await _addColumn(db, 'accounts', 'permissions_asked INTEGER NOT NULL DEFAULT 0');
+      final cols = await db.rawQuery('PRAGMA table_info(accounts)');
+      if (cols.any((c) => c['name'] == 'permissions_asked')) {
+        await db.execute('UPDATE accounts SET permissions_asked = 1');
+      }
+    }
   }
 
   static Future<void> _addColumn(Database db, String table, String def) async {
@@ -315,6 +324,7 @@ class AppDatabase implements OfflineStore {
         role TEXT NOT NULL,
         name TEXT NOT NULL,
         server_user_id TEXT,
+        permissions_asked INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         UNIQUE(phone, role)
       )''');
@@ -1609,4 +1619,14 @@ class AppDatabase implements OfflineStore {
 
   Future<void> clearCompanionMessages(String patientId) => _db.delete(
       'companion_messages', where: 'patient_id = ?', whereArgs: [patientId]);
+
+  /// Has this phone been asked for notifications, microphone and the rest for this account?
+  Future<bool> permissionsAsked(String accountId) async {
+    final r = await _db.query('accounts',
+        columns: ['permissions_asked'], where: 'id = ?', whereArgs: [accountId]);
+    return r.isNotEmpty && r.first['permissions_asked'] == 1;
+  }
+
+  Future<void> setPermissionsAsked(String accountId) => _db.update(
+      'accounts', {'permissions_asked': 1}, where: 'id = ?', whereArgs: [accountId]);
 }

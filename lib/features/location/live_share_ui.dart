@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 
 import '../../core/strings.dart';
 import '../../core/theme.dart';
@@ -365,14 +366,18 @@ Future<void> quickShareLiveLocation(
   Future<bool> Function(Uri)? launch,
 }) async {
   final messenger = ScaffoldMessenger.of(context);
-  void say(String text, {bool stop = false}) => messenger
+  void say(String text, {bool stop = false, bool settings = false}) => messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
       content: Text(text),
-      duration: Duration(seconds: stop ? 8 : 5),
+      duration: Duration(seconds: stop || settings ? 8 : 5),
       action: stop
           ? SnackBarAction(label: tr(lang, 'stopSharing'), onPressed: () => controller.stop())
-          : null,
+          : settings
+              // The permission is never asked for again; this opens the phone's own page for it.
+              ? SnackBarAction(
+                  label: tr(lang, 'osPermSettings'), onPressed: () => ph.openAppSettings())
+              : null,
     ));
 
   if (controller.active) return;
@@ -401,7 +406,7 @@ Future<void> quickShareLiveLocation(
       notifyTitle: tr(lang, 'liveNotifyTitle'),
       notifyText: tr(lang, 'liveNotifyText'));
   if (r.outcome != ShareOutcome.ok) {
-    say(_problemFor(lang, r.outcome));
+    say(_problemFor(lang, r.outcome), settings: r.outcome != ShareOutcome.serviceOff && r.outcome != ShareOutcome.noPosition);
     return;
   }
   final text = liveMessage(lang,

@@ -28,10 +28,12 @@ class GeolocatorProvider implements LocationProvider {
   @override
   Future<LocationAccess> ensureAccess() async {
     if (!await Geolocator.isLocationServiceEnabled()) return LocationAccess.serviceOff;
-    var p = await Geolocator.checkPermission();
-    if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
-    if (p == LocationPermission.deniedForever) return LocationAccess.deniedForever;
-    if (p == LocationPermission.denied) return LocationAccess.denied;
+    // Never asks here: the permission was asked once on the Permissions screen. If it was
+    // refused, the message says to turn it on in the phone's settings.
+    final p = await Geolocator.checkPermission();
+    if (p == LocationPermission.denied || p == LocationPermission.deniedForever) {
+      return LocationAccess.deniedForever;
+    }
     return LocationAccess.granted;
   }
 

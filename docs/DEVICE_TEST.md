@@ -1,5 +1,7 @@
 # Real-phone test checklist (offline and reminders)
 
+> **Permissions test:** on a freshly installed app, the splash goes straight to Get Started / Log in with no prompt. Create an account: the Permissions screen appears once; Allow shows the phone's own dialogs one after another (microphone, location, notifications, then the exact-alarm settings page). After that no screen or feature shows another prompt; if one was refused, voice notes and "Are You Lost?" show a message with a Settings button.
+
 > **"App not installed"?** Android refuses an update that is signed with a different key than
 > the installed app. Test builds before the fixed test key (`.github/keys/`) each had a random key.
 > Uninstall Smriti Sathi once (account data stays on the server; anything saved only on the phone

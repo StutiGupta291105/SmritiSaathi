@@ -12,6 +12,7 @@ import 'data/app_database.dart';
 import 'data/session_store.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/auth/welcome_screen.dart';
+import 'features/onboarding/permissions_screen.dart';
 import 'features/onboarding/personal_details_screen.dart';
 import 'features/onboarding/restore_screen.dart';
 import 'features/remote/remote_home.dart';
@@ -19,6 +20,7 @@ import 'features/shell/patient_shell.dart';
 import 'features/splash/splash_screen.dart';
 import 'core/config.dart';
 import 'services/api_client.dart';
+import 'services/app_permissions.dart';
 import 'services/otp_service.dart';
 import 'features/shell/connect_online.dart';
 import 'services/firebase_push.dart';
@@ -164,7 +166,11 @@ class Root extends StatefulWidget {
     required this.otp,
     required this.session,
     this.api,
+    this.permissions = const DevicePermissionAsker(),
   });
+
+  /// Asks the phone for notifications, microphone and location, once after sign-up.
+  final PermissionAsker permissions;
   final AppDatabase db;
   final ReminderNotifier notifier;
   final Voice voice;
@@ -433,7 +439,6 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     if (account == null && !_started) {
       return WelcomeScreen(
         lang: _lang,
-        onLangChanged: (l) => setState(() => _lang = l),
         onGetStarted: () => setState(() {
           _started = true;
           _signUp = true;
@@ -455,6 +460,20 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
         lang: _lang,
         onLangChanged: (l) => setState(() => _lang = l),
         onLoggedIn: _load,
+      );
+    }
+    // Right after the account is made, once: every permission the phone needs, together.
+    // Nothing else in the app asks for one afterwards.
+    if (account['permissions_asked'] != 1) {
+      return PermissionsScreen(
+        key: const ValueKey('permissionsScreen'),
+        lang: _lang,
+        asker: widget.permissions,
+        notifier: widget.notifier,
+        onDone: () async {
+          await widget.db.setPermissionsAsked(account['id'] as String);
+          _load();
+        },
       );
     }
     if (account['role'] != 'patient') {

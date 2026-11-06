@@ -60,6 +60,7 @@ void main() {
         accountId: accountId, phone: '+919876543210', displayName: 'Asha',
         baselineLevel: 2, language: 'en', createdBy: 'x');
     await db.setSetupStage(pid, 5);
+    await db.setPermissionsAsked(accountId); // already past the one-time permissions screen
   });
 
   Future<void> boot(WidgetTester t, ReminderNotifier n) async {

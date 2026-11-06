@@ -101,7 +101,12 @@ class ReminderNotifier {
     await _plugin.initialize(
       const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        iOS: DarwinInitializationSettings(),
+        iOS: DarwinInitializationSettings(
+          // Asked on the Permissions screen, not when the app opens.
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
       ),
       onDidReceiveNotificationResponse: _tapped,
     );
@@ -182,12 +187,28 @@ class ReminderNotifier {
         if (open != null) kPushOpen.value = open;
       }
     } catch (_) {}
-    if (Platform.isAndroid) {
-      final android = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
-      await android?.requestNotificationsPermission();
-      await android?.requestExactAlarmsPermission();
-    }
+    // No permission is asked for here: opening the app for the first time must not show
+    // any prompt. The permissions are asked once, together, right after the account is
+    // created (see [requestSystemAccess] and the Permissions screen).
+  }
+
+  /// The notification permissions, asked together on the Permissions screen: alerts and
+  /// notifications, and (Android) exact alarms so that reminders ring on time. The exact
+  /// alarm switch is a phone settings page. Never throws.
+  Future<void> requestSystemAccess() async {
+    try {
+      final android = _android;
+      if (android != null) {
+        await android.requestNotificationsPermission();
+        if (await android.canScheduleExactNotifications() == false) {
+          await android.requestExactAlarmsPermission();
+        }
+      } else if (Platform.isIOS) {
+        await _plugin
+            .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+      }
+    } catch (_) {}
   }
 
   /// For the background push handler: no permission prompts, nothing to show.
