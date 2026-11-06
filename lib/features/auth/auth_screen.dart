@@ -22,6 +22,7 @@ class AuthScreen extends StatefulWidget {
     required this.lang,
     required this.onLangChanged,
     required this.onLoggedIn,
+    this.onLocalReset,
     this.initialSignUp = false,
     this.onBack,
   });
@@ -31,6 +32,10 @@ class AuthScreen extends StatefulWidget {
   final String lang;
   final ValueChanged<String> onLangChanged;
   final VoidCallback onLoggedIn;
+
+  /// Called after old details of a person the server no longer knows were erased
+  /// from this phone (to cancel their reminders).
+  final Future<void> Function()? onLocalReset;
   final bool initialSignUp;
   final VoidCallback? onBack;
 
@@ -125,6 +130,18 @@ class _AuthScreenState extends State<AuthScreen> {
         ? null
         : await widget.db.accountByServerId(serverUser.id);
     account ??= await widget.db.accountByPhoneRole(e164, _role);
+    // The phone number matches an old account that was linked to a different
+    // server user: the server's data was cleared and this is a new person on
+    // the same number. Erase the old details completely instead of reusing them.
+    final oldServerId = account?['server_user_id'] as String?;
+    if (account != null &&
+        serverUser != null &&
+        oldServerId != null &&
+        oldServerId != serverUser.id) {
+      await widget.db.eraseAccountLocally(account['id'] as String);
+      await widget.onLocalReset?.call();
+      account = null;
+    }
     String accountId;
     if (account != null) {
       accountId = account['id'] as String;

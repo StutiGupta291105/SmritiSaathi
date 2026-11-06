@@ -460,6 +460,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
         lang: _lang,
         onLangChanged: (l) => setState(() => _lang = l),
         onLoggedIn: _load,
+        onLocalReset: widget.notifier.clear,
       );
     }
     // Right after the account is made, once: every permission the phone needs, together.

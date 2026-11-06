@@ -322,6 +322,31 @@ void main() {
       expect(log.length, 1);
       expect(await db.verifyAuditChain(), isTrue);
     });
+
+    test('a stale account (server forgot it) is erased with all its data, so a new account on the same number starts clean', () async {
+      final id = await _patient(db, {'reminders', 'gameplay'});
+      final acct = (await raw.query('patients')).first['account_id'] as String;
+      await db.linkServerAccount(acct, 'old-server-user');
+      await db.insertSession(
+          patientId: id,
+          game: 'tile',
+          startedAt: DateTime.now(),
+          startLevel: 2,
+          endLevel: 2,
+          trials: 4,
+          correct: 3);
+      await db.addCompanionMessage(id, fromUser: true, text: 'hello');
+
+      await db.eraseAccountLocally(acct);
+
+      for (final t in ['patients', 'accounts', 'consents', 'sessions', 'companion_messages']) {
+        expect(await raw.query(t), isEmpty, reason: t);
+      }
+      // the same number can now be registered again, with nothing carried over
+      final fresh = await db.createAccount(phone: '+919876543210', role: 'patient', name: 'New');
+      expect(await db.accountByServerId('old-server-user'), isNull);
+      expect((await db.accountById(fresh))!['server_user_id'], isNull);
+    });
   });
 
 

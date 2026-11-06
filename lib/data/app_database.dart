@@ -1591,6 +1591,20 @@ class AppDatabase implements OfflineStore {
         'patient=$patientId account=${accountId ?? '-'}');
   }
 
+  /// Removes an account and everything on this phone that belongs to it: the
+  /// patient record with its games, reminders, family, consents and chats, or
+  /// just the account for a caregiver or doctor. Used when the server no longer
+  /// knows the person (its data was cleared), so old details cannot reappear
+  /// under a new account that happens to use the same phone number.
+  Future<void> eraseAccountLocally(String accountId) async {
+    final p = await _db.query('patients',
+        columns: ['id'], where: 'account_id = ?', whereArgs: [accountId]);
+    for (final row in p) {
+      await erasePatient(row['id'] as String, 'system');
+    }
+    await _db.delete('accounts', where: 'id = ?', whereArgs: [accountId]);
+  }
+
   /// Saves one line of the Smriti conversation.
   Future<void> addCompanionMessage(String patientId,
       {required bool fromUser,
