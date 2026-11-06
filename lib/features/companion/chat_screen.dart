@@ -91,6 +91,25 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  Future<void> _report(ChatTurn turn) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(t('reportAnswer')),
+        content: Text(t('reportAsk')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(t('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(t('chatSend'))),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final sent = await widget.service.reportAnswer(turn.text);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(sent ? t('reportSent') : t('chatNeedsOnline'))));
+  }
+
   Future<void> _clear() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -224,11 +243,23 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           child: Text(turn.text, style: const TextStyle(fontSize: 16, height: 1.35)),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: Text(_clock(turn.at),
-              style: const TextStyle(fontSize: 11, color: Palette.muted)),
-        ),
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Text(_clock(turn.at),
+                style: const TextStyle(fontSize: 11, color: Palette.muted)),
+          ),
+          // An AI answer can be flagged for review (the greeting is fixed text).
+          if (!turn.fromUser && turn.text != t('chatHello'))
+            IconButton(
+              key: ValueKey('report_${turn.at.microsecondsSinceEpoch}'),
+              tooltip: t('reportAnswer'),
+              visualDensity: VisualDensity.compact,
+              iconSize: 18,
+              icon: const Icon(Icons.outlined_flag_rounded, color: Palette.muted),
+              onPressed: () => _report(turn),
+            ),
+        ]),
       ]));
 
   Widget _dayChip(DateTime d) => Center(

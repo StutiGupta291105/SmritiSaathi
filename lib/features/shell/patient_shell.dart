@@ -148,6 +148,8 @@ class _PatientShellState extends State<PatientShell> {
     kRemindersRevision.removeListener(_remindersChanged);
     kPushOpen.removeListener(_onPushOpen);
     _chatTimer?.cancel();
+    // Leaving the screen (signing out, erasing) ends a running share, here and on the server.
+    _live.stop();
     _live.dispose();
     super.dispose();
   }

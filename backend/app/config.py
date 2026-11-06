@@ -31,6 +31,7 @@ class Settings:
     companion_model: str = "claude-opus-5-5"   # any Claude model id; cheaper ones cost less
     companion_daily_limit: int = 40            # answered messages per patient per day
     companion_style: str = "assistant"         # "assistant" (general helper) or "companion" (chat only)
+    contact_email: str = ""            # shown on the privacy policy and account-deletion pages
     trust_proxy: bool = False  # true only behind a proxy you control (X-Forwarded-For)
     # The one admin of the read-only admin portal. Fixed in the server's settings, not
     # a user account: it is not in the users table and cannot be created or changed
@@ -83,6 +84,7 @@ def load_settings() -> Settings:
         companion_model=g("COMPANION_MODEL", d.companion_model),
         companion_daily_limit=g("COMPANION_DAILY_LIMIT", d.companion_daily_limit),
         companion_style=g("COMPANION_STYLE", d.companion_style),
+        contact_email=g("CONTACT_EMAIL", d.contact_email).strip(),
         trust_proxy=g("TRUST_PROXY", d.trust_proxy),
         admin_username=g("ADMIN_USERNAME", d.admin_username).strip().lower(),
         admin_password=g("ADMIN_PASSWORD", d.admin_password),

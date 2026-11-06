@@ -433,7 +433,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
       child: ConstrainedBox(
         constraints:
             BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.8),
-        child: Container(
+        child: GestureDetector(
+          // Press and hold a message from the other person to report it.
+          onLongPress: mine || m['pending'] == true ? null : () => _report(m),
+          child: Container(
           margin: const EdgeInsets.symmetric(vertical: 4),
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
           decoration: BoxDecoration(
@@ -473,8 +476,39 @@ class _MessagesScreenState extends State<MessagesScreen> {
             ],
           ),
         ),
+        ),
       ),
     );
+  }
+
+  /// Report a message from the other person (Google Play's user-content policy).
+  Future<void> _report(Map<String, dynamic> m) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(t('reportAnswer')),
+        content: Text(t('reportAsk')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(t('cancel'))),
+          FilledButton(
+              key: const ValueKey('confirmReport'),
+              onPressed: () => Navigator.pop(c, true),
+              child: Text(t('chatSend'))),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final kind = '${m['kind']}';
+    var sent = true;
+    try {
+      await widget.api.reportContent('chat',
+          ref: '${m['id']}', excerpt: kind == 'text' ? '${m['text']}' : '', reason: kind);
+    } catch (_) {
+      sent = false;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(sent ? t('reportSent') : t('chatNeedsOnline'))));
   }
 
   Widget _composer() {

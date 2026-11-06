@@ -6,6 +6,7 @@ import '../../core/ui.dart';
 import '../../data/app_database.dart';
 import '../../services/api_client.dart';
 import '../../services/live_share.dart';
+import '../onboarding/onboarding_screen.dart' show kNoticeVersion;
 
 String _clockText(DateTime d) {
   final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
@@ -179,6 +180,11 @@ class _ShareSheetState extends State<_ShareSheet> {
       };
 
   Future<void> _go() async {
+    if (!await ensureLocationConsent(context,
+        db: widget.db, patientId: widget.patientId, name: widget.name, lang: widget.lang)) {
+      return;
+    }
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _problem = null;
@@ -385,6 +391,11 @@ Future<void> quickShareLiveLocation(
     say(tr(lang, 'shareNobody'));
     return;
   }
+  if (!context.mounted ||
+      !await ensureLocationConsent(context,
+          db: db, patientId: patientId, name: name, lang: lang)) {
+    return;
+  }
   final r = await controller.start(
       minutes: kQuickMinutes,
       notifyTitle: tr(lang, 'liveNotifyTitle'),
@@ -403,4 +414,42 @@ Future<void> quickShareLiveLocation(
   } else {
     say(tr(lang, 'liveAutoSent').replaceAll('{names}', names), stop: r.live);
   }
+}
+
+
+/// Google Play and the DPDP Act want a clear in-app explanation before location is used.
+/// Shown once; the answer is saved as the 'location' consent (withdraw it in Privacy).
+Future<bool> ensureLocationConsent(
+  BuildContext context, {
+  required AppDatabase db,
+  required String patientId,
+  required String name,
+  required String lang,
+}) async {
+  if (await db.hasConsent(patientId, 'location')) return true;
+  if (!context.mounted) return false;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (c) => AlertDialog(
+      icon: const Icon(Icons.location_on_rounded, color: Palette.sky, size: 32),
+      title: Text(tr(lang, 'locDisclosureTitle')),
+      content: SingleChildScrollView(child: Text(tr(lang, 'locDisclosureBody'))),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(lang, 'cancel'))),
+        FilledButton(
+            key: const ValueKey('allowLocation'),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(lang, 'allow'))),
+      ],
+    ),
+  );
+  if (ok != true) return false;
+  await db.recordConsent(
+    patientId: patientId,
+    purposes: {'location': true},
+    givenByName: name,
+    givenByRelation: 'self_or_guardian',
+    noticeVersion: kNoticeVersion,
+  );
+  return true;
 }

@@ -587,6 +587,16 @@ class ApiClient {
   Future<void> chatMarkRead(String linkId, int upto) =>
       _raw('POST', '/v1/chat/$linkId/read', body: {'upto': upto});
 
+  /// Reports an objectionable AI answer ('ai') or chat message ('chat'). Only the short
+  /// excerpt the person chose to send leaves the phone.
+  Future<void> reportContent(String kind, {String ref = '', String excerpt = '', String reason = ''}) =>
+      _raw('POST', '/v1/reports', body: {
+        'kind': kind,
+        'ref': ref,
+        'excerpt': excerpt.length > 500 ? excerpt.substring(0, 500) : excerpt,
+        'reason': reason,
+      });
+
   // ---- live location ---------------------------------------------------------
 
   /// Starts a share; returns `{url, expires_at, ...}`. The link opens a public map page.

@@ -189,7 +189,7 @@ void main() {
           baselineLevel: 2, language: 'en', createdBy: 'x');
       await db.recordConsent(
           patientId: pid,
-          purposes: {'family_contacts': true, 'caregiver_share': true},
+          purposes: {'family_contacts': true, 'caregiver_share': true, 'location': true},
           givenByName: 'A', givenByRelation: 'self', noticeVersion: 'v2');
       await db.addFamilyMember(
           patientId: pid, name: 'Meena', phone: '+919822222222', relation: 'daughter',
@@ -319,6 +319,46 @@ void main() {
       await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
       await t.pump();
       expect(find.byKey(const ValueKey('liveCardOff')), findsOneWidget);
+      ctl.dispose();
+    });
+
+    testWidgets('first use: a clear explanation is shown; Cancel shares nothing, Allow saves the consent',
+        (t) async {
+      await t.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => t.binding.setSurfaceSize(null));
+      await t.runAsync(() => db.recordConsent(
+          patientId: pid,
+          purposes: {'location': false},
+          givenByName: 'A', givenByRelation: 'self', noticeVersion: 'v2'));
+      final srv = Server();
+      final ctl = LiveShareController(provider: FakeLocation(), api: apiFor(srv));
+      final opened = <Uri>[];
+      await t.pumpWidget(host(ctl, srv, opened: opened));
+      await t.tap(find.byKey(const ValueKey('liveCardOff')));
+      for (var i = 0; i < 2; i++) {
+        await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+        await t.pump(const Duration(milliseconds: 300));
+      }
+      expect(find.text('Share your location?'), findsOneWidget);
+      expect(find.textContaining('only when you press this button'), findsOneWidget);
+      await t.tap(find.text('Cancel'));
+      await t.pumpAndSettle();
+      expect(ctl.active, isFalse);
+      expect(srv.calls, isEmpty);
+      expect(opened, isEmpty);
+      // tap again and allow
+      await t.tap(find.byKey(const ValueKey('liveCardOff')));
+      for (var i = 0; i < 2; i++) {
+        await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+        await t.pump(const Duration(milliseconds: 300));
+      }
+      await t.tap(find.byKey(const ValueKey('allowLocation')));
+      for (var i = 0; i < 3; i++) {
+        await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+        await t.pump(const Duration(milliseconds: 300));
+      }
+      expect(ctl.active, isTrue);
+      expect((await t.runAsync(() => db.hasConsent(pid, 'location'))), isTrue);
       ctl.dispose();
     });
 

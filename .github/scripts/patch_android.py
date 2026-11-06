@@ -39,15 +39,26 @@ perms = "".join(
         "SCHEDULE_EXACT_ALARM",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "CALL_PHONE",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "FOREGROUND_SERVICE",  # keeps live location sharing going with the screen off
         "FOREGROUND_SERVICE_LOCATION",
     )
 )
+# Android 11+ hides other apps unless declared: the dialer (112 and family calls), the SMS app
+# (live location), a browser and a mail app. No CALL_PHONE permission is needed: the app only
+# opens the dialer with the number filled in, the person presses call.
+intents = """
+        <intent><action android:name="android.intent.action.DIAL"/><data android:scheme="tel"/></intent>
+        <intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="smsto"/></intent>
+        <intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="sms"/></intent>
+        <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent>
+        <intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="mailto"/></intent>"""
+# Added to the <queries> block the Flutter template already has (a second block is not allowed).
+patch(manifest, "<queries>", "<queries>" + intents)
 patch(manifest, "<application", perms + "    <application", )
-patch(manifest, 'android:label="smriti_assist"', 'android:label="Smriti Sathi"\n        android:allowBackup="false"')
+# No cleartext (http) traffic at all; no cloud backup of the encrypted database.
+patch(manifest, 'android:label="smriti_assist"', 'android:label="Smriti Sathi"\n        android:allowBackup="false"\n        android:usesCleartextTraffic="false"')
 patch(
     manifest,
     "</application>",

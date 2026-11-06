@@ -59,6 +59,15 @@ end).
   users cannot update the app.
 - **Backups, restore drills and disaster recovery** are not designed yet.
 
+## Reports and Google Play content policies
+
+- An AI answer or a chat message can be reported from the app (flag icon / press and hold). The
+  report holds only the short excerpt the person chose to send, the kind and the reporter's id, and
+  is limited to 20 a day per person. Operators read them with `python -m app.cli reports`; the admin
+  portal does not show message content. Reports are deleted when the reporter erases their account.
+- The privacy policy (`/privacy`) and the account-deletion page (`/delete-account`) are public pages
+  served by the API. Keep them in step with this document. See docs/PLAY_STORE.md for the whole checklist.
+
 ## Live location sharing
 
 - Only the patient's own phone starts it, only after they tap and choose the people and the time

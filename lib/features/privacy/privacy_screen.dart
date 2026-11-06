@@ -2,6 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../core/config.dart';
 import '../../core/strings.dart';
 import '../../data/app_database.dart';
 import '../../services/reminder_notifier.dart';
@@ -152,6 +155,17 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(t('privacyIntro')),
+          if (kOnlineConfigured)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                key: const ValueKey('privacyPolicyLink'),
+                icon: const Icon(Icons.policy_outlined),
+                label: Text(t('privacyPolicyLink')),
+                onPressed: () => launchUrl(Uri.parse('$kApiBaseUrl/privacy'),
+                    mode: LaunchMode.externalApplication),
+              ),
+            ),
           const SizedBox(height: 12),
           TextField(
             controller: _by,

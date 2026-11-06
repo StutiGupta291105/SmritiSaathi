@@ -44,6 +44,18 @@ class CompanionService {
   final ApiClient? api;
   final DateTime Function() _clock;
 
+  /// Sends an AI answer the person flagged to the operator for review (Google Play's
+  /// AI-content policy). False when there is no connection.
+  Future<bool> reportAnswer(String text) async {
+    if (api == null) return false;
+    try {
+      await api!.reportContent('ai', excerpt: text, reason: 'flagged by user');
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// The server's id for this patient, once the app has synced at least once.
   Future<String?> _serverId(String patientId) async =>
       (await db.patientById(patientId))?['server_patient_id'] as String?;

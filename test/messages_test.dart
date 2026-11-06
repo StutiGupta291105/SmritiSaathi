@@ -21,6 +21,7 @@ final _jpeg = base64Decode(
 class _Server {
   final msgs = <Map<String, dynamic>>[];
   final sent = <Map<String, dynamic>>[];
+  final reports = <Map<String, dynamic>>[];
   var reads = <int>[];
   var nextId = 1;
   var offline = false;
@@ -86,6 +87,10 @@ class _Server {
           msgs.add(m);
           return _j(m, 201);
         }
+        if (p == '/v1/reports') {
+          reports.add(jsonDecode(r.body) as Map<String, dynamic>);
+          return _j({'ok': true}, 201);
+        }
         if (p == '/v1/chat/L1/read') {
           reads.add((jsonDecode(r.body) as Map)['upto'] as int);
           return http.Response('', 204);
@@ -139,6 +144,31 @@ Widget _app(_Server s,
     ));
 
 void main() {
+  testWidgets('press and hold a message from the other person to report it; not your own', (t) async {
+    final s = _Server()..theirs('You are stupid');
+    await t.pumpWidget(_app(s));
+    await t.pumpAndSettle();
+    await t.enterText(find.byKey(const ValueKey('chatInput')), 'my own message');
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('sendText')));
+    await t.pumpAndSettle();
+    // my own message: nothing happens
+    await t.longPress(find.text('my own message'));
+    await t.pumpAndSettle();
+    expect(find.text('Report this answer'), findsNothing);
+    // theirs: confirm, then it is sent with the message id and the text
+    await t.longPress(find.text('You are stupid'));
+    await t.pumpAndSettle();
+    expect(find.text('Report this answer'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('confirmReport')));
+    await t.pumpAndSettle();
+    expect(s.reports.single['kind'], 'chat');
+    expect(s.reports.single['ref'], '1');
+    expect(s.reports.single['excerpt'], 'You are stupid');
+    expect(find.text('Thank you. We will review it.'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+  });
+
   testWidgets('shows the history, sends text, and marks theirs as read', (t) async {
     final s = _Server()..theirs('How are you today?');
     await t.pumpWidget(_app(s));

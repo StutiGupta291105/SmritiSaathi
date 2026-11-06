@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smriti_assist/data/app_database.dart';
 import 'package:smriti_assist/features/companion/chat_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:smriti_assist/services/api_client.dart';
 import 'package:smriti_assist/services/companion_service.dart';
 import 'package:smriti_assist/services/voice.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -117,5 +121,36 @@ void main() {
     await t.pump();
     expect(find.text('Old question'), findsNothing);
     expect((await t.runAsync(() => db.companionMessages('p')))!, isEmpty);
+  });
+
+  testWidgets('an AI answer can be reported; the greeting cannot', (t) async {
+    final sent = <Map<String, dynamic>>[];
+    final api = ApiClient(
+        baseUrl: 'https://api.example.com',
+        tokens: MemoryTokenStore(),
+        client: MockClient((r) async {
+          if (r.url.path == '/v1/reports') sent.add(jsonDecode(r.body) as Map<String, dynamic>);
+          return http.Response('{"ok":true}', 201, headers: {'content-type': 'application/json'});
+        }));
+    await t.pumpWidget(MaterialApp(
+        home: ChatScreen(
+      service: CompanionService(db: db, api: api, clock: () => DateTime(2026, 3, 10, 10, 30)),
+      voice: Voice(), db: db, patientId: 'p', name: 'Asha Devi', lang: 'en', voiceEnabled: false,
+    )));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump();
+    expect(find.byTooltip('Report this answer'), findsNothing); // greeting only
+    await t.tap(find.text('What day is it?'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(find.byTooltip('Report this answer'), findsOneWidget);
+    await t.tap(find.byTooltip('Report this answer'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Send'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(sent.single['kind'], 'ai');
+    expect(sent.single['excerpt'], contains('Today is Tuesday'));
+    expect(find.text('Thank you. We will review it.'), findsOneWidget);
   });
 }

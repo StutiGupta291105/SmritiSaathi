@@ -287,3 +287,18 @@ class LiveShare(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class Report(Base):
+    """A user's report of an objectionable AI answer or chat message (Google Play's
+    AI-generated-content and user-generated-content policies). It holds only the short
+    excerpt the person chose to send and no phone number or name; the reporter is kept
+    as an id so repeated abuse of the button can be seen. Read with `python -m app.cli reports`."""
+    __tablename__ = "reports"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    reporter_id: Mapped[str] = mapped_column(String(36))
+    kind: Mapped[str] = mapped_column(String(8))  # 'ai' or 'chat'
+    ref: Mapped[str] = mapped_column(String(64), default="")  # chat: message id
+    excerpt: Mapped[str] = mapped_column(String(500), default="")
+    reason: Mapped[str] = mapped_column(String(120), default="")

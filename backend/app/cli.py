@@ -7,6 +7,7 @@
   python -m app.cli unverify-professional <id>
   python -m app.cli send-alerts                push new alerts to caretakers and doctors
   python -m app.cli ai-check                   ask the AI helper one question and show why it fails, if it does
+  python -m app.cli reports                    reports of AI answers and messages (newest first)
   python -m app.cli admin-hash                 hash for SMRITI_ADMIN_PASSWORD_HASH (asks for the password)
 """
 import sys
@@ -48,7 +49,7 @@ def _admin_hash() -> int:
 def main(argv: list[str]) -> int:
     cmds = {"verify-audit": 1, "audit-head": 1, "list-unverified": 1,
             "verify-professional": 2, "unverify-professional": 2, "send-alerts": 1,
-            "admin-hash": 1, "ai-check": 1}
+            "admin-hash": 1, "ai-check": 1, "reports": 1}
     if not argv or cmds.get(argv[0]) != len(argv):
         print(__doc__)
         return 2
@@ -84,6 +85,12 @@ def main(argv: list[str]) -> int:
             for k, v in r.items():
                 print(f"{k}: {v}")
             return 0 if r["ok"] else 1
+        if cmd == "reports":
+            from .models import Report
+            for r in db.execute(select(Report).order_by(Report.id.desc()).limit(200)).scalars():
+                print(f"#{r.id} {r.created_at:%Y-%m-%d %H:%M} {r.kind} ref={r.ref or '-'} "
+                      f"reporter={r.reporter_id[:8]} reason={r.reason or '-'}\n    {r.excerpt}")
+            return 0
         if cmd == "admin-hash":
             return _admin_hash()
         return _set_verified(db, argv[1], cmd == "verify-professional")

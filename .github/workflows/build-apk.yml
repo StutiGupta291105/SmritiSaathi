@@ -83,7 +83,7 @@ jobs:
       # Actions > Variables). When it is unset the APK points at the Render test
       # server; set it to another address to override.
       - name: Build the APK
-        run: flutter build apk --release --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://smriti-api-227e.onrender.com' }}
+        run: flutter build apk --release --build-number=${{ github.run_number }} --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://smriti-api-227e.onrender.com' }}
       - uses: actions/upload-artifact@v4
         with:
           name: smriti-sathi-apk
