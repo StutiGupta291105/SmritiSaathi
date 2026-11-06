@@ -5,11 +5,15 @@ name: Clear test data
 # CLEAR in the box. Needs the repository secret SMRITI_DATABASE_URL set to the
 # Render database's External Database URL. Not for real patient data.
 on:
+  # Also runs when the request file below is changed on a branch, because a
+  # hand-started run only works for workflows already on the default branch.
+  push:
+    paths: [".github/clear-test-data-request.txt"]
   workflow_dispatch:
     inputs:
       confirm:
         description: "Type CLEAR to delete every row in the test database"
-        required: true
+        required: false
 
 permissions:
   contents: read
@@ -19,11 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Check confirmation
-        if: ${{ github.event.inputs.confirm != 'CLEAR' }}
-        run: |
-          echo "Type CLEAR to confirm."; exit 1
       - uses: actions/checkout@v5
+      - name: Check confirmation
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            [ "$(tr -d '[:space:]' < .github/clear-test-data-request.txt)" = "CLEAR" ] || { echo "Request file must contain CLEAR."; exit 1; }
+          else
+            [ "${{ github.event.inputs.confirm }}" = "CLEAR" ] || { echo "Type CLEAR to confirm."; exit 1; }
+          fi
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
