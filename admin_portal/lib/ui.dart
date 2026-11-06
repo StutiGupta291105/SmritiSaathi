@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -148,6 +150,7 @@ class PagedTable extends StatefulWidget {
     this.filters = const [],
     this.pageSize = 25,
     this.reloadKey = '',
+    this.refreshEvery = const Duration(seconds: 10),
   });
   final Future<Map<String, dynamic>> Function(int offset, int limit, String q)
       fetch;
@@ -161,6 +164,10 @@ class PagedTable extends StatefulWidget {
   /// Change it to make the table load again (a filter changed).
   final String reloadKey;
 
+  /// The table reloads itself this often (quietly, without a spinner) so new sign-ups,
+  /// links and verifications show up without leaving the page. Null switches it off.
+  final Duration? refreshEvery;
+
   @override
   State<PagedTable> createState() => _PagedTableState();
 }
@@ -172,11 +179,17 @@ class _PagedTableState extends State<PagedTable> {
   Object? _error;
   bool _loading = true;
   final _search = TextEditingController();
+  Timer? _timer;
+  int _seq = 0; // only the newest request may show its rows
 
   @override
   void initState() {
     super.initState();
     _load();
+    final every = widget.refreshEvery;
+    if (every != null) {
+      _timer = Timer.periodic(every, (_) => _load(quiet: true));
+    }
   }
 
   @override
@@ -190,15 +203,18 @@ class _PagedTableState extends State<PagedTable> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     _search.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
+  Future<void> _load({bool quiet = false}) async {
+    final mine = ++_seq;
+    if (!quiet) setState(() => _loading = true);
     try {
       final j = await widget.fetch(_offset, widget.pageSize, _q);
-      if (!mounted) return;
+      // A slower, older answer must not overwrite a newer one (switching pages quickly).
+      if (!mounted || mine != _seq) return;
       setState(() {
         _rows = (j['items'] as List).cast<Map<String, dynamic>>();
         _total = j['total'] as int;
@@ -206,7 +222,9 @@ class _PagedTableState extends State<PagedTable> {
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || mine != _seq) return;
+      // A failed quiet refresh keeps what is on screen; the next one tries again.
+      if (quiet && _rows.isNotEmpty) return;
       setState(() {
         _error = e;
         _loading = false;
@@ -241,6 +259,12 @@ class _PagedTableState extends State<PagedTable> {
         const SizedBox(width: 12),
         ...widget.filters,
         const Spacer(),
+        IconButton(
+          key: const ValueKey('refreshTable'),
+          tooltip: 'Refresh',
+          icon: const Icon(Icons.refresh),
+          onPressed: _load,
+        ),
         Text(_total == 0 ? '0 results' : '${_offset + 1}–$last of $_total',
             style: const TextStyle(color: Pal.muted, fontSize: 13)),
         IconButton(

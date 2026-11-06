@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api.dart';
@@ -17,14 +19,32 @@ class _SecurityPageState extends State<SecurityPage> {
   Map<String, dynamic>? _d;
   Object? _error;
 
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
+    _fetch();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _fetch());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _fetch() {
     widget.api.security().then((v) {
-      if (mounted) setState(() => _d = v);
+      if (mounted) {
+        setState(() {
+          _d = v;
+          _error = null;
+        });
+      }
     }).catchError((Object e) {
       widget.onError(e);
-      if (mounted) setState(() => _error = e);
+      if (mounted && _d == null) setState(() => _error = e);
     });
   }
 

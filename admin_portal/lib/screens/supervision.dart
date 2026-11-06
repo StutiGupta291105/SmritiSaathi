@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api.dart';
@@ -128,19 +130,33 @@ class _BySupervisorState extends State<_BySupervisor> {
   int _total = 0;
   Object? _error;
 
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
+    _fetch();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _fetch());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _fetch() {
     widget.api.links(status: 'accepted', limit: 500).then((j) {
       if (mounted) {
         setState(() {
           _rows = (j['items'] as List).cast<Map<String, dynamic>>();
           _total = j['total'] as int;
+          _error = null;
         });
       }
     }).catchError((Object e) {
       widget.onError(e);
-      if (mounted) setState(() => _error = e);
+      if (mounted && _rows == null) setState(() => _error = e);
     });
   }
 

@@ -22,6 +22,9 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _i = 0;
 
+  /// Bumped when the open page's menu item is tapped again: the page loads afresh.
+  int _refresh = 0;
+
   static const _items = [
     ('Overview', Icons.dashboard_outlined),
     ('Patients', Icons.elderly_outlined),
@@ -39,18 +42,22 @@ class _ShellState extends State<Shell> {
     }
   }
 
-  Widget _page() => switch (_i) {
-        0 => OverviewPage(
-            api: widget.api,
-            onError: _fail,
-            onGo: (i) => setState(() => _i = i)),
-        1 => PatientsPage(api: widget.api, onError: _fail),
-        2 => PeoplePage(api: widget.api, role: 'doctor', onError: _fail),
-        3 => PeoplePage(api: widget.api, role: 'caretaker', onError: _fail),
-        4 => SupervisionPage(api: widget.api, onError: _fail),
-        5 => AuditPage(api: widget.api, onError: _fail),
-        _ => SecurityPage(api: widget.api, onError: _fail),
-      };
+  // Every page has its own key. Doctors and Caregivers are the same kind of page, so
+  // without a key Flutter would reuse the one already on screen and keep showing the
+  // other list's rows when switching between them.
+  Widget _page() {
+    final k = ValueKey('page$_i/$_refresh');
+    return switch (_i) {
+      0 => OverviewPage(
+          key: k, api: widget.api, onError: _fail, onGo: (i) => setState(() => _i = i)),
+      1 => PatientsPage(key: k, api: widget.api, onError: _fail),
+      2 => PeoplePage(key: k, api: widget.api, role: 'doctor', onError: _fail),
+      3 => PeoplePage(key: k, api: widget.api, role: 'caretaker', onError: _fail),
+      4 => SupervisionPage(key: k, api: widget.api, onError: _fail),
+      5 => AuditPage(key: k, api: widget.api, onError: _fail),
+      _ => SecurityPage(key: k, api: widget.api, onError: _fail),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +84,10 @@ class _ShellState extends State<Shell> {
             for (var i = 0; i < _items.length; i++)
               InkWell(
                 key: ValueKey('nav$i'),
-                onTap: () => setState(() => _i = i),
+                onTap: () => setState(() {
+                  if (i == _i) _refresh++;
+                  _i = i;
+                }),
                 child: Container(
                   color: i == _i ? Colors.white.withValues(alpha: .12) : null,
                   padding:

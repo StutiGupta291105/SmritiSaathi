@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api.dart';
@@ -39,14 +41,34 @@ class _OverviewPageState extends State<OverviewPage> {
     }
   }
 
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
+    _fetch();
+    // New sign-ups, links and alerts show up without leaving the page.
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _fetch());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _fetch() {
     widget.api.overview().then((v) {
-      if (mounted) setState(() => _d = v);
+      if (mounted) {
+        setState(() {
+          _d = v;
+          _error = null;
+        });
+      }
     }).catchError((Object e) {
       widget.onError(e);
-      if (mounted) setState(() => _error = e);
+      // A failed refresh keeps the figures already shown.
+      if (mounted && _d == null) setState(() => _error = e);
     });
   }
 

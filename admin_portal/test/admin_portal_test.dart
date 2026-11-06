@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -25,6 +26,9 @@ final _audit = [
 ];
 
 final calls = <String>[];
+
+/// Extra people the pretend server has gained since the page was opened.
+final extraPeople = <String>[];
 
 Future<http.Response> _server(http.Request r) async {
   calls.add('${r.method} ${r.url.path}');
@@ -63,8 +67,11 @@ Future<http.Response> _server(http.Request r) async {
   }
   if (p == '/v1/admin/users') {
     final role = r.url.queryParameters['role'];
-    return _j(200, {'total': 1, 'items': [
-      {'id': 'ud1', 'role': role, 'name': 'Dr Rao', 'phone_last4': '2222', 'care_id': 'DR-ABC234', 'verified': false, 'created_at': '2026-09-02T00:00:00', 'last_login_at': '2026-10-29T09:00:00', 'patients': 1},
+    final first = role == 'doctor' ? 'Dr Rao' : 'Ravi';
+    final all = [first, ...extraPeople];
+    return _j(200, {'total': all.length, 'items': [
+      for (final n in all)
+        {'id': 'u_$n', 'role': role, 'name': n, 'phone_last4': '2222', 'care_id': role == 'doctor' ? 'DR-ABC234' : 'CG-ABC234', 'verified': false, 'created_at': '2026-09-02T00:00:00', 'last_login_at': '2026-10-29T09:00:00', 'patients': 1},
     ]});
   }
   if (p == '/v1/admin/links') {
@@ -121,7 +128,10 @@ Future<void> _loadRoboto() async {
 
 void main() {
   setUpAll(_loadRoboto);
-  setUp(calls.clear);
+  setUp(() {
+    calls.clear();
+    extraPeople.clear();
+  });
 
   testWidgets('wrong details are refused, right ones open the portal', (t) async {
     await _signIn(t, password: 'nope');
@@ -224,5 +234,72 @@ void main() {
       final s = f.readAsStringSync();
       expect(s.contains('api.login'), f.path.endsWith('login.dart'), reason: f.path);
     }
+  });
+
+  testWidgets('switching between Doctors and Caregivers always shows that list', (t) async {
+    await _signIn(t);
+    for (final step in [(2, 'Dr Rao', 'Ravi'), (3, 'Ravi', 'Dr Rao'), (2, 'Dr Rao', 'Ravi'), (3, 'Ravi', 'Dr Rao')]) {
+      await t.tap(find.byKey(ValueKey('nav${step.$1}')));
+      await t.pump();
+      await t.pumpAndSettle();
+      expect(find.text(step.$2), findsOneWidget, reason: 'nav ${step.$1}');
+      expect(find.text(step.$3), findsNothing, reason: 'nav ${step.$1} shows the other list');
+    }
+    // the Care ID column belongs to the page too
+    expect(find.text('CG-ABC234'), findsOneWidget);
+    expect(find.text('DR-ABC234'), findsNothing);
+    await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a list updates by itself, and the refresh button and the menu item reload it', (t) async {
+    await _signIn(t);
+    await t.tap(find.byKey(const ValueKey('nav2')));
+    await t.pumpAndSettle();
+    expect(find.text('Dr New'), findsNothing);
+    extraPeople.add('Dr New');
+    // no click: it shows up on its own within a few seconds
+    await t.pump(const Duration(seconds: 11));
+    await t.pumpAndSettle();
+    expect(find.text('Dr New'), findsOneWidget);
+    // the refresh button
+    extraPeople.add('Dr Later');
+    await t.tap(find.byKey(const ValueKey('refreshTable')));
+    await t.pumpAndSettle();
+    expect(find.text('Dr Later'), findsOneWidget);
+    // tapping the open page's menu item reloads it too
+    extraPeople.add('Dr Last');
+    await t.tap(find.byKey(const ValueKey('nav2')));
+    await t.pumpAndSettle();
+    expect(find.text('Dr Last'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a slow answer from the page you left cannot overwrite the new page', (t) async {
+    final doctorGate = Completer<http.Response>();
+    Future<http.Response> slowDoctors(http.Request r) {
+      if (r.url.path == '/v1/admin/users' && r.url.queryParameters['role'] == 'doctor' && !doctorGate.isCompleted) {
+        return doctorGate.future; // the doctors answer arrives late
+      }
+      return _server(r);
+    }
+    await t.binding.setSurfaceSize(const Size(1400, 900));
+    await t.pumpWidget(AdminApp(apiFactory: (url) => AdminApi(url, client: MockClient(slowDoctors))));
+    await t.enterText(find.byKey(const ValueKey('username')), 'root');
+    await t.enterText(find.byKey(const ValueKey('password')), 'right password!');
+    await t.enterText(find.byKey(const ValueKey('code')), '123456');
+    await t.tap(find.byKey(const ValueKey('signIn')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('nav2'))); // doctors: waiting
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('nav3'))); // caregivers: answers at once
+    await t.pumpAndSettle();
+    expect(find.text('Ravi'), findsOneWidget);
+    // now the late doctors answer arrives
+    doctorGate.complete(await _server(http.Request('GET', Uri.parse('https://x/v1/admin/users?role=doctor'))
+      ..headers['authorization'] = 'Bearer tok'));
+    await t.pumpAndSettle();
+    expect(find.text('Ravi'), findsOneWidget);
+    expect(find.text('Dr Rao'), findsNothing);
+    await t.pumpWidget(const SizedBox());
   });
 }

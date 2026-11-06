@@ -87,6 +87,7 @@ class PeoplePage extends StatelessWidget {
       Expanded(
         child: PagedTable(
           searchHint: 'Name, Care ID, last 4 digits',
+          reloadKey: role,
           fetch: (o, l, q) => api
               .users(role: role, q: q, offset: o, limit: l)
               .catchError((Object e) {
