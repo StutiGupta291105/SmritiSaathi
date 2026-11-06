@@ -1,0 +1,41 @@
+name: Clear test data
+
+# Empties every table of the test server's database (rows only: the database,
+# tables and schema stay). Start it by hand from the Actions tab and type
+# CLEAR in the box. Needs the repository secret SMRITI_DATABASE_URL set to the
+# Render database's External Database URL. Not for real patient data.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type CLEAR to delete every row in the test database"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  clear:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check confirmation
+        if: ${{ github.event.inputs.confirm != 'CLEAR' }}
+        run: |
+          echo "Type CLEAR to confirm."; exit 1
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install server requirements
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Delete all rows
+        working-directory: backend
+        env:
+          SMRITI_DATABASE_URL: ${{ secrets.SMRITI_DATABASE_URL }}
+          SMRITI_ENV: development
+        run: |
+          test -n "$SMRITI_DATABASE_URL" || { echo "Add the SMRITI_DATABASE_URL repository secret first."; exit 1; }
+          python -m app.cli wipe-all-data I-UNDERSTAND
+          python -m app.cli verify-audit
