@@ -132,13 +132,18 @@ def overview(admin: str = Depends(current_admin), db: Session = Depends(get_db))
     day = utcnow() - timedelta(hours=24)
     cnt = lambda q: db.execute(q).scalar_one()
     roles = {r: cnt(select(func.count(User.id)).where(User.role == r))
-             for r in ("patient", "doctor", "caretaker")}
+             for r in ("doctor", "caretaker")}
+    # Patients are counted by patient record, the same thing the Patients list shows.
+    # An account that signed up but has not made its record yet is counted apart.
+    roles["patient"] = cnt(select(func.count(Patient.id)))
     links = {st: cnt(select(func.count(Link.id)).where(Link.status == st))
              for st in ("pending", "accepted", "declined", "revoked")}
     act = lambda a: cnt(select(func.count(AuditEntry.id)).where(
         AuditEntry.action == a, AuditEntry.ts >= day))
     return {
         "users": roles,
+        "patient_accounts_without_record": cnt(select(func.count(User.id)).where(
+            User.role == "patient", ~User.id.in_(select(Patient.user_id)))),
         "doctors_unverified": cnt(select(func.count(User.id)).where(
             User.role == "doctor", User.verified_at.is_(None))),
         "links": links,

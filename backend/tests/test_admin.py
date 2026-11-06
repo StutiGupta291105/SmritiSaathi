@@ -229,3 +229,18 @@ def test_the_admin_can_test_the_ai_helper(env):
     r = env.client.get("/v1/admin/ai-check", headers=h).json()
     assert r["ok"] is False and r["error"].startswith("no_api_key")
     assert env.client.get("/v1/admin/ai-check").status_code == 401
+
+
+def test_dashboard_patient_count_matches_the_patients_list(env):
+    """A patient account that has not made its record yet is not counted as a patient,
+    so the dashboard number and the Patients list always agree."""
+    h = _headers(env)
+    env.signup(P, "patient", "No Record Yet")  # signed up, no patient record
+    ov = env.client.get("/v1/admin/overview", headers=h).json()
+    assert ov["users"]["patient"] == 0
+    assert ov["patient_accounts_without_record"] == 1
+    assert env.client.get("/v1/admin/patients", headers=h).json()["total"] == 0
+    env.make_patient("+919876500001", "Has Record")
+    ov = env.client.get("/v1/admin/overview", headers=h).json()
+    listed = env.client.get("/v1/admin/patients", headers=h).json()["total"]
+    assert ov["users"]["patient"] == listed == 1
