@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangKs = LangData(
   strings: {
     "appName": "سمرتی ساتھی",
+    "rel_grandson": "پوت / نِوسہ",
+    "rel_granddaughter": "پوتری / نِوسی",
     "chatListening": "بہٕ چھس بُزان… ہُنہ گاشٕر کٔرِو",
     "chatMicUnavailable": "یتھ فونس پیٹھ چھنہ آوازہ سان ٹایپنگ مُمکن۔ پننہِ کی بورڈک مائیکروفون استعمال کٔرِو۔",
     "osPermTitle": "ایپس یتھ ضرورت چھُ تمہ اجازت دِیو",

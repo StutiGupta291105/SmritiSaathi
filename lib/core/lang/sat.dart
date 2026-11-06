@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangSat = LangData(
   strings: {
     "appName": "ᱥᱚᱢᱨᱤᱛᱤ ᱥᱟᱛᱷᱤ",
+    "rel_grandson": "हापाड़ाम होड़",
+    "rel_granddaughter": "हापाड़ाम कुड़ी",
     "chatListening": "सुनुक् आ… अभी बात आ",
     "chatMicUnavailable": "नेल फोन रे आवाज ते टाइपिंग नाहिं। आपनाक् कीबोर्ड आक् माइक्रोफोन बेबहार आ।",
     "osPermTitle": "एप लगिद जे लोड़ तेनाक् इजाजत दे",

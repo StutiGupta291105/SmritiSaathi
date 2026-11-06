@@ -7,6 +7,8 @@ const kRelations = [
   'sister',
   'son',
   'daughter',
+  'grandson',
+  'granddaughter',
   'husband',
   'wife',
   'friend',
@@ -14,7 +16,8 @@ const kRelations = [
   'other',
 ];
 
-/// Relations saved by older versions: still shown by name, no longer offered.
+/// Relations saved by older versions: still shown by name, no longer offered ('grandchild'
+/// was replaced by Grandson and Granddaughter).
 const kLegacyRelations = ['spouse', 'sibling', 'grandchild'];
 
 /// Whole years between [dob] and [today] (birthday not yet reached this year

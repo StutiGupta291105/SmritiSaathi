@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangGu = LangData(
   strings: {
     "appName": "સ્મૃતિ સાથી",
+    "rel_grandson": "પૌત્ર / દોહિત્ર",
+    "rel_granddaughter": "પૌત્રી / દોહિત્રી",
     "chatListening": "સાંભળું છું… હવે બોલો",
     "chatMicUnavailable": "આ ફોન પર અવાજથી ટાઇપિંગ ઉપલબ્ધ નથી. તમારા કીબોર્ડનો માઇક્રોફોન વાપરો.",
     "osPermTitle": "એપને જે જોઈએ તેની પરવાનગી આપો",

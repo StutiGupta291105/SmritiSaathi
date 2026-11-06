@@ -175,7 +175,7 @@ void main() {
     expect(find.text('Mother'), findsOneWidget); // the first choice
     await t.tap(find.byType(DropdownButton<String>));
     await t.pumpAndSettle();
-    for (final r in ['Mother', 'Father', 'Brother', 'Sister', 'Son', 'Daughter', 'Husband', 'Wife',
+    for (final r in ['Mother', 'Father', 'Brother', 'Sister', 'Son', 'Daughter', 'Grandson', 'Granddaughter', 'Husband', 'Wife',
         'Friend', 'Relative', 'Other']) {
       expect(find.text(r), findsWidgets, reason: r);
     }

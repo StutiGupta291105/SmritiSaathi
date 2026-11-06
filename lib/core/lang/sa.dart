@@ -4,6 +4,8 @@ import '../lang_data.dart';
 const LangData kLangSa = LangData(
   strings: {
     "appName": "स्मृतिसाथी",
+    "rel_grandson": "पौत्रः",
+    "rel_granddaughter": "पौत्री",
     "chatListening": "शृणोमि… इदानीं वदतु",
     "chatMicUnavailable": "अस्मिन् दूरभाषे ध्वनिलेखनं नास्ति। स्वीयस्य कुञ्जीपटलस्य ध्वनिग्राहकम् उपयुनक्तु।",
     "osPermTitle": "एपस्य आवश्यकानि अनुमन्यताम्",
